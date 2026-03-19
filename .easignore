@@ -1,0 +1,16 @@
+node_modules/
+.expo/
+.eas-inspect/
+.vscode/
+.git/
+dist/
+web-build/
+expo-env.d.ts
+**/.DS_Store
+**/terminals/
+
+# Don't upload local env files
+.env
+.env.*
+!.env.example
+

@@ -17,17 +17,52 @@ export default function TabLayout() {
         tabBarButton: HapticTab,
       }}>
       <Tabs.Screen
-        name="index"
+        name="dashboard"
         options={{
-          title: 'Home',
-          tabBarIcon: ({ color }) => <IconSymbol size={28} name="house.fill" color={color} />,
+          title: 'Dashboard',
+          tabBarIcon: ({ color }) => <IconSymbol size={24} name="speedometer" color={color} />,
         }}
       />
       <Tabs.Screen
-        name="explore"
+        name="ponto"
         options={{
-          title: 'Explore',
-          tabBarIcon: ({ color }) => <IconSymbol size={28} name="paperplane.fill" color={color} />,
+          title: 'Ponto',
+          tabBarIcon: ({ color }) => <IconSymbol size={24} name="clock.fill" color={color} />,
+        }}
+      />
+      <Tabs.Screen
+        name="caixa"
+        options={{
+          title: 'Caixa',
+          tabBarIcon: ({ color }) => <IconSymbol size={24} name="banknote.fill" color={color} />,
+        }}
+      />
+      <Tabs.Screen
+        name="vendas"
+        options={{
+          title: 'Vendas',
+          tabBarIcon: ({ color }) => <IconSymbol size={24} name="cart.fill" color={color} />,
+        }}
+      />
+      <Tabs.Screen
+        name="stock"
+        options={{
+          title: 'Stock',
+          tabBarIcon: ({ color }) => <IconSymbol size={24} name="shippingbox.fill" color={color} />,
+        }}
+      />
+      <Tabs.Screen
+        name="alertas"
+        options={{
+          title: 'Alertas',
+          tabBarIcon: ({ color }) => <IconSymbol size={24} name="bell.badge.fill" color={color} />,
+        }}
+      />
+      <Tabs.Screen
+        name="relatorios"
+        options={{
+          title: 'Relatórios',
+          tabBarIcon: ({ color }) => <IconSymbol size={24} name="doc.text.magnifyingglass" color={color} />,
         }}
       />
     </Tabs>
