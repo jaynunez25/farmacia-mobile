@@ -3,10 +3,11 @@ import { Stack } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
 import * as SplashScreen from 'expo-splash-screen';
 import { useCallback, useEffect, useState } from 'react';
-import { ActivityIndicator, View } from 'react-native';
+import { ActivityIndicator, Text, View } from 'react-native';
 import 'react-native-reanimated';
 
 import { PharmaosSplashIntro } from '@/components/pharmaos-splash-intro';
+import { isProductionApiUrlMissing } from '@/services/api';
 import { useColorScheme } from '@/hooks/use-color-scheme';
 import { AuthProvider, useAuth } from '@/contexts/AuthContext';
 import LoginScreen from './login';
@@ -63,12 +64,42 @@ function RootNavigator() {
   );
 }
 
+function MissingApiUrlScreen() {
+  return (
+    <View
+      style={{
+        flex: 1,
+        justifyContent: 'center',
+        padding: 24,
+        backgroundColor: '#0f172a',
+      }}>
+      <Text style={{ color: '#f8fafc', fontSize: 18, fontWeight: '700', marginBottom: 12 }}>
+        API não configurada neste deploy
+      </Text>
+      <Text style={{ color: '#cbd5e1', fontSize: 15, lineHeight: 22 }}>
+        Vercel → farmacia-mobile → Settings → Environment Variables: cria EXPO_PUBLIC_API_URL com o URL https da API no Railway
+        (ex.: farmacia-stock-production…up.railway.app). Guarda → Deployments → Redeploy no último deploy. Variáveis EXPO_PUBLIC_*
+        só entram na build; sem redeploy o quiosque falha ou fica em branco.
+      </Text>
+    </View>
+  );
+}
+
 export default function RootLayout() {
   const colorScheme = useColorScheme();
 
   useEffect(() => {
     void SplashScreen.preventAutoHideAsync();
   }, []);
+
+  if (isProductionApiUrlMissing) {
+    return (
+      <ThemeProvider value={colorScheme === 'dark' ? DarkTheme : DefaultTheme}>
+        <MissingApiUrlScreen />
+        <StatusBar style="light" />
+      </ThemeProvider>
+    );
+  }
 
   return (
     <ThemeProvider value={colorScheme === 'dark' ? DarkTheme : DefaultTheme}>

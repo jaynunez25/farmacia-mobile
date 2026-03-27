@@ -17,11 +17,8 @@ const API_BASE_URL: string = API_BASE_URL_RAW.replace(/\/+$/, '');
 const IS_PRODUCTION = process.env.NODE_ENV === 'production';
 const REQUEST_TIMEOUT_MS = 15000;
 
-if (IS_PRODUCTION && !API_BASE_URL) {
-  throw new Error(
-    'EXPO_PUBLIC_API_URL is required in production. Point it to your Railway backend URL.',
-  );
-}
+/** True when the web/production bundle was built without EXPO_PUBLIC_API_URL (shows setup screen instead of crashing). */
+export const isProductionApiUrlMissing = IS_PRODUCTION && !API_BASE_URL;
 
 const AUTH_TOKEN_KEY = 'pharmacy_token';
 
