@@ -25,6 +25,10 @@ import {
 } from '@/utils/dashboardHelpers';
 import { getErrorMessage } from '@/utils/errorMessage';
 
+/** Cards use fixed light backgrounds; theme text stays dark so contrast is correct in system dark mode. */
+const TEXT_ON_LIGHT = { lightColor: '#111827', darkColor: '#111827' } as const;
+const TEXT_ON_LIGHT_MUTED = { lightColor: '#6b7280', darkColor: '#6b7280' } as const;
+
 export default function DashboardScreen() {
   const router = useRouter();
   const { user } = useAuth();
@@ -116,12 +120,20 @@ export default function DashboardScreen() {
           <>
             <View style={styles.summaryRow}>
               <View style={[styles.summaryCard, styles.summaryCardPrimary]}>
-                <ThemedText type="subtitle">Vendas de hoje</ThemedText>
-                <ThemedText type="title">{stats.sales_today}</ThemedText>
+                <ThemedText type="subtitle" {...TEXT_ON_LIGHT}>
+                  Vendas de hoje
+                </ThemedText>
+                <ThemedText type="title" {...TEXT_ON_LIGHT}>
+                  {stats.sales_today}
+                </ThemedText>
               </View>
               <View style={[styles.summaryCard, styles.summaryCardSecondary]}>
-                <ThemedText type="subtitle">Vendas do mês</ThemedText>
-                <ThemedText type="title">{stats.sales_this_month}</ThemedText>
+                <ThemedText type="subtitle" {...TEXT_ON_LIGHT}>
+                  Vendas do mês
+                </ThemedText>
+                <ThemedText type="title" {...TEXT_ON_LIGHT}>
+                  {stats.sales_this_month}
+                </ThemedText>
               </View>
             </View>
 
@@ -133,8 +145,10 @@ export default function DashboardScreen() {
                 ]}
                 onPress={() => router.push('/(tabs)/caixa')}>
                 <View style={[styles.summaryCard, styles.summaryCardNeutral]}>
-                  <ThemedText type="subtitle">Caixa</ThemedText>
-                  <ThemedText type="title">
+                  <ThemedText type="subtitle" {...TEXT_ON_LIGHT}>
+                    Caixa
+                  </ThemedText>
+                  <ThemedText type="title" {...TEXT_ON_LIGHT}>
                     {cashSession
                       ? (() => {
                           try {
@@ -149,7 +163,7 @@ export default function DashboardScreen() {
                         })()
                       : 'Fechada'}
                   </ThemedText>
-                  <ThemedText style={styles.summaryCardHint}>
+                  <ThemedText {...TEXT_ON_LIGHT_MUTED} style={styles.summaryCardHint}>
                     {cashSession ? 'Aberta às ' + (() => {
                       try {
                         return new Date(cashSession.session.opened_at).toLocaleTimeString('pt-PT', {
@@ -164,8 +178,12 @@ export default function DashboardScreen() {
                 </View>
               </Pressable>
               <View style={[styles.summaryCard, styles.summaryCardAccent]}>
-                <ThemedText type="subtitle">Stock total (unid.)</ThemedText>
-                <ThemedText type="title">{stats.total_stock_units}</ThemedText>
+                <ThemedText type="subtitle" {...TEXT_ON_LIGHT}>
+                  Stock total (unid.)
+                </ThemedText>
+                <ThemedText type="title" {...TEXT_ON_LIGHT}>
+                  {stats.total_stock_units}
+                </ThemedText>
               </View>
             </View>
 
@@ -181,22 +199,26 @@ export default function DashboardScreen() {
                 ]}
                 android_ripple={{ color: '#1f2937' }}
                 onPress={() => router.push('/(tabs)/alertas')}>
-                <ThemedText type="subtitle">Alertas de inventário</ThemedText>
+                <ThemedText type="subtitle" {...TEXT_ON_LIGHT}>
+                  Alertas de inventário
+                </ThemedText>
                 {alertCopy ? (
                   <>
-                    <ThemedText type="defaultSemiBold">
+                    <ThemedText type="defaultSemiBold" {...TEXT_ON_LIGHT}>
                       {alertCopy.title}
                     </ThemedText>
-                    <ThemedText>{alertCopy.message}</ThemedText>
-                    <ThemedText style={styles.alertSubtitle}>
+                    <ThemedText {...TEXT_ON_LIGHT}>{alertCopy.message}</ThemedText>
+                    <ThemedText {...TEXT_ON_LIGHT_MUTED} style={styles.alertSubtitle}>
                       {alertCopy.subtitle}
                     </ThemedText>
-                    <ThemedText style={styles.alertPill}>
+                    <ThemedText {...TEXT_ON_LIGHT} style={styles.alertPill}>
                       {alertCount} itens a acompanhar
                     </ThemedText>
                   </>
                 ) : (
-                  <ThemedText>Sem alertas críticos neste momento.</ThemedText>
+                  <ThemedText {...TEXT_ON_LIGHT_MUTED}>
+                    Sem alertas críticos neste momento.
+                  </ThemedText>
                 )}
               </Pressable>
             </View>
@@ -211,7 +233,9 @@ export default function DashboardScreen() {
                   ]}
                   android_ripple={{ color: '#111827' }}
                   onPress={() => router.push('/(tabs)/vendas')}>
-                  <ThemedText type="defaultSemiBold">Registar venda</ThemedText>
+                  <ThemedText type="defaultSemiBold" {...TEXT_ON_LIGHT}>
+                    Registar venda
+                  </ThemedText>
                 </Pressable>
                 <Pressable
                   style={({ pressed }) => [
@@ -220,7 +244,9 @@ export default function DashboardScreen() {
                   ]}
                   android_ripple={{ color: '#111827' }}
                   onPress={() => router.push('/(tabs)/stock')}>
-                  <ThemedText type="defaultSemiBold">Ver stock</ThemedText>
+                  <ThemedText type="defaultSemiBold" {...TEXT_ON_LIGHT}>
+                    Ver stock
+                  </ThemedText>
                 </Pressable>
               </View>
               <View style={styles.actionRow}>
@@ -231,7 +257,9 @@ export default function DashboardScreen() {
                   ]}
                   android_ripple={{ color: '#111827' }}
                   onPress={() => router.push('/(tabs)/caixa')}>
-                  <ThemedText type="defaultSemiBold">Abrir caixa</ThemedText>
+                  <ThemedText type="defaultSemiBold" {...TEXT_ON_LIGHT}>
+                    Abrir caixa
+                  </ThemedText>
                 </Pressable>
                 <Pressable
                   style={({ pressed }) => [
@@ -240,7 +268,9 @@ export default function DashboardScreen() {
                   ]}
                   android_ripple={{ color: '#111827' }}
                   onPress={() => router.push('/(tabs)/alertas')}>
-                  <ThemedText type="defaultSemiBold">Produtos em risco</ThemedText>
+                  <ThemedText type="defaultSemiBold" {...TEXT_ON_LIGHT}>
+                    Produtos em risco
+                  </ThemedText>
                 </Pressable>
               </View>
               {user?.role === 'admin' && (
@@ -252,7 +282,9 @@ export default function DashboardScreen() {
                     ]}
                     android_ripple={{ color: '#111827' }}
                     onPress={() => router.push('/utilizadores')}>
-                    <ThemedText type="defaultSemiBold">Utilizadores</ThemedText>
+                    <ThemedText type="defaultSemiBold" {...TEXT_ON_LIGHT}>
+                      Utilizadores
+                    </ThemedText>
                   </Pressable>
                 </View>
               )}
@@ -404,6 +436,8 @@ const styles = StyleSheet.create({
     alignSelf: 'flex-start',
     borderRadius: 999,
     fontSize: 12,
+    backgroundColor: '#e5e7eb',
+    overflow: 'hidden',
   },
   quickActions: {
     marginTop: 8,
