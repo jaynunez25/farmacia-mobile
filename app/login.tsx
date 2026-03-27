@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import {
   ActivityIndicator,
+  Image,
   KeyboardAvoidingView,
   Platform,
   Pressable,
@@ -11,9 +12,30 @@ import {
   View,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
+import { StatusBar } from 'expo-status-bar';
 
 import { useAuth } from '@/contexts/AuthContext';
 import { getErrorMessage } from '@/utils/errorMessage';
+
+/** Pharmaos-aligned palette (health / SaaS, light surfaces). */
+const BG = '#F8FAFC';
+const SURFACE = '#FFFFFF';
+const TEXT_PRIMARY = '#0F172A';
+const TEXT_MUTED = '#64748B';
+const TEXT_SUBTLE = '#94A3B8';
+const BORDER = '#E2E8F0';
+const BORDER_FOCUS = '#2563EB';
+const BRAND_BLUE = '#2563EB';
+const BRAND_BLUE_PRESSED = '#1D4ED8';
+/** Subtle Pharmaos “os” accent — thin rule only, no extra chrome. */
+const BRAND_GREEN = '#15803D';
+const ERROR_BG = '#FEF2F2';
+const ERROR_BORDER = '#FECACA';
+const ERROR_TEXT = '#991B1B';
+const DISABLED_BG = '#E2E8F0';
+const DISABLED_TEXT = '#94A3B8';
+
+const LOGO = require('@/assets/images/pharmaos-logo.png');
 
 export default function LoginScreen() {
   const { login, isLoading, isAuthenticated } = useAuth();
@@ -22,6 +44,7 @@ export default function LoginScreen() {
   const [password, setPassword] = useState('');
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [focusedField, setFocusedField] = useState<'user' | 'pass' | null>(null);
 
   const loading = isLoading || submitting;
 
@@ -32,8 +55,6 @@ export default function LoginScreen() {
     try {
       await login(username.trim(), password);
     } catch (err) {
-      // Helpful for debugging backend / network issues during development.
-      // eslint-disable-next-line no-console
       console.error('Login failed', err);
       setError(getErrorMessage(err));
     } finally {
@@ -44,16 +65,24 @@ export default function LoginScreen() {
   const disabled = !username.trim() || !password || loading;
 
   return (
-    <SafeAreaView style={styles.safeArea}>
+    <SafeAreaView style={styles.safeArea} edges={['top', 'left', 'right']}>
+      <StatusBar style="dark" />
       <KeyboardAvoidingView
         style={styles.root}
         behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
         <ScrollView
-          contentContainerStyle={styles.container}
-          keyboardShouldPersistTaps="handled">
-          <View style={styles.header}>
-            <Text style={styles.title}>Entrar</Text>
-            <Text style={styles.subtitle}>Acede ao painel da farmácia.</Text>
+          contentContainerStyle={styles.scrollContent}
+          keyboardShouldPersistTaps="handled"
+          showsVerticalScrollIndicator={false}>
+          <View style={styles.topSection}>
+            <View style={styles.brandBlock}>
+              <Image source={LOGO} style={styles.logo} resizeMode="contain" />
+              <Text style={styles.screenTitle}>Entrar</Text>
+              <Text style={styles.screenSubtitle}>
+                Aceda ao painel da sua farmácia de forma segura.
+              </Text>
+              <View style={styles.brandAccentRule} importantForAccessibility="no" />
+            </View>
           </View>
 
           <View style={styles.form}>
@@ -67,8 +96,13 @@ export default function LoginScreen() {
                 keyboardType="default"
                 textContentType="username"
                 placeholder="nome.utilizador"
-                placeholderTextColor="#9ca3af"
-                style={styles.input}
+                placeholderTextColor={TEXT_SUBTLE}
+                style={[
+                  styles.input,
+                  focusedField === 'user' && styles.inputFocused,
+                ]}
+                onFocus={() => setFocusedField('user')}
+                onBlur={() => setFocusedField((f) => (f === 'user' ? null : f))}
                 returnKeyType="next"
               />
             </View>
@@ -81,40 +115,56 @@ export default function LoginScreen() {
                 secureTextEntry
                 textContentType="password"
                 placeholder="••••••••"
-                placeholderTextColor="#9ca3af"
-                style={styles.input}
+                placeholderTextColor={TEXT_SUBTLE}
+                style={[
+                  styles.input,
+                  focusedField === 'pass' && styles.inputFocused,
+                ]}
+                onFocus={() => setFocusedField('pass')}
+                onBlur={() => setFocusedField((f) => (f === 'pass' ? null : f))}
                 returnKeyType="done"
                 onSubmitEditing={handleSubmit}
               />
             </View>
 
-            {error && (
-              <View style={styles.errorBox}>
+            {error ? (
+              <View style={styles.errorBox} accessibilityRole="alert">
                 <Text style={styles.errorText}>{error}</Text>
               </View>
-            )}
+            ) : null}
 
             <Pressable
               onPress={handleSubmit}
               disabled={disabled}
+              android_ripple={{ color: 'rgba(255,255,255,0.2)' }}
               style={({ pressed }) => [
-                styles.button,
-                disabled && styles.buttonDisabled,
-                pressed && !disabled && styles.buttonPressed,
+                styles.primaryButton,
+                disabled && !loading && styles.primaryButtonDisabled,
+                !disabled && pressed && styles.primaryButtonPressed,
               ]}>
               {loading ? (
-                <ActivityIndicator color="#ffffff" />
+                <ActivityIndicator color="#FFFFFF" />
               ) : (
-                <Text style={styles.buttonText}>Iniciar sessão</Text>
+                <Text
+                  style={[
+                    styles.primaryButtonText,
+                    disabled && styles.primaryButtonTextDisabled,
+                  ]}>
+                  Iniciar sessão
+                </Text>
               )}
             </Pressable>
 
-            {isAuthenticated && (
+            {isAuthenticated ? (
               <Text style={styles.smallNote}>
                 Já está autenticado. Pode navegar para o painel.
               </Text>
-            )}
+            ) : null}
           </View>
+
+          <View style={styles.bottomSpacer} />
+
+          <Text style={styles.footerHint}>Uso exclusivo de equipas autorizadas.</Text>
         </ScrollView>
       </KeyboardAvoidingView>
     </SafeAreaView>
@@ -124,83 +174,131 @@ export default function LoginScreen() {
 const styles = StyleSheet.create({
   safeArea: {
     flex: 1,
-    backgroundColor: '#0f172a',
+    backgroundColor: BG,
   },
   root: {
     flex: 1,
-    backgroundColor: '#0f172a',
+    backgroundColor: BG,
   },
-  container: {
+  scrollContent: {
     flexGrow: 1,
-    paddingHorizontal: 20,
-    paddingTop: 80,
-    paddingBottom: 32,
-    justifyContent: 'flex-start',
+    paddingHorizontal: 24,
+    paddingTop: 8,
+    paddingBottom: 28,
   },
-  header: {
-    marginBottom: 40,
+  topSection: {
+    paddingTop: 12,
+    paddingBottom: 8,
   },
-  title: {
-    fontSize: 28,
+  brandBlock: {
+    alignItems: 'center',
+  },
+  logo: {
+    width: 200,
+    height: 76,
+    marginBottom: 28,
+  },
+  screenTitle: {
+    fontSize: 26,
     fontWeight: '700',
-    color: '#e5e7eb',
-    marginBottom: 4,
+    color: TEXT_PRIMARY,
+    letterSpacing: -0.3,
+    marginBottom: 8,
+    textAlign: 'center',
   },
-  subtitle: {
-    fontSize: 14,
-    color: '#9ca3af',
+  screenSubtitle: {
+    fontSize: 15,
+    lineHeight: 22,
+    color: TEXT_MUTED,
+    textAlign: 'center',
+    maxWidth: 320,
+    paddingHorizontal: 8,
+  },
+  brandAccentRule: {
+    marginTop: 20,
+    width: 36,
+    height: 3,
+    borderRadius: 2,
+    backgroundColor: BRAND_GREEN,
   },
   form: {
-    gap: 18,
+    marginTop: 32,
+    gap: 20,
+  },
+  bottomSpacer: {
+    flexGrow: 1,
+    minHeight: 16,
   },
   field: {
-    gap: 6,
+    gap: 8,
   },
   label: {
-    fontSize: 14,
-    color: '#d1d5db',
+    fontSize: 13,
+    fontWeight: '600',
+    color: TEXT_PRIMARY,
+    letterSpacing: 0.2,
   },
   input: {
-    height: 48,
-    borderRadius: 10,
-    borderWidth: 1,
-    borderColor: '#1f2937',
-    paddingHorizontal: 12,
-    backgroundColor: '#020617',
-    color: '#f9fafb',
+    height: 52,
+    borderRadius: 12,
+    borderWidth: 2,
+    borderColor: BORDER,
+    paddingHorizontal: 15,
+    backgroundColor: SURFACE,
+    color: TEXT_PRIMARY,
+    fontSize: 16,
+  },
+  inputFocused: {
+    borderColor: BORDER_FOCUS,
   },
   errorBox: {
-    borderRadius: 8,
-    padding: 10,
-    backgroundColor: '#7f1d1d',
+    borderRadius: 12,
+    paddingVertical: 12,
+    paddingHorizontal: 14,
+    backgroundColor: ERROR_BG,
+    borderWidth: 1,
+    borderColor: ERROR_BORDER,
   },
   errorText: {
-    color: '#fee2e2',
-    fontSize: 13,
+    color: ERROR_TEXT,
+    fontSize: 14,
+    lineHeight: 20,
   },
-  button: {
-    marginTop: 8,
-    height: 48,
-    borderRadius: 999,
+  primaryButton: {
+    marginTop: 4,
+    height: 52,
+    borderRadius: 12,
     alignItems: 'center',
     justifyContent: 'center',
-    backgroundColor: '#16a34a',
+    backgroundColor: BRAND_BLUE,
   },
-  buttonDisabled: {
-    backgroundColor: '#4b5563',
+  primaryButtonDisabled: {
+    backgroundColor: DISABLED_BG,
   },
-  buttonPressed: {
-    opacity: 0.85,
+  primaryButtonPressed: {
+    backgroundColor: BRAND_BLUE_PRESSED,
   },
-  buttonText: {
-    color: '#f9fafb',
+  primaryButtonText: {
+    color: '#FFFFFF',
     fontSize: 16,
     fontWeight: '600',
+    letterSpacing: 0.2,
+  },
+  primaryButtonTextDisabled: {
+    color: DISABLED_TEXT,
   },
   smallNote: {
-    marginTop: 8,
+    marginTop: 4,
+    fontSize: 13,
+    color: TEXT_MUTED,
+    textAlign: 'center',
+    lineHeight: 18,
+  },
+  footerHint: {
+    marginTop: 24,
     fontSize: 12,
-    color: '#9ca3af',
+    color: TEXT_SUBTLE,
+    textAlign: 'center',
+    lineHeight: 17,
   },
 });
-

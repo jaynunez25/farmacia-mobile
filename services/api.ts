@@ -11,10 +11,17 @@ import type {
   StockMovement,
 } from '../types';
 
-// API URL: define EXPO_PUBLIC_API_URL no .env para produção (ex.: Railway).
-// Referência estática para o bundler do Expo substituir.
-const API_BASE_URL: string =
-  process.env.EXPO_PUBLIC_API_URL ?? 'http://192.168.1.180:8000';
+// API URL: em produção deve apontar para Railway (nunca localhost/127/lan fixa).
+const API_BASE_URL_RAW = (process.env.EXPO_PUBLIC_API_URL ?? '').trim();
+const API_BASE_URL: string = API_BASE_URL_RAW.replace(/\/+$/, '');
+const IS_PRODUCTION = process.env.NODE_ENV === 'production';
+const REQUEST_TIMEOUT_MS = 15000;
+
+if (IS_PRODUCTION && !API_BASE_URL) {
+  throw new Error(
+    'EXPO_PUBLIC_API_URL is required in production. Point it to your Railway backend URL.',
+  );
+}
 
 const AUTH_TOKEN_KEY = 'pharmacy_token';
 
@@ -56,7 +63,17 @@ export function setOnUnauthorized(cb: (() => void) | null): void {
   onUnauthorized = cb;
 }
 
+function createIdempotencyKey(prefix: string): string {
+  return `${prefix}-${Date.now()}-${Math.random().toString(36).slice(2, 10)}`;
+}
+
 async function request<T>(path: string, options?: RequestInit): Promise<T> {
+  if (!API_BASE_URL) {
+    throw new Error(
+      'API base URL is not configured. Set EXPO_PUBLIC_API_URL in your .env to the Railway URL.',
+    );
+  }
+
   const token = await getStoredToken();
   const headers: Record<string, string> = {
     'Content-Type': 'application/json',
@@ -67,13 +84,26 @@ async function request<T>(path: string, options?: RequestInit): Promise<T> {
     headers.Authorization = `Bearer ${token}`;
   }
 
-  const res = await fetch(`${API_BASE_URL}${path}`, {
-    ...options,
-    headers,
-  });
+  const ctrl = new AbortController();
+  const timeout = setTimeout(() => ctrl.abort(), REQUEST_TIMEOUT_MS);
+  let res: Response;
+  try {
+    res = await fetch(`${API_BASE_URL}${path}`, {
+      ...options,
+      headers,
+      signal: ctrl.signal,
+    });
+  } catch (error) {
+    if (error instanceof Error && error.name === 'AbortError') {
+      throw new Error('Request timed out. Please check your connection and try again.');
+    }
+    throw error;
+  } finally {
+    clearTimeout(timeout);
+  }
 
-  // Auto-logout only for auth endpoints (e.g. /auth/me), not for every 401.
-  if (res.status === 401 && path.startsWith('/auth')) {
+  // Clear session on any unauthorized API response.
+  if (res.status === 401) {
     await setStoredToken(null);
     onUnauthorized?.();
   }
@@ -391,7 +421,17 @@ export const api = {
       }[];
       cash_received?: number;
       cash_change?: number;
-    }) => request<Sale>('/sales', { method: 'POST', body: JSON.stringify(data) }),
+      idempotency_key?: string;
+    }) => {
+      const { idempotency_key, ...payload } = data;
+      return request<Sale>('/sales', {
+        method: 'POST',
+        body: JSON.stringify(payload),
+        headers: {
+          'Idempotency-Key': idempotency_key ?? createIdempotencyKey('sale'),
+        },
+      });
+    },
     voidSale: (saleId: number) =>
       request<Sale>(`/sales/${saleId}/void`, { method: 'POST' }),
     getHistory: (params?: {

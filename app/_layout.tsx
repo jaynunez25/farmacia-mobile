@@ -1,9 +1,12 @@
 import { DarkTheme, DefaultTheme, ThemeProvider } from '@react-navigation/native';
 import { Stack } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
+import * as SplashScreen from 'expo-splash-screen';
+import { useCallback, useEffect, useState } from 'react';
 import { ActivityIndicator, View } from 'react-native';
 import 'react-native-reanimated';
 
+import { PharmaosSplashIntro } from '@/components/pharmaos-splash-intro';
 import { useColorScheme } from '@/hooks/use-color-scheme';
 import { AuthProvider, useAuth } from '@/contexts/AuthContext';
 import LoginScreen from './login';
@@ -13,12 +16,27 @@ export const unstable_settings = {
 };
 
 function RootNavigator() {
+  const [introDone, setIntroDone] = useState(false);
   const { isLoading, isAuthenticated } = useAuth();
+
+  const handleIntroFinish = useCallback(() => {
+    setIntroDone(true);
+  }, []);
+
+  if (!introDone) {
+    return <PharmaosSplashIntro onFinish={handleIntroFinish} />;
+  }
 
   if (isLoading) {
     return (
-      <View style={{ flex: 1, alignItems: 'center', justifyContent: 'center', backgroundColor: '#020617' }}>
-        <ActivityIndicator size="large" color="#16a34a" />
+      <View
+        style={{
+          flex: 1,
+          alignItems: 'center',
+          justifyContent: 'center',
+          backgroundColor: '#F8FAFC',
+        }}>
+        <ActivityIndicator size="large" color="#2563EB" />
       </View>
     );
   }
@@ -47,6 +65,10 @@ function RootNavigator() {
 
 export default function RootLayout() {
   const colorScheme = useColorScheme();
+
+  useEffect(() => {
+    void SplashScreen.preventAutoHideAsync();
+  }, []);
 
   return (
     <ThemeProvider value={colorScheme === 'dark' ? DarkTheme : DefaultTheme}>
