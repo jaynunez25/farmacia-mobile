@@ -662,10 +662,14 @@ export default function VendasScreen() {
                       <CartTableHeaderRow webCart={Platform.OS === 'web'} />
 
                       <ScrollView
-                        style={[styles.summaryList, Platform.OS === 'web' && styles.summaryListWebLandscapeCart]}
+                        style={[
+                          styles.summaryList,
+                          Platform.OS === 'web' && styles.summaryListWebLandscapeCart,
+                          Platform.OS === 'web' && styles.summaryListWebLandscapeCartMinH,
+                        ]}
                         contentContainerStyle={styles.summaryListContentFix}
                         showsVerticalScrollIndicator={cart.length > 6}
-                        scrollEnabled={cart.length > 6}
+                        scrollEnabled={Platform.OS === 'web' || cart.length > 6}
                         nestedScrollEnabled>
                         {cart.length === 0 ? (
                           <Text style={styles.emptyText}>Carrinho vazio. Selecciona produtos para iniciar a venda.</Text>
@@ -1136,7 +1140,7 @@ export default function VendasScreen() {
                       style={[styles.summaryList, Platform.OS === 'web' && styles.summaryListWebFix]}
                       contentContainerStyle={styles.summaryListContentFix}
                       showsVerticalScrollIndicator={cart.length > 6}
-                      scrollEnabled={cart.length > 6}
+                      scrollEnabled={Platform.OS === 'web' || cart.length > 6}
                       nestedScrollEnabled>
                       {cart.length === 0 ? (
                         <Text style={styles.emptyText}>Carrinho vazio. Selecciona produtos para iniciar a venda.</Text>
@@ -1618,7 +1622,7 @@ export default function VendasScreen() {
                       style={[styles.summaryList, styles.summaryListMobile, Platform.OS === 'web' && styles.summaryListWebFix]}
                       contentContainerStyle={styles.summaryListContentFix}
                       showsVerticalScrollIndicator={cart.length > 6}
-                      scrollEnabled={cart.length > 6}
+                      scrollEnabled={Platform.OS === 'web' || cart.length > 6}
                       nestedScrollEnabled>
                       {cart.length === 0 ? (
                         <Text style={styles.emptyText}>Carrinho vazio. Selecciona produtos para iniciar a venda.</Text>
@@ -2523,6 +2527,10 @@ const styles = StyleSheet.create({
   summaryListWebLandscapeCart: {
     flex: 1,
     minHeight: 0,
+  },
+  /** RN-web: pair with summaryListWebLandscapeCart — disabled scroll + flex often yields 0px painted rows. */
+  summaryListWebLandscapeCartMinH: {
+    minHeight: 96,
   },
   summaryListContentFix: {
     flexGrow: 1,
