@@ -119,15 +119,18 @@ function PosPaymentMethodButtons({
   );
 }
 
-/** Lista do carrinho dentro do painel Pagamento (substitui o bloco separado «Venda Atual»). */
-const PAYMENT_CART_ROW_APPROX = 52;
-const PAYMENT_CART_VISIBLE_CAP = 6;
+/** Lista do carrinho no painel Pagamento: viewport fixo para 6 linhas; scroll só com 7+ itens. */
+const PAYMENT_CART_ROW_HEIGHT = 50;
+const PAYMENT_CART_MAX_VISIBLE_ROWS = 6;
+const PAYMENT_CART_VIEWPORT_V_PADDING = 8;
+const PAYMENT_CART_LIST_VIEWPORT_HEIGHT =
+  PAYMENT_CART_MAX_VISIBLE_ROWS * PAYMENT_CART_ROW_HEIGHT + PAYMENT_CART_VIEWPORT_V_PADDING;
 
 function PaymentCartLines({
   cart,
   cartListNeedsScroll,
-  listVariant,
-  fillAvailableHeight,
+  listVariant: _listVariant,
+  fillAvailableHeight: _fillAvailableHeight,
   lineUnitPrice,
   updateCartQty,
   removeFromCart,
@@ -138,7 +141,7 @@ function PaymentCartLines({
   cart: CartItem[];
   cartListNeedsScroll: boolean;
   listVariant: 'wide' | 'stack';
-  /** true = painel com altura definida (tablet paisagem); flex:1 no ScrollView é seguro. */
+  /** Reservado (layout do carrinho é sempre viewport fixo de 6 linhas). */
   fillAvailableHeight: boolean;
   lineUnitPrice: (item: CartItem) => number;
   updateCartQty: (productId: number, sellAs: 'box' | 'unit' | undefined, delta: number) => void;
@@ -147,35 +150,6 @@ function PaymentCartLines({
   showStockWarning: boolean;
   setShowStockWarning: (v: boolean) => void;
 }) {
-  const intrinsicListMinH =
-    cart.length === 0
-      ? 80
-      : Math.min(cart.length, PAYMENT_CART_VISIBLE_CAP) * PAYMENT_CART_ROW_APPROX + 12;
-  const intrinsicListMaxH = cartListNeedsScroll
-    ? PAYMENT_CART_VISIBLE_CAP * PAYMENT_CART_ROW_APPROX + 24
-    : undefined;
-
-  const scrollStyle = fillAvailableHeight
-    ? [
-        styles.summaryList,
-        listVariant === 'stack' && styles.summaryListMobile,
-        Platform.OS === 'web' &&
-          (cart.length === 0
-            ? styles.summaryListWebFix
-            : cartListNeedsScroll
-              ? styles.summaryListWebCartScroll
-              : styles.summaryListWebCartNoScroll),
-      ]
-    : [
-        styles.paymentCartListEmbed,
-        listVariant === 'stack' && styles.paymentCartListEmbedStack,
-        { minHeight: intrinsicListMinH },
-        ...(intrinsicListMaxH != null ? [{ maxHeight: intrinsicListMaxH }] : []),
-        Platform.OS === 'web' && cartListNeedsScroll && intrinsicListMaxH != null
-          ? { height: intrinsicListMaxH, maxHeight: intrinsicListMaxH }
-          : null,
-      ];
-
   const listContent = (
     <>
       {cart.length === 0 ? (
@@ -201,7 +175,13 @@ function PaymentCartLines({
             const key = `${product.id}-${sell_as ?? 's'}-${idx}`;
 
             return (
-              <View key={key} style={[styles.summaryRow, Platform.OS === 'web' && styles.summaryRowWebCart]}>
+              <View
+                key={key}
+                style={[
+                  styles.summaryRow,
+                  Platform.OS === 'web' && styles.summaryRowWebCart,
+                  styles.paymentCartRowFixed,
+                ]}>
                 <View style={[styles.colQty, Platform.OS === 'web' && styles.colQtyWebCart]}>
                   <View style={styles.qtyControls}>
                     <Pressable style={styles.qtyButton} onPress={() => updateCartQty(product.id, sell_as, -1)}>
@@ -248,11 +228,8 @@ function PaymentCartLines({
     </>
   );
 
-  /** RN-web: ScrollView dentro de ScrollView com scrollEnabled=false mede altura ~0 e sobrepõe blocos. Usar View. */
-  const webEmbedNoScroll = Platform.OS === 'web' && !fillAvailableHeight && !cartListNeedsScroll;
-
   return (
-    <View style={[styles.paymentCartBlock, fillAvailableHeight && styles.paymentCartBlockFill]}>
+    <View style={styles.paymentCartBlock}>
       <View style={styles.paymentCartHeaderBlock}>
         <Text style={styles.paymentCartTitle}>Itens da venda</Text>
         <Text style={styles.paymentCartHint}>
@@ -263,37 +240,28 @@ function PaymentCartLines({
               : `${cart.length} itens`}
         </Text>
       </View>
-      <View
-        style={[
-          styles.paymentCartTableOuter,
-          fillAvailableHeight && styles.paymentCartTableOuterFill,
-        ]}>
+      <View style={styles.paymentCartTableOuter}>
         <View style={styles.paymentCartTableHeaderWrap}>
           <CartTableHeaderRow webCart={Platform.OS === 'web'} />
         </View>
-        {webEmbedNoScroll ? (
-          <View
-            style={[
-              styles.paymentCartListEmbed,
-              listVariant === 'stack' && styles.paymentCartListEmbedStack,
-              styles.paymentCartListEmbedWebGrow,
-              { minHeight: intrinsicListMinH },
-            ]}>
-            {listContent}
-          </View>
-        ) : (
-          <ScrollView
-            style={[
-              scrollStyle,
-              fillAvailableHeight && styles.paymentCartScrollFill,
-            ]}
-            contentContainerStyle={[styles.summaryListContentFix, Platform.OS === 'web' && styles.summaryListContentWeb]}
-            showsVerticalScrollIndicator={cartListNeedsScroll}
-            scrollEnabled={cartListNeedsScroll}
-            nestedScrollEnabled>
-            {listContent}
-          </ScrollView>
-        )}
+        <ScrollView
+          style={[
+            styles.paymentCartRowsScroll,
+            {
+              height: PAYMENT_CART_LIST_VIEWPORT_HEIGHT,
+              minHeight: PAYMENT_CART_LIST_VIEWPORT_HEIGHT,
+              maxHeight: PAYMENT_CART_LIST_VIEWPORT_HEIGHT,
+            },
+          ]}
+          contentContainerStyle={[
+            styles.paymentCartRowsScrollContent,
+            Platform.OS === 'web' && styles.summaryListContentWeb,
+          ]}
+          showsVerticalScrollIndicator={cartListNeedsScroll}
+          scrollEnabled={cartListNeedsScroll}
+          nestedScrollEnabled>
+          {listContent}
+        </ScrollView>
       </View>
     </View>
   );
@@ -1947,10 +1915,18 @@ const styles = StyleSheet.create({
   summaryRowWebCart: {
     gap: 6,
     marginBottom: 0,
-    paddingVertical: 6,
+    paddingVertical: 0,
     backgroundColor: '#ffffff',
     borderTopWidth: 1,
     borderTopColor: '#cbd5e1',
+  },
+  /** Altura fixa por linha — alinhar com PAYMENT_CART_ROW_HEIGHT no componente. */
+  paymentCartRowFixed: {
+    height: 50,
+    minHeight: 50,
+    maxHeight: 50,
+    paddingVertical: 0,
+    overflow: 'hidden',
   },
   colNameWebCart: {
     flex: 1,
@@ -1982,42 +1958,9 @@ const styles = StyleSheet.create({
     alignItems: 'flex-end',
   },
 
-  summaryList: {
-    flex: 1,
-    borderRadius: 0,
-    paddingRight: 0,
-    paddingTop: 0,
-    paddingBottom: 0,
-    backgroundColor: '#ffffff',
-    overflow: 'hidden',
-  },
-  /** react-native-web: ScrollView with scrollEnabled false often gets 0 height; minHeight + content flex fixes cart rows. */
-  summaryListWebFix: {
-    minHeight: 88,
-  },
-  /** Web cart: 7+ itens — 6 linhas visíveis, resto com scroll. */
-  summaryListWebCartScroll: {
-    flex: 1,
-    minHeight: 0,
-    maxHeight: 348,
-  },
-  /** Web cart: até 6 linhas sem scroll. */
-  summaryListWebCartNoScroll: {
-    flex: 0,
-    flexGrow: 0,
-    flexShrink: 0,
-  },
-  summaryListContentFix: {
-    flexGrow: 1,
-    paddingBottom: 4,
-  },
-  /** RN-web: flexGrow:1 on ScrollView content makes multi-row cart list measure as one viewport — only first row visible, no real scroll. */
+  /** RN-web: conteúdo do ScrollView do carrinho não deve esticar com flexGrow. */
   summaryListContentWeb: {
     flexGrow: 0,
-    width: '100%',
-  },
-  summaryListMobile: {
-    flex: 0,
     width: '100%',
   },
   emptyText: {
@@ -2586,16 +2529,12 @@ const styles = StyleSheet.create({
     borderTopColor: '#94a3b8',
     paddingTop: 10,
     marginTop: 8,
+    marginBottom: 10,
     width: '100%',
     backgroundColor: 'transparent',
     flexGrow: 0,
     flexShrink: 0,
     alignSelf: 'stretch',
-  },
-  paymentCartBlockFill: {
-    flex: 1,
-    minHeight: 0,
-    minWidth: 0,
   },
   paymentCartHeaderBlock: {
     width: '100%',
@@ -2612,46 +2551,20 @@ const styles = StyleSheet.create({
     backgroundColor: '#ffffff',
     overflow: 'hidden',
   },
-  paymentCartTableOuterFill: {
-    flex: 1,
-    minHeight: 100,
-    minWidth: 0,
-  },
   paymentCartTableHeaderWrap: {
     width: '100%',
     flexShrink: 0,
   },
-  paymentCartScrollFill: {
-    flex: 1,
-    minHeight: 0,
+  paymentCartRowsScroll: {
     width: '100%',
     alignSelf: 'stretch',
-  },
-  /**
-   * Painel Pagamento com height: auto (web móvel, retrato, ScrollView pai): nunca usar flex:1 no ScrollView
-   * da lista — no RN-web colapsa a 0px e as linhas somem / sobrepõem o bloco Método.
-   */
-  paymentCartListEmbed: {
-    width: '100%',
-    maxWidth: '100%',
-    borderRadius: 0,
-    paddingRight: 0,
-    paddingTop: 0,
-    paddingBottom: 0,
     backgroundColor: '#ffffff',
+  },
+  paymentCartRowsScrollContent: {
+    paddingTop: 4,
+    paddingBottom: 4,
     flexGrow: 0,
-    flexShrink: 0,
-    alignSelf: 'stretch',
-    overflow: 'hidden',
-  },
-  paymentCartListEmbedStack: {
-    minWidth: 0,
-  },
-  /** Lista sem ScrollView no web: ocupar largura total e crescer com o conteúdo. */
-  paymentCartListEmbedWebGrow: {
-    alignSelf: 'stretch',
     width: '100%',
-    maxWidth: '100%',
   },
   paymentCartTitle: {
     fontSize: 13,
