@@ -48,14 +48,14 @@ function CartTableHeaderRow({ webCart }: { webCart: boolean }) {
   if (webCart) {
     return (
       <View style={[styles.summaryTableHeader, styles.summaryTableHeaderWebCart]}>
-        <View style={styles.cartThProd}>
-          <Text style={styles.th} numberOfLines={1}>
-            Produto
-          </Text>
-        </View>
         <View style={styles.cartThQty}>
           <Text style={styles.th} numberOfLines={1}>
             Qtd
+          </Text>
+        </View>
+        <View style={styles.cartThProd}>
+          <Text style={styles.th} numberOfLines={1}>
+            Produto
           </Text>
         </View>
         <View style={styles.cartThUnit}>
@@ -78,8 +78,8 @@ function CartTableHeaderRow({ webCart }: { webCart: boolean }) {
   }
   return (
     <View style={styles.summaryTableHeader}>
-      <Text style={[styles.th, styles.thName]}>Produto</Text>
       <Text style={[styles.th, styles.thQty]}>Qtd</Text>
+      <Text style={[styles.th, styles.thName]}>Produto</Text>
       <Text style={[styles.th, styles.thUnit]}>Unit</Text>
       <Text style={[styles.th, styles.thSubtotal]}>Total</Text>
       <Text style={[styles.th, styles.thRemove]}> </Text>
@@ -88,8 +88,8 @@ function CartTableHeaderRow({ webCart }: { webCart: boolean }) {
 }
 
 /** Lista do carrinho dentro do painel Pagamento (substitui o bloco separado «Venda Atual»). */
-const PAYMENT_CART_ROW_APPROX = 56;
-const PAYMENT_CART_VISIBLE_CAP = 5;
+const PAYMENT_CART_ROW_APPROX = 52;
+const PAYMENT_CART_VISIBLE_CAP = 6;
 
 function PaymentCartLines({
   cart,
@@ -170,17 +170,6 @@ function PaymentCartLines({
 
             return (
               <View key={key} style={[styles.summaryRow, Platform.OS === 'web' && styles.summaryRowWebCart]}>
-                <View style={[styles.colName, Platform.OS === 'web' && styles.colNameWebCart]}>
-                  <Text style={styles.summaryItemName} numberOfLines={1}>
-                    {displayName}
-                  </Text>
-                  {sellHint ? (
-                    <Text style={styles.summaryItemMeta} numberOfLines={1}>
-                      {sellHint}
-                    </Text>
-                  ) : null}
-                </View>
-
                 <View style={[styles.colQty, Platform.OS === 'web' && styles.colQtyWebCart]}>
                   <View style={styles.qtyControls}>
                     <Pressable style={styles.qtyButton} onPress={() => updateCartQty(product.id, sell_as, -1)}>
@@ -191,6 +180,17 @@ function PaymentCartLines({
                       <Text style={styles.qtyButtonText}>+</Text>
                     </Pressable>
                   </View>
+                </View>
+
+                <View style={[styles.colName, Platform.OS === 'web' && styles.colNameWebCart]}>
+                  <Text style={styles.summaryItemName} numberOfLines={1}>
+                    {displayName}
+                  </Text>
+                  {sellHint ? (
+                    <Text style={styles.summaryItemMeta} numberOfLines={1}>
+                      {sellHint}
+                    </Text>
+                  ) : null}
                 </View>
 
                 <View style={[styles.colUnit, Platform.OS === 'web' && styles.colUnitWebCart]}>
@@ -311,8 +311,8 @@ export default function VendasScreen() {
   const [categoryProductsLoading, setCategoryProductsLoading] = useState(false);
   const [categoryError, setCategoryError] = useState<string | null>(null);
 
-  /** Caixa vê até 5 linhas sem scroll; barra/scroll só com 6+ itens. */
-  const CART_VISIBLE_WITHOUT_SCROLL = 5;
+  /** Caixa vê até 6 linhas sem scroll; scroll vertical só com 7+ itens. */
+  const CART_VISIBLE_WITHOUT_SCROLL = 6;
   const cartListNeedsScroll = cart.length > CART_VISIBLE_WITHOUT_SCROLL;
 
   const isPackProduct = (p: Product) =>
@@ -1966,26 +1966,26 @@ export default function VendasScreen() {
 const styles = StyleSheet.create({
   safeArea: {
     flex: 1,
-    backgroundColor: '#020617',
+    backgroundColor: '#d1d5db',
   },
   keyboardAvoid: {
     flex: 1,
   },
   screen: {
     flex: 1,
-    padding: 12,
-    gap: 10,
+    padding: 8,
+    gap: 8,
     width: '100%',
     flexDirection: 'column',
   },
   screenMobile: {
-    paddingHorizontal: 12,
-    paddingVertical: 12,
-    gap: 12,
+    paddingHorizontal: 8,
+    paddingVertical: 8,
+    gap: 8,
   },
 
   sessionCard: {
-    borderRadius: 18,
+    borderRadius: 4,
     padding: 14,
     borderWidth: 1,
     borderColor: '#e5e7eb',
@@ -2001,7 +2001,7 @@ const styles = StyleSheet.create({
   },
 
   blockCard: {
-    borderRadius: 18,
+    borderRadius: 4,
     padding: 16,
     borderWidth: 1,
     borderColor: '#fb923c',
@@ -2021,7 +2021,7 @@ const styles = StyleSheet.create({
 
   primaryButton: {
     height: 48,
-    borderRadius: 999,
+    borderRadius: 4,
     backgroundColor: '#16a34a',
     alignItems: 'center',
     justifyContent: 'center',
@@ -2037,7 +2037,7 @@ const styles = StyleSheet.create({
   },
 
   errorBox: {
-    borderRadius: 18,
+    borderRadius: 4,
     padding: 14,
     borderWidth: 1,
     borderColor: '#fecaca',
@@ -2054,7 +2054,7 @@ const styles = StyleSheet.create({
     lineHeight: 18,
   },
   noticeBox: {
-    borderRadius: 16,
+    borderRadius: 4,
     padding: 12,
     borderWidth: 1,
     borderColor: '#c7d2fe',
@@ -2080,7 +2080,7 @@ const styles = StyleSheet.create({
   sellModeCard: {
     width: '100%',
     maxWidth: 420,
-    borderRadius: 16,
+    borderRadius: 4,
     borderWidth: 1,
     borderColor: '#e5e7eb',
     backgroundColor: '#ffffff',
@@ -2128,7 +2128,7 @@ const styles = StyleSheet.create({
   },
   sellModePrimary: {
     height: 40,
-    borderRadius: 12,
+    borderRadius: 4,
     paddingHorizontal: 16,
   },
   inlineHeaderRow: {
@@ -2141,7 +2141,7 @@ const styles = StyleSheet.create({
   inlineCloseButton: {
     width: 28,
     height: 28,
-    borderRadius: 14,
+    borderRadius: 4,
     alignItems: 'center',
     justifyContent: 'center',
     backgroundColor: '#ffffff',
@@ -2155,7 +2155,7 @@ const styles = StyleSheet.create({
   },
 
   successBox: {
-    borderRadius: 18,
+    borderRadius: 4,
     padding: 14,
     borderWidth: 1,
     borderColor: '#bbf7d0',
@@ -2170,7 +2170,7 @@ const styles = StyleSheet.create({
   posRowLayout: {
     flex: 1,
     flexDirection: 'row',
-    gap: 10,
+    gap: 8,
   },
   posRowLayoutWeb: {
     width: '100%',
@@ -2180,17 +2180,17 @@ const styles = StyleSheet.create({
   posColumnLayout: {
     flex: 1,
     flexDirection: 'column',
-    gap: 12,
+    gap: 8,
   },
   posColumnLayoutMobile: {
-    gap: 8,
+    gap: 6,
   },
 
   /** Sem flex:1 — dentro do ScrollView do telemóvel, flex:1 estica ao viewport e deixa «buraco» branco + layout RN-web partido. */
   mobilePosLayout: {
     width: '100%',
     flexDirection: 'column',
-    gap: 10,
+    gap: 8,
   },
 
   mobileScroll: {
@@ -2199,32 +2199,32 @@ const styles = StyleSheet.create({
   mobileScrollContent: {
     width: '100%',
     flexDirection: 'column',
-    gap: 12,
-    paddingBottom: 24,
+    gap: 8,
+    paddingBottom: 16,
   },
 
   leftArea: {
     flex: 0.75,
     minWidth: 280,
     flexDirection: 'column',
-    gap: 10,
+    gap: 8,
   },
   leftAreaWeb: {
     flex: 1,
     minWidth: 0,
     minHeight: 0,
     overflow: 'hidden',
-    gap: 12,
+    gap: 8,
   },
 
   productPanel: {
     flex: 1,
     minHeight: 0,
     backgroundColor: '#ffffff',
-    borderRadius: 16,
+    borderRadius: 4,
     borderWidth: 1,
-    borderColor: '#e5e7eb',
-    padding: 10,
+    borderColor: '#64748b',
+    padding: 8,
     gap: 6,
   },
   productPanelWebLandscape: {
@@ -2234,22 +2234,22 @@ const styles = StyleSheet.create({
   },
   categoryBar: {
     flex: 0.1,
-    minHeight: 64,
-    maxHeight: 64,
-    backgroundColor: '#f8fafc',
-    borderRadius: 14,
+    minHeight: 56,
+    maxHeight: 56,
+    backgroundColor: '#e5e7eb',
+    borderRadius: 4,
     borderWidth: 1,
-    borderColor: '#e5e7eb',
-    paddingVertical: 6,
-    paddingHorizontal: 8,
+    borderColor: '#64748b',
+    paddingVertical: 4,
+    paddingHorizontal: 6,
   },
   categoryBarWebLandscape: {
     flex: 0,
     flexGrow: 0,
     flexShrink: 0,
-    height: 64,
-    minHeight: 64,
-    maxHeight: 64,
+    height: 56,
+    minHeight: 56,
+    maxHeight: 56,
   },
 
   paymentPanel: {
@@ -2257,12 +2257,12 @@ const styles = StyleSheet.create({
     minWidth: 240,
     maxWidth: 300,
     height: '100%',
-    backgroundColor: '#ffffff',
-    borderRadius: 16,
+    backgroundColor: '#f8fafc',
+    borderRadius: 4,
     borderWidth: 1,
-    borderColor: '#e5e7eb',
-    padding: 10,
-    gap: 10,
+    borderColor: '#475569',
+    padding: 8,
+    gap: 8,
   },
   paymentPanelWeb: {
     flex: 0.34,
@@ -2277,14 +2277,15 @@ const styles = StyleSheet.create({
   },
 
   panelTitle: {
-    fontSize: 16,
-    fontWeight: '800',
-    color: '#111827',
+    fontSize: 15,
+    fontWeight: '900',
+    color: '#0f172a',
+    letterSpacing: 0.2,
   },
   panelSubtitle: {
     marginTop: 2,
-    fontSize: 12,
-    color: '#6b7280',
+    fontSize: 11,
+    color: '#64748b',
     fontWeight: '600',
   },
   productPanelHeader: {
@@ -2301,28 +2302,30 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     width: '100%',
-    paddingHorizontal: 4,
-    paddingVertical: 6,
-    gap: 8,
-    backgroundColor: '#f8fafc',
+    paddingHorizontal: 6,
+    paddingVertical: 8,
+    gap: 6,
+    backgroundColor: '#cbd5e1',
     borderBottomWidth: 1,
-    borderBottomColor: '#eef2f7',
+    borderBottomColor: '#475569',
   },
   th: {
-    fontSize: 12,
-    fontWeight: '800',
-    color: '#6b7280',
+    fontSize: 11,
+    fontWeight: '900',
+    color: '#1e293b',
+    textTransform: 'uppercase',
+    letterSpacing: 0.4,
   },
   thName: { flex: 2, minWidth: 0 },
-  thQty: { flex: 1, textAlign: 'center', minWidth: 0 },
-  thUnit: { flex: 1, textAlign: 'left', minWidth: 0 },
-  thSubtotal: { flex: 1, textAlign: 'left', minWidth: 0 },
+  thQty: { minWidth: 96, maxWidth: 112, textAlign: 'center', flexGrow: 0, flexShrink: 0 },
+  thUnit: { flex: 1, textAlign: 'right', minWidth: 0 },
+  thSubtotal: { flex: 1, textAlign: 'right', minWidth: 0 },
   thRemove: { width: 44, textAlign: 'center', flexShrink: 0 },
 
   /** Web cart header row: outer gap; cells are Views (CartTableHeaderRow), not flex Text. */
   summaryTableHeaderWebCart: {
     gap: 6,
-    paddingHorizontal: 2,
+    paddingHorizontal: 4,
   },
   cartThProd: {
     flex: 1,
@@ -2366,8 +2369,11 @@ const styles = StyleSheet.create({
   },
   summaryRowWebCart: {
     gap: 6,
-    marginBottom: 6,
-    paddingVertical: 8,
+    marginBottom: 0,
+    paddingVertical: 6,
+    backgroundColor: '#ffffff',
+    borderTopWidth: 1,
+    borderTopColor: '#cbd5e1',
   },
   colNameWebCart: {
     flex: 1,
@@ -2401,23 +2407,26 @@ const styles = StyleSheet.create({
 
   summaryList: {
     flex: 1,
-    borderRadius: 14,
-    paddingRight: 2,
-    paddingTop: 6,
-    paddingBottom: 6,
-    backgroundColor: '#f8fafc',
+    borderRadius: 4,
+    paddingRight: 0,
+    paddingTop: 0,
+    paddingBottom: 0,
+    backgroundColor: '#ffffff',
+    borderWidth: 1,
+    borderColor: '#64748b',
+    overflow: 'hidden',
   },
   /** react-native-web: ScrollView with scrollEnabled false often gets 0 height; minHeight + content flex fixes cart rows. */
   summaryListWebFix: {
-    minHeight: 80,
+    minHeight: 88,
   },
-  /** Web cart: 6+ itens — ~5 linhas visíveis, resto com scroll. */
+  /** Web cart: 7+ itens — 6 linhas visíveis, resto com scroll. */
   summaryListWebCartScroll: {
     flex: 1,
     minHeight: 0,
-    maxHeight: 400,
+    maxHeight: 348,
   },
-  /** Web cart: até 5 itens — lista cresce, sem scroll. */
+  /** Web cart: até 6 linhas sem scroll. */
   summaryListWebCartNoScroll: {
     flex: 0,
     flexGrow: 0,
@@ -2437,11 +2446,12 @@ const styles = StyleSheet.create({
     width: '100%',
   },
   emptyText: {
-    fontSize: 13,
-    color: '#6b7280',
+    fontSize: 12,
+    color: '#64748b',
     fontWeight: '600',
     lineHeight: 18,
-    paddingVertical: 8,
+    paddingVertical: 12,
+    paddingHorizontal: 8,
   },
   warningText: {
     flex: 1,
@@ -2452,7 +2462,7 @@ const styles = StyleSheet.create({
   warningRow: {
     marginBottom: 8,
     padding: 8,
-    borderRadius: 12,
+    borderRadius: 4,
     borderWidth: 1,
     borderColor: '#fed7aa',
     backgroundColor: '#fff7ed',
@@ -2465,53 +2475,63 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     width: '100%',
-    minHeight: 54,
-    paddingVertical: 6,
-    gap: 8,
+    minHeight: 52,
+    paddingVertical: 4,
+    paddingHorizontal: 4,
+    gap: 6,
     borderTopWidth: 1,
-    borderTopColor: '#f1f5f9',
+    borderTopColor: '#cbd5e1',
+    backgroundColor: '#ffffff',
   },
-  colName: { flex: 2, minWidth: 0, paddingRight: 2 },
-  colQty: { flex: 1, minWidth: 0, alignItems: 'center', justifyContent: 'center' },
-  colUnit: { flex: 1, minWidth: 0, alignItems: 'flex-start', justifyContent: 'center' },
-  colSubtotal: { flex: 1, minWidth: 0, alignItems: 'flex-start', justifyContent: 'center' },
+  colName: { flex: 2, minWidth: 0, paddingRight: 4 },
+  colQty: {
+    flexGrow: 0,
+    flexShrink: 0,
+    width: 100,
+    maxWidth: 118,
+    minWidth: 96,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  colUnit: { flex: 1, minWidth: 0, alignItems: 'flex-end', justifyContent: 'center' },
+  colSubtotal: { flex: 1, minWidth: 0, alignItems: 'flex-end', justifyContent: 'center' },
 
   summaryItemName: {
     fontSize: 13,
     fontWeight: '800',
-    color: '#111827',
+    color: '#0f172a',
   },
   summaryItemMeta: {
-    marginTop: 2,
-    fontSize: 11,
-    color: '#6b7280',
+    marginTop: 1,
+    fontSize: 10,
+    color: '#64748b',
     fontWeight: '600',
   },
   summaryPriceText: {
-    fontSize: 11,
-    color: '#111827',
-    fontWeight: '800',
+    fontSize: 12,
+    color: '#334155',
+    fontWeight: '700',
   },
   summarySubtotalText: {
-    fontSize: 12,
-    color: '#111827',
-    fontWeight: '900',
+    fontSize: 13,
+    color: '#0f172a',
+    fontWeight: '800',
   },
 
   qtyControls: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
-    gap: 6,
+    gap: 4,
     flexWrap: 'nowrap',
   },
   qtyButton: {
-    width: 34,
-    height: 34,
-    borderRadius: 12,
+    width: 32,
+    height: 32,
+    borderRadius: 4,
     borderWidth: 1,
-    borderColor: '#e5e7eb',
-    backgroundColor: '#f9fafb',
+    borderColor: '#94a3b8',
+    backgroundColor: '#f1f5f9',
     alignItems: 'center',
     justifyContent: 'center',
     flexShrink: 0,
@@ -2530,20 +2550,20 @@ const styles = StyleSheet.create({
   },
 
   removeButton: {
-    width: 44,
-    height: 40,
-    borderRadius: 12,
-    backgroundColor: '#fee2e2',
+    width: 40,
+    height: 36,
+    borderRadius: 4,
+    backgroundColor: '#fef2f2',
     alignItems: 'center',
     justifyContent: 'center',
     borderWidth: 1,
-    borderColor: '#fecaca',
+    borderColor: '#dc2626',
     flexShrink: 0,
   },
   removeButtonText: {
-    color: '#991b1b',
+    color: '#b91c1c',
     fontWeight: '900',
-    fontSize: 13,
+    fontSize: 12,
   },
 
   summaryFooter: {
@@ -2568,24 +2588,24 @@ const styles = StyleSheet.create({
 
   searchRow: {
     flexDirection: 'row',
-    alignItems: 'center',
-    gap: 10,
+    alignItems: 'stretch',
+    gap: 6,
   },
   scanButton: {
     height: 40,
-    width: 60,
-    borderRadius: 14,
-    backgroundColor: '#dcfce7',
+    width: 64,
+    borderRadius: 4,
+    backgroundColor: '#ffffff',
     borderWidth: 1,
-    borderColor: '#bbf7d0',
+    borderColor: '#15803d',
     alignItems: 'center',
     justifyContent: 'center',
   },
   scanButtonPressed: {
-    backgroundColor: '#bbf7d0',
+    backgroundColor: '#f1f5f9',
   },
   scanButtonText: {
-    color: '#16a34a',
+    color: '#15803d',
     fontWeight: '900',
     fontSize: 12,
   },
@@ -2593,20 +2613,20 @@ const styles = StyleSheet.create({
   searchInput: {
     flex: 1,
     height: 40,
-    borderRadius: 14,
+    borderRadius: 4,
     borderWidth: 1,
-    borderColor: '#e5e7eb',
+    borderColor: '#64748b',
     backgroundColor: '#ffffff',
-    color: '#111827',
-    paddingHorizontal: 14,
+    color: '#0f172a',
+    paddingHorizontal: 10,
     fontSize: 13,
     fontWeight: '600',
   },
   searchButton: {
     height: 40,
-    width: 90,
-    borderRadius: 14,
-    backgroundColor: '#111827',
+    width: 88,
+    borderRadius: 4,
+    backgroundColor: '#0f172a',
     alignItems: 'center',
     justifyContent: 'center',
   },
@@ -2620,8 +2640,9 @@ const styles = StyleSheet.create({
 
   gridWrap: {
     flex: 1,
-    borderRadius: 16,
+    borderRadius: 4,
     overflow: 'hidden',
+    backgroundColor: '#f1f5f9',
   },
   gridWrapMobile: {
     flex: 0,
@@ -2651,26 +2672,28 @@ const styles = StyleSheet.create({
 
   productCard: {
     flex: 1,
-    minHeight: 88,
-    borderRadius: 16,
+    minHeight: 92,
+    borderRadius: 4,
     borderWidth: 1,
-    borderColor: '#e5e7eb',
+    borderColor: '#64748b',
     backgroundColor: '#ffffff',
     padding: 8,
     margin: 3,
-    gap: 6,
+    gap: 4,
+    justifyContent: 'space-between',
   },
   productCardMobile: {
     flex: 0,
     width: '100%',
-    minHeight: 74,
-    borderRadius: 14,
+    minHeight: 92,
+    borderRadius: 4,
     borderWidth: 1,
-    borderColor: '#e5e7eb',
+    borderColor: '#64748b',
     backgroundColor: '#ffffff',
     padding: 6,
     margin: 0,
     gap: 4,
+    justifyContent: 'space-between',
   },
   productCardPressed: {
     backgroundColor: '#f9fafb',
@@ -2680,9 +2703,9 @@ const styles = StyleSheet.create({
   },
   productBadge: {
     alignSelf: 'flex-start',
-    paddingVertical: 4,
-    paddingHorizontal: 8,
-    borderRadius: 999,
+    paddingVertical: 2,
+    paddingHorizontal: 6,
+    borderRadius: 2,
   },
   productBadgeText: {
     color: '#ffffff',
@@ -2692,12 +2715,13 @@ const styles = StyleSheet.create({
 
   productCardName: {
     fontSize: 13,
-    fontWeight: '900',
-    color: '#111827',
+    fontWeight: '800',
+    color: '#0f172a',
+    flexShrink: 1,
   },
   productCardMeta: {
-    fontSize: 13,
-    color: '#111827',
+    fontSize: 12,
+    color: '#334155',
     fontWeight: '700',
   },
   productCardSku: {
@@ -2707,13 +2731,13 @@ const styles = StyleSheet.create({
   },
 
   manualCard: {
-    borderRadius: 16,
+    borderRadius: 4,
     borderWidth: 1,
-    borderColor: '#e5e7eb',
-    backgroundColor: '#f9fafb',
-    padding: 12,
-    gap: 8,
-    marginBottom: 8,
+    borderColor: '#64748b',
+    backgroundColor: '#e2e8f0',
+    padding: 8,
+    gap: 6,
+    marginBottom: 6,
   },
   manualTitle: {
     fontSize: 14,
@@ -2747,16 +2771,16 @@ const styles = StyleSheet.create({
     fontWeight: '800',
   },
   posChip: {
-    paddingHorizontal: 10,
-    paddingVertical: 6,
-    borderRadius: 999,
+    paddingHorizontal: 12,
+    paddingVertical: 8,
+    borderRadius: 4,
     borderWidth: 1,
-    borderColor: '#e5e7eb',
-    backgroundColor: '#ffffff',
+    borderColor: '#94a3b8',
+    backgroundColor: '#e5e7eb',
   },
   posChipActive: {
-    backgroundColor: '#16a34a',
-    borderColor: '#16a34a',
+    backgroundColor: '#15803d',
+    borderColor: '#14532d',
   },
   paymentChip: {
     alignItems: 'center',
@@ -2773,8 +2797,8 @@ const styles = StyleSheet.create({
   },
   chipText: {
     fontSize: 12,
-    color: '#111827',
-    fontWeight: '900',
+    color: '#1e293b',
+    fontWeight: '800',
   },
   chipTextActive: {
     color: '#ffffff',
@@ -2786,7 +2810,7 @@ const styles = StyleSheet.create({
   },
   posInput: {
     height: 40,
-    borderRadius: 14,
+    borderRadius: 4,
     borderWidth: 1,
     borderColor: '#e5e7eb',
     backgroundColor: '#ffffff',
@@ -2801,39 +2825,39 @@ const styles = StyleSheet.create({
   categoryScroll: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 10,
+    gap: 6,
     paddingHorizontal: 2,
   },
   categoryButton: {
-    height: 44,
-    minWidth: 110,
-    maxWidth: 150,
-    borderRadius: 12,
+    height: 40,
+    minWidth: 96,
+    maxWidth: 160,
+    borderRadius: 4,
     borderWidth: 1,
-    borderColor: '#e5e7eb',
-    backgroundColor: '#f9fafb',
+    borderColor: '#94a3b8',
+    backgroundColor: '#f1f5f9',
     alignItems: 'center',
     justifyContent: 'center',
-    paddingHorizontal: 10,
+    paddingHorizontal: 12,
   },
   categoryButtonActive: {
-    backgroundColor: '#16a34a',
-    borderColor: '#16a34a',
+    backgroundColor: '#15803d',
+    borderColor: '#14532d',
   },
   categoryButtonPressed: {
     opacity: 0.9,
   },
   categoryButtonText: {
-    fontSize: 13,
-    fontWeight: '900',
-    color: '#111827',
+    fontSize: 12,
+    fontWeight: '800',
+    color: '#334155',
   },
   categoryButtonTextActive: {
     color: '#ffffff',
   },
 
   paymentSummaryBlock: {
-    gap: 10,
+    gap: 6,
   },
   paymentDivider: {
     height: 1,
@@ -2858,7 +2882,7 @@ const styles = StyleSheet.create({
   amountValue: {
     fontSize: 20,
     fontWeight: '900',
-    color: '#16a34a',
+    color: '#166534',
   },
   amountValueSecondary: {
     fontSize: 20,
@@ -2868,7 +2892,7 @@ const styles = StyleSheet.create({
   paymentFinalBlock: {
     paddingTop: 8,
     borderTopWidth: 1,
-    borderTopColor: '#eef2f7',
+    borderTopColor: '#94a3b8',
   },
   panelTitleSmall: {
     fontSize: 16,
@@ -2878,20 +2902,20 @@ const styles = StyleSheet.create({
   paymentTotalRow: {
     paddingTop: 6,
     borderTopWidth: 1,
-    borderTopColor: '#e5e7eb',
+    borderTopColor: '#64748b',
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
   },
   paymentTotalLabel: {
-    fontSize: 14,
+    fontSize: 13,
     fontWeight: '900',
-    color: '#111827',
+    color: '#0f172a',
   },
   paymentTotalValue: {
     fontSize: 22,
     fontWeight: '900',
-    color: '#16a34a',
+    color: '#166534',
   },
 
   paymentBlock: {
@@ -2910,32 +2934,34 @@ const styles = StyleSheet.create({
     width: '100%',
   },
   blockLabel: {
-    fontSize: 14,
+    fontSize: 12,
     fontWeight: '900',
-    color: '#111827',
+    color: '#0f172a',
     marginBottom: 6,
+    letterSpacing: 0.4,
+    textTransform: 'uppercase',
   },
   paymentBlockTopSep: {
     borderTopWidth: 1,
-    borderTopColor: '#eef2f7',
-    paddingTop: 14,
-    marginTop: 8,
-    backgroundColor: '#ffffff',
+    borderTopColor: '#94a3b8',
+    paddingTop: 10,
+    marginTop: 6,
+    backgroundColor: 'transparent',
   },
   paymentAmountTopSep: {
     borderTopWidth: 1,
-    borderTopColor: '#eef2f7',
-    paddingTop: 14,
+    borderTopColor: '#94a3b8',
+    paddingTop: 10,
     marginTop: 6,
-    backgroundColor: '#ffffff',
+    backgroundColor: 'transparent',
   },
   paymentCartBlock: {
     borderTopWidth: 1,
-    borderTopColor: '#eef2f7',
-    paddingTop: 14,
-    marginTop: 10,
+    borderTopColor: '#94a3b8',
+    paddingTop: 10,
+    marginTop: 8,
     width: '100%',
-    backgroundColor: '#ffffff',
+    backgroundColor: 'transparent',
     flexGrow: 0,
     flexShrink: 0,
     alignSelf: 'stretch',
@@ -2947,14 +2973,17 @@ const styles = StyleSheet.create({
   paymentCartListEmbed: {
     width: '100%',
     maxWidth: '100%',
-    borderRadius: 14,
-    paddingRight: 2,
-    paddingTop: 6,
-    paddingBottom: 6,
-    backgroundColor: '#f8fafc',
+    borderRadius: 4,
+    paddingRight: 0,
+    paddingTop: 0,
+    paddingBottom: 0,
+    backgroundColor: '#ffffff',
+    borderWidth: 1,
+    borderColor: '#64748b',
     flexGrow: 0,
     flexShrink: 0,
     alignSelf: 'stretch',
+    overflow: 'hidden',
   },
   paymentCartListEmbedStack: {
     minWidth: 0,
@@ -2966,15 +2995,16 @@ const styles = StyleSheet.create({
     maxWidth: '100%',
   },
   paymentCartTitle: {
-    fontSize: 14,
+    fontSize: 13,
     fontWeight: '900',
-    color: '#111827',
-    marginBottom: 6,
+    color: '#0f172a',
+    marginBottom: 4,
     backgroundColor: 'transparent',
+    letterSpacing: 0.3,
   },
   paymentCartHint: {
-    fontSize: 12,
-    color: '#6b7280',
+    fontSize: 11,
+    color: '#64748b',
     fontWeight: '600',
     marginBottom: 6,
   },
@@ -2993,7 +3023,7 @@ const styles = StyleSheet.create({
 
   secondaryButton: {
     height: 44,
-    borderRadius: 14,
+    borderRadius: 4,
     backgroundColor: '#f3f4f6',
     borderWidth: 1,
     borderColor: '#e5e7eb',
@@ -3012,14 +3042,14 @@ const styles = StyleSheet.create({
   },
 
   secondaryButtonSmall: {
-    height: 40,
-    borderRadius: 14,
-    backgroundColor: '#f3f4f6',
+    height: 36,
+    borderRadius: 4,
+    backgroundColor: '#e5e7eb',
     borderWidth: 1,
-    borderColor: '#e5e7eb',
+    borderColor: '#64748b',
     alignItems: 'center',
     justifyContent: 'center',
-    paddingHorizontal: 12,
+    paddingHorizontal: 10,
   },
   splitHeaderRow: {
     flexDirection: 'row',
@@ -3053,20 +3083,22 @@ const styles = StyleSheet.create({
   },
 
   confirmButton: {
-    height: 54,
-    borderRadius: 16,
-    backgroundColor: '#16a34a',
+    height: 52,
+    borderRadius: 4,
+    backgroundColor: '#15803d',
     alignItems: 'center',
     justifyContent: 'center',
     marginTop: 4,
     width: '100%',
+    borderWidth: 1,
+    borderColor: '#14532d',
   },
   confirmButtonMobile: {
-    height: 56,
-    marginTop: 12,
+    height: 52,
+    marginTop: 8,
   },
   confirmButtonPressed: {
-    backgroundColor: '#15803d',
+    backgroundColor: '#166534',
   },
   confirmButtonDisabled: {
     backgroundColor: '#9ca3af',
