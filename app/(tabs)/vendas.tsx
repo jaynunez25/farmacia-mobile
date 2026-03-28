@@ -144,6 +144,10 @@ export default function VendasScreen() {
   const [categoryProductsLoading, setCategoryProductsLoading] = useState(false);
   const [categoryError, setCategoryError] = useState<string | null>(null);
 
+  /** Caixa vê até 5 linhas sem scroll; barra/scroll só com 6+ itens. */
+  const CART_VISIBLE_WITHOUT_SCROLL = 5;
+  const cartListNeedsScroll = cart.length > CART_VISIBLE_WITHOUT_SCROLL;
+
   const isPackProduct = (p: Product) =>
     (p.can_sell_by_box || p.can_sell_by_unit) && (p.units_per_pack ?? 0) > 0;
 
@@ -651,7 +655,12 @@ export default function VendasScreen() {
               {isTablet ? (isTabletLandscape ? (
                 <View style={[styles.posRowLayout, Platform.OS === 'web' && styles.posRowLayoutWeb]}>
                   <View style={[styles.leftArea, Platform.OS === 'web' && styles.leftAreaWeb]}>
-                    <View style={[styles.summaryPanel, Platform.OS === 'web' && styles.summaryPanelWebLandscape]}>
+                    <View
+                      style={[
+                        styles.summaryPanel,
+                        Platform.OS === 'web' && styles.summaryPanelWebLandscape,
+                        Platform.OS === 'web' && cartListNeedsScroll && styles.summaryPanelWebLandscapeCapped,
+                      ]}>
                       <View style={styles.summaryHeader}>
                         <View style={{ flex: 1 }}>
                           <Text style={styles.panelTitle}>Venda Atual</Text>
@@ -664,17 +673,19 @@ export default function VendasScreen() {
                       <ScrollView
                         style={[
                           styles.summaryList,
-                          Platform.OS === 'web' && styles.summaryListWebLandscapeCart,
-                          Platform.OS === 'web' && styles.summaryListWebLandscapeCartMinH,
+                          Platform.OS === 'web' &&
+                            (cart.length === 0
+                              ? styles.summaryListWebFix
+                              : cartListNeedsScroll
+                                ? styles.summaryListWebCartScroll
+                                : styles.summaryListWebCartNoScroll),
                         ]}
                         contentContainerStyle={[
                           styles.summaryListContentFix,
                           Platform.OS === 'web' && styles.summaryListContentWeb,
                         ]}
-                        showsVerticalScrollIndicator={
-                          Platform.OS === 'web' ? cart.length > 1 : cart.length > 6
-                        }
-                        scrollEnabled={Platform.OS === 'web' || cart.length > 6}
+                        showsVerticalScrollIndicator={cartListNeedsScroll}
+                        scrollEnabled={cartListNeedsScroll}
                         nestedScrollEnabled>
                         {cart.length === 0 ? (
                           <Text style={styles.emptyText}>Carrinho vazio. Selecciona produtos para iniciar a venda.</Text>
@@ -1133,6 +1144,7 @@ export default function VendasScreen() {
                     style={[
                       styles.summaryPanel,
                       isPhone ? styles.summaryPanelMobile : styles.summaryPanelTabletPortrait,
+                      Platform.OS === 'web' && !isPhone && styles.summaryPanelTabletPortraitWeb,
                     ]}>
                     <View style={styles.summaryHeader}>
                       <View style={{ flex: 1 }}>
@@ -1144,15 +1156,21 @@ export default function VendasScreen() {
                     <CartTableHeaderRow webCart={Platform.OS === 'web'} />
 
                     <ScrollView
-                      style={[styles.summaryList, Platform.OS === 'web' && styles.summaryListWebFix]}
+                      style={[
+                        styles.summaryList,
+                        Platform.OS === 'web' &&
+                          (cart.length === 0
+                            ? styles.summaryListWebFix
+                            : cartListNeedsScroll
+                              ? styles.summaryListWebCartScroll
+                              : styles.summaryListWebCartNoScroll),
+                      ]}
                       contentContainerStyle={[
                         styles.summaryListContentFix,
                         Platform.OS === 'web' && styles.summaryListContentWeb,
                       ]}
-                      showsVerticalScrollIndicator={
-                        Platform.OS === 'web' ? cart.length > 1 : cart.length > 6
-                      }
-                      scrollEnabled={Platform.OS === 'web' || cart.length > 6}
+                      showsVerticalScrollIndicator={cartListNeedsScroll}
+                      scrollEnabled={cartListNeedsScroll}
                       nestedScrollEnabled>
                       {cart.length === 0 ? (
                         <Text style={styles.emptyText}>Carrinho vazio. Selecciona produtos para iniciar a venda.</Text>
@@ -1633,15 +1651,22 @@ export default function VendasScreen() {
                     <CartTableHeaderRow webCart={Platform.OS === 'web'} />
 
                     <ScrollView
-                      style={[styles.summaryList, styles.summaryListMobile, Platform.OS === 'web' && styles.summaryListWebFix]}
+                      style={[
+                        styles.summaryList,
+                        styles.summaryListMobile,
+                        Platform.OS === 'web' &&
+                          (cart.length === 0
+                            ? styles.summaryListWebFix
+                            : cartListNeedsScroll
+                              ? styles.summaryListWebCartScroll
+                              : styles.summaryListWebCartNoScroll),
+                      ]}
                       contentContainerStyle={[
                         styles.summaryListContentFix,
                         Platform.OS === 'web' && styles.summaryListContentWeb,
                       ]}
-                      showsVerticalScrollIndicator={
-                        Platform.OS === 'web' ? cart.length > 1 : cart.length > 6
-                      }
-                      scrollEnabled={Platform.OS === 'web' || cart.length > 6}
+                      showsVerticalScrollIndicator={cartListNeedsScroll}
+                      scrollEnabled={cartListNeedsScroll}
                       nestedScrollEnabled>
                       {cart.length === 0 ? (
                         <Text style={styles.emptyText}>Carrinho vazio. Selecciona produtos para iniciar a venda.</Text>
@@ -2328,15 +2353,16 @@ const styles = StyleSheet.create({
     gap: 12,
   },
 
-  /** Web landscape: fixed cart slot so product panel flex does not paint over the cart (Yoga/RN-web quirk). */
+  /** Web landscape: cresce até 5 linhas; com 6+ itens usa cap + scroll na lista. */
   summaryPanelWebLandscape: {
     flex: 0,
     flexGrow: 0,
     flexShrink: 0,
-    height: 320,
-    maxHeight: 320,
     minHeight: 160,
     overflow: 'hidden',
+  },
+  summaryPanelWebLandscapeCapped: {
+    maxHeight: 680,
   },
 
   summaryPanel: {
@@ -2544,14 +2570,17 @@ const styles = StyleSheet.create({
   summaryListWebFix: {
     minHeight: 80,
   },
-  /** Web landscape POS cart: fill bounded summary panel; scroll inside instead of expanding past siblings. */
-  summaryListWebLandscapeCart: {
+  /** Web cart: 6+ itens — ~5 linhas visíveis, resto com scroll. */
+  summaryListWebCartScroll: {
     flex: 1,
     minHeight: 0,
+    maxHeight: 400,
   },
-  /** RN-web: pair with summaryListWebLandscapeCart — disabled scroll + flex often yields 0px painted rows. */
-  summaryListWebLandscapeCartMinH: {
-    minHeight: 96,
+  /** Web cart: até 5 itens — lista cresce, sem scroll. */
+  summaryListWebCartNoScroll: {
+    flex: 0,
+    flexGrow: 0,
+    flexShrink: 0,
   },
   summaryListContentFix: {
     flexGrow: 1,
@@ -3176,6 +3205,13 @@ const styles = StyleSheet.create({
     height: 250,
     maxHeight: 250,
     minHeight: 250,
+  },
+  /** Web retrato: 250px cortava o carrinho a 1 linha; altura segue o conteúdo até ~5 linhas. */
+  summaryPanelTabletPortraitWeb: {
+    // RN-web: soltar altura fixa 250px do retrato nativo.
+    height: 'auto' as any,
+    maxHeight: 720,
+    minHeight: 300,
   },
 
   productPanelMobile: {
