@@ -589,8 +589,8 @@ export default function VendasScreen() {
               )}
 
               {isTablet ? (isTabletLandscape ? (
-                <View style={styles.posRowLayout}>
-                  <View style={styles.leftArea}>
+                <View style={[styles.posRowLayout, Platform.OS === 'web' && styles.posRowLayoutWeb]}>
+                  <View style={[styles.leftArea, Platform.OS === 'web' && styles.leftAreaWeb]}>
                     <View style={styles.summaryPanel}>
                       <View style={styles.summaryHeader}>
                         <View style={{ flex: 1 }}>
@@ -608,9 +608,11 @@ export default function VendasScreen() {
                       </View>
 
                       <ScrollView
-                        style={styles.summaryList}
-                        showsVerticalScrollIndicator={false}
-                        scrollEnabled={false}>
+                        style={[styles.summaryList, Platform.OS === 'web' && styles.summaryListWebFix]}
+                        contentContainerStyle={styles.summaryListContentFix}
+                        showsVerticalScrollIndicator={cart.length > 6}
+                        scrollEnabled={cart.length > 6}
+                        nestedScrollEnabled>
                         {cart.length === 0 ? (
                           <Text style={styles.emptyText}>Carrinho vazio. Selecciona produtos para iniciar a venda.</Text>
                         ) : (
@@ -635,6 +637,7 @@ export default function VendasScreen() {
                                   : sell_as === 'unit'
                                     ? product.unit_name || 'un.'
                                     : '';
+                              const displayName = (product.name && String(product.name).trim()) || product.sku || 'Produto';
 
                               const key = `${product.id}-${sell_as ?? 's'}-${idx}`;
 
@@ -642,7 +645,7 @@ export default function VendasScreen() {
                                 <View key={key} style={styles.summaryRow}>
                                   <View style={[styles.colName]}>
                                     <Text style={styles.summaryItemName} numberOfLines={1}>
-                                      {product.name}
+                                      {displayName}
                                     </Text>
                                     <Text style={styles.summaryItemMeta} numberOfLines={1}>
                                       Kz {unitP.toFixed(2)} · {quantity} {label ? label : ''}
@@ -851,7 +854,7 @@ export default function VendasScreen() {
                     </View>
                   </View>
 
-                  <View style={styles.paymentPanel}>
+                  <View style={[styles.paymentPanel, Platform.OS === 'web' && styles.paymentPanelWeb]}>
                     <View style={styles.paymentSummaryBlock}>
                       <Text style={styles.panelTitle}>Pagamento</Text>
                       <View style={styles.paymentTotalRow}>
@@ -860,13 +863,11 @@ export default function VendasScreen() {
                       </View>
                     </View>
 
-                    <View style={styles.paymentDivider} />
-
-                    <View style={[styles.paymentBlock, styles.paymentBlockMobile]}>
+                    <View style={[styles.paymentBlock, styles.paymentBlockMobile, styles.paymentBlockTopSep]}>
                       <Text style={styles.blockLabel}>Método</Text>
                       {paymentMode === 'simple' ? (
                         <>
-                          <View style={isPhone ? styles.paymentRow : styles.paymentRowTablet}>
+                          <View style={isPhone || Platform.OS === 'web' ? styles.paymentRow : styles.paymentRowTablet}>
                             {(['cash', 'card', 'transfer', 'other'] as const).map(method => (
                               <Pressable
                                 key={method}
@@ -1010,9 +1011,7 @@ export default function VendasScreen() {
                       )}
                     </View>
 
-                    <View style={styles.paymentDivider} />
-
-                    <View style={styles.paymentAmountBlock}>
+                    <View style={[styles.paymentAmountBlock, styles.paymentAmountTopSep]}>
                       {paymentMode === 'split' && (
                         <View style={styles.amountRow}>
                           <Text style={styles.amountLabel}>Soma pagamentos</Text>
@@ -1089,9 +1088,11 @@ export default function VendasScreen() {
                     </View>
 
                     <ScrollView
-                      style={styles.summaryList}
-                      showsVerticalScrollIndicator={false}
-                      scrollEnabled={false}>
+                      style={[styles.summaryList, Platform.OS === 'web' && styles.summaryListWebFix]}
+                      contentContainerStyle={styles.summaryListContentFix}
+                      showsVerticalScrollIndicator={cart.length > 6}
+                      scrollEnabled={cart.length > 6}
+                      nestedScrollEnabled>
                       {cart.length === 0 ? (
                         <Text style={styles.emptyText}>Carrinho vazio. Selecciona produtos para iniciar a venda.</Text>
                       ) : (
@@ -1116,13 +1117,14 @@ export default function VendasScreen() {
                                 : sell_as === 'unit'
                                   ? product.unit_name || 'un.'
                                   : '';
+                            const displayName = (product.name && String(product.name).trim()) || product.sku || 'Produto';
                             const key = `${product.id}-${sell_as ?? 's'}-${idx}`;
 
                             return (
                               <View key={key} style={styles.summaryRow}>
                                 <View style={[styles.colName]}>
                                   <Text style={styles.summaryItemName} numberOfLines={1}>
-                                    {product.name}
+                                    {displayName}
                                   </Text>
                                   <Text style={styles.summaryItemMeta} numberOfLines={1}>
                                     Kz {unitP.toFixed(2)} · {quantity} {label ? label : ''}
@@ -1318,6 +1320,7 @@ export default function VendasScreen() {
                     style={[
                       styles.paymentPanel,
                       isPhone ? styles.paymentPanelMobile : styles.paymentPanelTabletPortrait,
+                      Platform.OS === 'web' && !isPhone && styles.paymentPanelWeb,
                     ]}>
                     <View style={styles.paymentSummaryBlock}>
                       <Text style={styles.panelTitle}>Pagamento</Text>
@@ -1327,13 +1330,11 @@ export default function VendasScreen() {
                       </View>
                     </View>
 
-                    <View style={styles.paymentDivider} />
-
-                    <View style={styles.paymentBlock}>
+                    <View style={[styles.paymentBlock, styles.paymentBlockTopSep]}>
                       <Text style={styles.blockLabel}>Método</Text>
                       {paymentMode === 'simple' ? (
                         <>
-                          <View style={isPhone ? styles.paymentRow : styles.paymentRowTablet}>
+                          <View style={isPhone || Platform.OS === 'web' ? styles.paymentRow : styles.paymentRowTablet}>
                             {(['cash', 'card', 'transfer', 'other'] as const).map(method => (
                               <Pressable
                                 key={method}
@@ -1477,9 +1478,7 @@ export default function VendasScreen() {
                       )}
                     </View>
 
-                    <View style={styles.paymentDivider} />
-
-                    <View style={styles.paymentAmountBlock}>
+                    <View style={[styles.paymentAmountBlock, styles.paymentAmountTopSep]}>
                       {paymentMode === 'split' && (
                         <View style={styles.amountRow}>
                           <Text style={styles.amountLabel}>Soma pagamentos</Text>
@@ -1580,9 +1579,11 @@ export default function VendasScreen() {
                     </View>
 
                     <ScrollView
-                      style={[styles.summaryList, styles.summaryListMobile]}
-                      showsVerticalScrollIndicator={false}
-                      scrollEnabled={false}>
+                      style={[styles.summaryList, styles.summaryListMobile, Platform.OS === 'web' && styles.summaryListWebFix]}
+                      contentContainerStyle={styles.summaryListContentFix}
+                      showsVerticalScrollIndicator={cart.length > 6}
+                      scrollEnabled={cart.length > 6}
+                      nestedScrollEnabled>
                       {cart.length === 0 ? (
                         <Text style={styles.emptyText}>Carrinho vazio. Selecciona produtos para iniciar a venda.</Text>
                       ) : (
@@ -1607,6 +1608,7 @@ export default function VendasScreen() {
                                 : sell_as === 'unit'
                                   ? product.unit_name || 'un.'
                                   : '';
+                            const displayName = (product.name && String(product.name).trim()) || product.sku || 'Produto';
 
                             const key = `${product.id}-${sell_as ?? 's'}-${idx}`;
 
@@ -1614,7 +1616,7 @@ export default function VendasScreen() {
                               <View key={key} style={styles.summaryRow}>
                                 <View style={[styles.colName]}>
                                   <Text style={styles.summaryItemName} numberOfLines={1}>
-                                    {product.name}
+                                    {displayName}
                                   </Text>
                                   <Text style={styles.summaryItemMeta} numberOfLines={1}>
                                     Kz {unitP.toFixed(2)} · {quantity} {label ? label : ''}
@@ -1820,7 +1822,7 @@ export default function VendasScreen() {
                     </View>
                   </View>
 
-                  <View style={[styles.paymentPanel, styles.paymentPanelMobileStack]}>
+                  <View style={[styles.paymentPanel, styles.paymentPanelMobileStack, Platform.OS === 'web' && styles.paymentPanelWebMobile]}>
                     <View style={styles.paymentSummaryBlock}>
                       <Text style={styles.panelTitle}>Pagamento</Text>
                       <View style={styles.paymentTotalRow}>
@@ -1829,9 +1831,7 @@ export default function VendasScreen() {
                       </View>
                     </View>
 
-                    <View style={styles.paymentDivider} />
-
-                    <View style={styles.paymentBlock}>
+                    <View style={[styles.paymentBlock, styles.paymentBlockTopSep]}>
                       <Text style={styles.blockLabel}>Método</Text>
                       {paymentMode === 'simple' ? (
                         <>
@@ -1954,9 +1954,7 @@ export default function VendasScreen() {
                       )}
                     </View>
 
-                    <View style={styles.paymentDivider} />
-
-                    <View style={styles.paymentAmountBlock}>
+                    <View style={[styles.paymentAmountBlock, styles.paymentAmountTopSep]}>
                       {paymentMode === 'split' && (
                         <View style={styles.amountRow}>
                           <Text style={styles.amountLabel}>Soma pagamentos</Text>
@@ -2228,6 +2226,11 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     gap: 10,
   },
+  posRowLayoutWeb: {
+    width: '100%',
+    alignSelf: 'stretch',
+    minHeight: 0,
+  },
   posColumnLayout: {
     flex: 1,
     flexDirection: 'column',
@@ -2258,6 +2261,11 @@ const styles = StyleSheet.create({
     minWidth: 280,
     flexDirection: 'column',
     gap: 10,
+  },
+  leftAreaWeb: {
+    flex: 1,
+    minWidth: 0,
+    minHeight: 0,
   },
 
   summaryPanel: {
@@ -2304,6 +2312,17 @@ const styles = StyleSheet.create({
     borderColor: '#e5e7eb',
     padding: 10,
     gap: 10,
+  },
+  paymentPanelWeb: {
+    flex: 0.34,
+    minWidth: 280,
+    maxWidth: 460,
+    alignSelf: 'stretch',
+  },
+  paymentPanelWebMobile: {
+    maxWidth: '100%' as const,
+    width: '100%' as const,
+    alignSelf: 'stretch',
   },
 
   panelTitle: {
@@ -2356,6 +2375,14 @@ const styles = StyleSheet.create({
     paddingTop: 6,
     paddingBottom: 6,
     backgroundColor: '#f8fafc',
+  },
+  /** react-native-web: ScrollView with scrollEnabled false often gets 0 height; minHeight + content flex fixes cart rows. */
+  summaryListWebFix: {
+    minHeight: 80,
+  },
+  summaryListContentFix: {
+    flexGrow: 1,
+    paddingBottom: 4,
   },
   summaryListMobile: {
     flex: 0,
@@ -2826,6 +2853,22 @@ const styles = StyleSheet.create({
     fontSize: 14,
     fontWeight: '900',
     color: '#111827',
+    marginBottom: 6,
+    zIndex: 1,
+  },
+  paymentBlockTopSep: {
+    borderTopWidth: 1,
+    borderTopColor: '#eef2f7',
+    paddingTop: 14,
+    marginTop: 8,
+    backgroundColor: '#ffffff',
+  },
+  paymentAmountTopSep: {
+    borderTopWidth: 1,
+    borderTopColor: '#eef2f7',
+    paddingTop: 14,
+    marginTop: 6,
+    backgroundColor: '#ffffff',
   },
   paymentRow: {
     flexDirection: 'row',
