@@ -68,11 +68,6 @@ function CartTableHeaderRow({ webCart }: { webCart: boolean }) {
             Total
           </Text>
         </View>
-        <View style={styles.cartThRemove}>
-          <Text style={styles.th} numberOfLines={1}>
-            {' '}
-          </Text>
-        </View>
       </View>
     );
   }
@@ -82,7 +77,6 @@ function CartTableHeaderRow({ webCart }: { webCart: boolean }) {
       <Text style={[styles.th, styles.thName]}>Produto</Text>
       <Text style={[styles.th, styles.thUnit]}>P.unit</Text>
       <Text style={[styles.th, styles.thSubtotal]}>Total</Text>
-      <Text style={[styles.th, styles.thRemove]}> </Text>
     </View>
   );
 }
@@ -131,9 +125,9 @@ function PaymentCartLines({
   cartListNeedsScroll,
   listVariant: _listVariant,
   fillAvailableHeight: _fillAvailableHeight,
+  panelBoundedHeight,
   lineUnitPrice,
   updateCartQty,
-  removeFromCart,
   hasInsufficientStock,
   showStockWarning,
   setShowStockWarning,
@@ -145,7 +139,8 @@ function PaymentCartLines({
   fillAvailableHeight: boolean;
   lineUnitPrice: (item: CartItem) => number;
   updateCartQty: (productId: number, sellAs: 'box' | 'unit' | undefined, delta: number) => void;
-  removeFromCart: (productId: number, sellAs: 'box' | 'unit' | undefined) => void;
+  /** Quando true (tablet / web com painel limitado em altura), a lista encolhe e faz scroll; rodapé (Recebido / Troco / botão) fica sempre visível. */
+  panelBoundedHeight: boolean;
   hasInsufficientStock: boolean;
   showStockWarning: boolean;
   setShowStockWarning: (v: boolean) => void;
@@ -219,10 +214,6 @@ function PaymentCartLines({
                     Kz {lineTotal.toFixed(2)}
                   </Text>
                 </View>
-
-                <Pressable style={styles.removeButton} onPress={() => removeFromCart(product.id, sell_as)}>
-                  <Text style={styles.removeButtonText}>X</Text>
-                </Pressable>
               </View>
             );
           })}
@@ -232,7 +223,7 @@ function PaymentCartLines({
   );
 
   return (
-    <View style={styles.paymentCartBlock}>
+    <View style={[styles.paymentCartBlock, panelBoundedHeight && styles.paymentCartBlockFill]}>
       <View style={styles.paymentCartHeaderBlock}>
         <Text style={styles.paymentCartTitle}>Itens da venda</Text>
         <Text style={styles.paymentCartHint}>
@@ -243,18 +234,24 @@ function PaymentCartLines({
               : `${cart.length} itens`}
         </Text>
       </View>
-      <View style={styles.paymentCartTableOuter}>
+      <View style={[styles.paymentCartTableOuter, panelBoundedHeight && styles.paymentCartTableOuterFill]}>
         <View style={styles.paymentCartTableHeaderWrap}>
           <CartTableHeaderRow webCart={Platform.OS === 'web'} />
         </View>
         <ScrollView
           style={[
             styles.paymentCartRowsScroll,
-            {
-              height: PAYMENT_CART_LIST_VIEWPORT_HEIGHT,
-              minHeight: PAYMENT_CART_LIST_VIEWPORT_HEIGHT,
-              maxHeight: PAYMENT_CART_LIST_VIEWPORT_HEIGHT,
-            },
+            panelBoundedHeight
+              ? {
+                  flex: 1,
+                  minHeight: 0,
+                  maxHeight: PAYMENT_CART_LIST_VIEWPORT_HEIGHT,
+                }
+              : {
+                  height: PAYMENT_CART_LIST_VIEWPORT_HEIGHT,
+                  minHeight: PAYMENT_CART_LIST_VIEWPORT_HEIGHT,
+                  maxHeight: PAYMENT_CART_LIST_VIEWPORT_HEIGHT,
+                },
           ]}
           contentContainerStyle={[
             styles.paymentCartRowsScrollContent,
@@ -473,10 +470,6 @@ export default function VendasScreen() {
         })
         .filter(c => c.quantity > 0),
     );
-  };
-
-  const removeFromCart = (productId: number, sellAs: 'box' | 'unit' | undefined) => {
-    setCart(prev => prev.filter(c => !(c.product.id === productId && c.sell_as === sellAs)));
   };
 
   const total = useMemo(() => cart.reduce((sum, c) => sum + c.quantity * lineUnitPrice(c), 0), [cart, lineUnitPrice]);
@@ -1045,9 +1038,9 @@ export default function VendasScreen() {
                       cartListNeedsScroll={cartListNeedsScroll}
                       listVariant="wide"
                       fillAvailableHeight
+                      panelBoundedHeight
                       lineUnitPrice={lineUnitPrice}
                       updateCartQty={updateCartQty}
-                      removeFromCart={removeFromCart}
                       hasInsufficientStock={hasInsufficientStock}
                       showStockWarning={showStockWarning}
                       setShowStockWarning={setShowStockWarning}
@@ -1233,9 +1226,9 @@ export default function VendasScreen() {
                       cartListNeedsScroll={cartListNeedsScroll}
                       listVariant={isPhone ? 'stack' : 'wide'}
                       fillAvailableHeight={false}
+                      panelBoundedHeight={!isPhone}
                       lineUnitPrice={lineUnitPrice}
                       updateCartQty={updateCartQty}
-                      removeFromCart={removeFromCart}
                       hasInsufficientStock={hasInsufficientStock}
                       showStockWarning={showStockWarning}
                       setShowStockWarning={setShowStockWarning}
@@ -1470,9 +1463,9 @@ export default function VendasScreen() {
                       cartListNeedsScroll={cartListNeedsScroll}
                       listVariant="stack"
                       fillAvailableHeight={false}
+                      panelBoundedHeight={false}
                       lineUnitPrice={lineUnitPrice}
                       updateCartQty={updateCartQty}
-                      removeFromCart={removeFromCart}
                       hasInsufficientStock={hasInsufficientStock}
                       showStockWarning={showStockWarning}
                       setShowStockWarning={setShowStockWarning}
@@ -1812,7 +1805,7 @@ const styles = StyleSheet.create({
     minHeight: 0,
     alignSelf: 'stretch',
   },
-  /** Largura tipo POS (tablet/desktop web): não encolher; conteúdo do carrinho alinha a ~400px. */
+  /** Largura tipo POS (tablet/desktop web): largura fixa; minHeight:0 para o carrinho poder encolher no eixo vertical. */
   paymentPanelWeb: {
     flex: 0,
     flexGrow: 0,
@@ -1820,6 +1813,7 @@ const styles = StyleSheet.create({
     width: 400,
     minWidth: 380,
     maxWidth: 420,
+    minHeight: 0,
     alignSelf: 'stretch',
   },
   paymentPanelWebMobile: {
@@ -1872,7 +1866,6 @@ const styles = StyleSheet.create({
   thQty: { minWidth: 96, maxWidth: 112, textAlign: 'center', flexGrow: 0, flexShrink: 0 },
   thUnit: { flex: 1, textAlign: 'right', minWidth: 0 },
   thSubtotal: { flex: 1, textAlign: 'right', minWidth: 0 },
-  thRemove: { width: 44, textAlign: 'center', flexShrink: 0 },
 
   /** Web cart: sem gap horizontal — evita roubar largura à coluna produto (flex 1). */
   summaryTableHeaderWebCart: {
@@ -1915,14 +1908,6 @@ const styles = StyleSheet.create({
     alignItems: 'flex-end',
     justifyContent: 'center',
     paddingRight: 10,
-  },
-  cartThRemove: {
-    width: 40,
-    minWidth: 40,
-    maxWidth: 40,
-    flexShrink: 0,
-    alignItems: 'center',
-    justifyContent: 'center',
   },
   cartThUnitText: {
     textAlign: 'right',
@@ -2098,23 +2083,6 @@ const styles = StyleSheet.create({
     fontSize: 13,
     minWidth: 18,
     textAlign: 'center',
-  },
-
-  removeButton: {
-    width: 40,
-    height: 36,
-    borderRadius: 4,
-    backgroundColor: '#fef2f2',
-    alignItems: 'center',
-    justifyContent: 'center',
-    borderWidth: 1,
-    borderColor: '#dc2626',
-    flexShrink: 0,
-  },
-  removeButtonText: {
-    color: '#b91c1c',
-    fontWeight: '900',
-    fontSize: 12,
   },
 
   summaryFooter: {
@@ -2409,6 +2377,7 @@ const styles = StyleSheet.create({
 
   paymentSummaryBlock: {
     gap: 6,
+    flexShrink: 0,
   },
   paymentDivider: {
     height: 1,
@@ -2575,6 +2544,13 @@ const styles = StyleSheet.create({
     flexShrink: 0,
     alignSelf: 'stretch',
   },
+  /** Tablet / web: o carrinho cede altura para Recebido, Troco e «Registar venda» ficarem sempre visíveis. */
+  paymentCartBlockFill: {
+    flexGrow: 1,
+    flexShrink: 1,
+    minHeight: 0,
+    marginBottom: 4,
+  },
   paymentCartHeaderBlock: {
     width: '100%',
     flexShrink: 0,
@@ -2589,6 +2565,12 @@ const styles = StyleSheet.create({
     borderRadius: 4,
     backgroundColor: '#ffffff',
     overflow: 'hidden',
+  },
+  paymentCartTableOuterFill: {
+    flexGrow: 1,
+    flexShrink: 1,
+    minHeight: 0,
+    flexDirection: 'column',
   },
   paymentCartTableHeaderWrap: {
     width: '100%',
@@ -2755,6 +2737,7 @@ const styles = StyleSheet.create({
     flex: 0,
     minWidth: 0,
     maxWidth: 9999,
+    minHeight: 0,
     height: 'auto',
     flexDirection: 'column',
     width: '100%',
