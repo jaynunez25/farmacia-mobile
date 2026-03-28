@@ -119,8 +119,8 @@ function PosPaymentMethodButtons({
   );
 }
 
-/** Lista do carrinho no painel Pagamento: viewport fixo para 6 linhas; scroll só com 7+ itens. */
-const PAYMENT_CART_ROW_HEIGHT = 50;
+/** Lista no Pagamento: ~6 linhas visíveis (max-height ~320px); scroll só com 7+ itens. */
+const PAYMENT_CART_ROW_HEIGHT = 52;
 const PAYMENT_CART_MAX_VISIBLE_ROWS = 6;
 const PAYMENT_CART_VIEWPORT_V_PADDING = 8;
 const PAYMENT_CART_LIST_VIEWPORT_HEIGHT =
@@ -195,11 +195,14 @@ function PaymentCartLines({
                 </View>
 
                 <View style={[styles.colName, Platform.OS === 'web' && styles.colNameWebCart]}>
-                  <Text style={styles.summaryItemName} numberOfLines={1}>
+                  <Text
+                    style={[styles.summaryItemName, Platform.OS === 'web' && styles.summaryItemNameWebCart]}
+                    numberOfLines={1}
+                    ellipsizeMode="tail">
                     {displayName}
                   </Text>
                   {sellHint ? (
-                    <Text style={styles.summaryItemMeta} numberOfLines={1}>
+                    <Text style={styles.summaryItemMeta} numberOfLines={1} ellipsizeMode="tail">
                       {sellHint}
                     </Text>
                   ) : null}
@@ -1809,10 +1812,14 @@ const styles = StyleSheet.create({
     minHeight: 0,
     alignSelf: 'stretch',
   },
+  /** Largura tipo POS (tablet/desktop web): não encolher; conteúdo do carrinho alinha a ~400px. */
   paymentPanelWeb: {
-    flex: 0.34,
-    minWidth: 280,
-    maxWidth: 460,
+    flex: 0,
+    flexGrow: 0,
+    flexShrink: 0,
+    width: 400,
+    minWidth: 380,
+    maxWidth: 420,
     alignSelf: 'stretch',
   },
   paymentPanelWebMobile: {
@@ -1867,40 +1874,53 @@ const styles = StyleSheet.create({
   thSubtotal: { flex: 1, textAlign: 'right', minWidth: 0 },
   thRemove: { width: 44, textAlign: 'center', flexShrink: 0 },
 
-  /** Web cart header row: outer gap; cells are Views (CartTableHeaderRow), not flex Text. */
+  /** Web cart: sem gap horizontal — evita roubar largura à coluna produto (flex 1). */
   summaryTableHeaderWebCart: {
-    gap: 4,
-    paddingHorizontal: 4,
+    gap: 0,
+    paddingHorizontal: 10,
+    paddingVertical: 8,
   },
   cartThProd: {
     flex: 1,
+    flexGrow: 1,
     flexShrink: 1,
-    minWidth: 56,
-    maxWidth: 280,
+    minWidth: 0,
     justifyContent: 'center',
     alignItems: 'flex-start',
+    paddingRight: 6,
   },
+  /** Qtd: largura para dois botões 40px + valor (~112); alvo pedido 70px é insuficiente para ±40. */
   cartThQty: {
-    width: 100,
-    minWidth: 100,
+    width: 112,
+    minWidth: 112,
+    maxWidth: 112,
+    flexShrink: 0,
     alignItems: 'center',
     justifyContent: 'center',
   },
   cartThUnit: {
-    width: 74,
-    minWidth: 74,
+    width: 100,
+    minWidth: 100,
+    maxWidth: 100,
+    flexShrink: 0,
     alignItems: 'flex-end',
     justifyContent: 'center',
+    paddingRight: 4,
   },
   cartThTotal: {
-    width: 76,
-    minWidth: 76,
+    width: 110,
+    minWidth: 110,
+    maxWidth: 110,
+    flexShrink: 0,
     alignItems: 'flex-end',
     justifyContent: 'center',
+    paddingRight: 10,
   },
   cartThRemove: {
     width: 40,
     minWidth: 40,
+    maxWidth: 40,
+    flexShrink: 0,
     alignItems: 'center',
     justifyContent: 'center',
   },
@@ -1913,49 +1933,58 @@ const styles = StyleSheet.create({
     width: '100%',
   },
   summaryRowWebCart: {
-    gap: 6,
+    gap: 0,
     marginBottom: 0,
     paddingVertical: 0,
+    paddingHorizontal: 10,
     backgroundColor: '#ffffff',
     borderTopWidth: 1,
     borderTopColor: '#cbd5e1',
   },
   /** Altura fixa por linha — alinhar com PAYMENT_CART_ROW_HEIGHT no componente. */
   paymentCartRowFixed: {
-    height: 50,
-    minHeight: 50,
-    maxHeight: 50,
+    height: 52,
+    minHeight: 52,
+    maxHeight: 52,
     paddingVertical: 0,
     overflow: 'hidden',
   },
   colNameWebCart: {
     flex: 1,
+    flexGrow: 1,
     flexShrink: 1,
-    minWidth: 80,
-    maxWidth: 300,
+    minWidth: 0,
+    paddingRight: 6,
+    overflow: 'hidden',
   },
   colQtyWebCart: {
-    flex: 0,
     flexGrow: 0,
     flexShrink: 0,
-    minWidth: 100,
-    width: 100,
+    width: 112,
+    minWidth: 112,
+    maxWidth: 112,
+    alignItems: 'center',
+    justifyContent: 'center',
   },
   colUnitWebCart: {
-    flex: 0,
     flexGrow: 0,
     flexShrink: 0,
-    minWidth: 74,
-    width: 74,
+    width: 100,
+    minWidth: 100,
+    maxWidth: 100,
     alignItems: 'flex-end',
+    justifyContent: 'center',
+    paddingRight: 4,
   },
   colSubtotalWebCart: {
-    flex: 0,
     flexGrow: 0,
     flexShrink: 0,
-    minWidth: 76,
-    width: 76,
+    width: 110,
+    minWidth: 110,
+    maxWidth: 110,
     alignItems: 'flex-end',
+    justifyContent: 'center',
+    paddingRight: 10,
   },
 
   /** RN-web: conteúdo do ScrollView do carrinho não deve esticar com flexGrow. */
@@ -2019,6 +2048,9 @@ const styles = StyleSheet.create({
     fontWeight: '800',
     color: '#0f172a',
   },
+  summaryItemNameWebCart: {
+    width: '100%',
+  },
   summaryItemMeta: {
     marginTop: 1,
     fontSize: 10,
@@ -2040,12 +2072,13 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
-    gap: 4,
+    gap: 6,
     flexWrap: 'nowrap',
+    maxWidth: 112,
   },
   qtyButton: {
-    width: 32,
-    height: 32,
+    width: 40,
+    height: 40,
     borderRadius: 4,
     borderWidth: 1,
     borderColor: '#94a3b8',
@@ -2385,8 +2418,10 @@ const styles = StyleSheet.create({
   paymentAmountBlock: {
     gap: 10,
     paddingVertical: 6,
+    paddingBottom: 12,
     flexShrink: 0,
     width: '100%',
+    maxWidth: '100%',
     alignSelf: 'stretch',
   },
   amountRow: {
@@ -2409,6 +2444,10 @@ const styles = StyleSheet.create({
     fontSize: 20,
     fontWeight: '900',
     color: '#9ca3af',
+    lineHeight: 26,
+    paddingBottom: 2,
+    flexShrink: 1,
+    textAlign: 'right',
   },
   paymentFinalBlock: {
     paddingTop: 8,
@@ -2557,6 +2596,7 @@ const styles = StyleSheet.create({
   },
   paymentCartRowsScroll: {
     width: '100%',
+    maxWidth: '100%',
     alignSelf: 'stretch',
     backgroundColor: '#ffffff',
   },
