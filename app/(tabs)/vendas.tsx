@@ -1805,14 +1805,14 @@ const styles = StyleSheet.create({
     minHeight: 0,
     alignSelf: 'stretch',
   },
-  /** Largura tipo POS (tablet/desktop web): mais largura útil para a coluna «Produto»; minHeight:0 para encolher na vertical. */
+  /** Largura tipo POS (tablet/desktop web): painel mais largo para nomes de produto legíveis. */
   paymentPanelWeb: {
     flex: 0,
     flexGrow: 0,
     flexShrink: 0,
-    width: 440,
-    minWidth: 400,
-    maxWidth: 480,
+    width: 500,
+    minWidth: 420,
+    maxWidth: 560,
     minHeight: 0,
     alignSelf: 'stretch',
   },
@@ -1870,7 +1870,7 @@ const styles = StyleSheet.create({
   /** Web cart: sem gap horizontal — evita roubar largura à coluna produto (flex 1). */
   summaryTableHeaderWebCart: {
     gap: 0,
-    paddingHorizontal: 10,
+    paddingHorizontal: 8,
     paddingVertical: 8,
   },
   cartThProd: {
@@ -1880,7 +1880,7 @@ const styles = StyleSheet.create({
     minWidth: 0,
     justifyContent: 'center',
     alignItems: 'flex-start',
-    paddingRight: 6,
+    paddingRight: 4,
   },
   /** Qtd: 40+40+ gaps curtos + número (~108) — liberta espaço para o nome do produto. */
   cartThQty: {
@@ -1892,22 +1892,22 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
   },
   cartThUnit: {
-    width: 90,
-    minWidth: 90,
-    maxWidth: 90,
+    width: 86,
+    minWidth: 86,
+    maxWidth: 86,
     flexShrink: 0,
     alignItems: 'flex-end',
     justifyContent: 'center',
     paddingRight: 2,
   },
   cartThTotal: {
-    width: 98,
-    minWidth: 98,
-    maxWidth: 98,
+    width: 92,
+    minWidth: 92,
+    maxWidth: 92,
     flexShrink: 0,
     alignItems: 'flex-end',
     justifyContent: 'center',
-    paddingRight: 8,
+    paddingRight: 6,
   },
   cartThUnitText: {
     textAlign: 'right',
@@ -1921,7 +1921,7 @@ const styles = StyleSheet.create({
     gap: 0,
     marginBottom: 0,
     paddingVertical: 0,
-    paddingHorizontal: 10,
+    paddingHorizontal: 8,
     backgroundColor: '#ffffff',
     borderTopWidth: 1,
     borderTopColor: '#cbd5e1',
@@ -1939,7 +1939,7 @@ const styles = StyleSheet.create({
     flexGrow: 1,
     flexShrink: 1,
     minWidth: 0,
-    paddingRight: 6,
+    paddingRight: 4,
     overflow: 'hidden',
   },
   colQtyWebCart: {
@@ -1954,9 +1954,9 @@ const styles = StyleSheet.create({
   colUnitWebCart: {
     flexGrow: 0,
     flexShrink: 0,
-    width: 90,
-    minWidth: 90,
-    maxWidth: 90,
+    width: 86,
+    minWidth: 86,
+    maxWidth: 86,
     alignItems: 'flex-end',
     justifyContent: 'center',
     paddingRight: 2,
@@ -1964,12 +1964,12 @@ const styles = StyleSheet.create({
   colSubtotalWebCart: {
     flexGrow: 0,
     flexShrink: 0,
-    width: 98,
-    minWidth: 98,
-    maxWidth: 98,
+    width: 92,
+    minWidth: 92,
+    maxWidth: 92,
     alignItems: 'flex-end',
     justifyContent: 'center',
-    paddingRight: 8,
+    paddingRight: 6,
   },
 
   /** RN-web: conteúdo do ScrollView do carrinho não deve esticar com flexGrow. */
