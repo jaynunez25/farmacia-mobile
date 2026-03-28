@@ -918,7 +918,7 @@ export default function VendasScreen() {
                       </View>
                     </View>
 
-                    <View style={[styles.paymentBlock, styles.paymentBlockMobile, styles.paymentBlockTopSep]}>
+                    <View style={[styles.paymentBlock, styles.paymentBlockTopSep]}>
                       <Text style={styles.blockLabel}>Método</Text>
                       {paymentMode === 'simple' ? (
                         <>
@@ -930,7 +930,8 @@ export default function VendasScreen() {
                                   styles.posChip,
                                   paymentMethod === method && styles.posChipActive,
                                   pressed && styles.chipPressed,
-                                  !isPhone && styles.paymentChip,
+                                  !isPhone && Platform.OS !== 'web' && styles.paymentChip,
+                                  Platform.OS === 'web' && styles.posChipWeb,
                                 ]}
                                 onPress={() => setPaymentMethod(method)}>
                                 <Text
@@ -992,6 +993,7 @@ export default function VendasScreen() {
                                       styles.posChip,
                                       p.method === method && styles.posChipActive,
                                       pressed && styles.chipPressed,
+                                      Platform.OS === 'web' && styles.posChipWeb,
                                     ]}
                                     onPress={() =>
                                       setSplitPayments(prev => {
@@ -1376,7 +1378,7 @@ export default function VendasScreen() {
                       </View>
                     </View>
 
-                    <View style={[styles.paymentBlock, styles.paymentBlockTopSep]}>
+                    <View style={[styles.paymentBlock, styles.paymentBlockStack, styles.paymentBlockTopSep]}>
                       <Text style={styles.blockLabel}>Método</Text>
                       {paymentMode === 'simple' ? (
                         <>
@@ -1388,7 +1390,8 @@ export default function VendasScreen() {
                                   styles.posChip,
                                   paymentMethod === method && styles.posChipActive,
                                   pressed && styles.chipPressed,
-                                  !isPhone && styles.paymentChip,
+                                  !isPhone && Platform.OS !== 'web' && styles.paymentChip,
+                                  Platform.OS === 'web' && styles.posChipWeb,
                                 ]}
                                 onPress={() => setPaymentMethod(method)}>
                                 <Text
@@ -1450,6 +1453,7 @@ export default function VendasScreen() {
                                       styles.posChip,
                                       p.method === method && styles.posChipActive,
                                       pressed && styles.chipPressed,
+                                      Platform.OS === 'web' && styles.posChipWeb,
                                     ]}
                                     onPress={() =>
                                       setSplitPayments(prev => {
@@ -1868,7 +1872,7 @@ export default function VendasScreen() {
                       </View>
                     </View>
 
-                    <View style={[styles.paymentBlock, styles.paymentBlockTopSep]}>
+                    <View style={[styles.paymentBlock, styles.paymentBlockStack, styles.paymentBlockTopSep]}>
                       <Text style={styles.blockLabel}>Método</Text>
                       {paymentMode === 'simple' ? (
                         <>
@@ -1880,6 +1884,7 @@ export default function VendasScreen() {
                                   styles.posChip,
                                   paymentMethod === method && styles.posChipActive,
                                   pressed && styles.chipPressed,
+                                  Platform.OS === 'web' && styles.posChipWeb,
                                 ]}
                                 onPress={() => setPaymentMethod(method)}>
                                 <Text
@@ -1932,6 +1937,7 @@ export default function VendasScreen() {
                                       styles.posChip,
                                       p.method === method && styles.posChipActive,
                                       pressed && styles.chipPressed,
+                                      Platform.OS === 'web' && styles.posChipWeb,
                                     ]}
                                     onPress={() =>
                                       setSplitPayments(prev => {
@@ -2867,6 +2873,11 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     width: '100%',
   },
+  /** Web + paymentRow: não usar width:100% por chip (paymentChip); evita largura 0% e texto invisível. */
+  posChipWeb: {
+    flexShrink: 0,
+    alignSelf: 'flex-start',
+  },
   chipPressed: {
     opacity: 0.85,
   },
@@ -2996,6 +3007,13 @@ const styles = StyleSheet.create({
   paymentBlock: {
     flex: 1,
     gap: 8,
+  },
+  /** Painéis com height: auto (stack mobile/retrato): flex:1 no bloco Método colapsa no web e esconde os chips. */
+  paymentBlockStack: {
+    flex: 0,
+    flexGrow: 0,
+    flexShrink: 0,
+    width: '100%',
   },
   paymentBlockMobile: {
     flex: 0,
