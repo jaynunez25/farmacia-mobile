@@ -178,7 +178,7 @@ function PaymentCartLines({
                   styles.paymentCartRowFixed,
                 ]}>
                 <View style={[styles.colQty, Platform.OS === 'web' && styles.colQtyWebCart]}>
-                  <View style={styles.qtyControls}>
+                  <View style={[styles.qtyControls, Platform.OS === 'web' && styles.qtyControlsWebCart]}>
                     <Pressable style={styles.qtyButton} onPress={() => updateCartQty(product.id, sell_as, -1)}>
                       <Text style={styles.qtyButtonText}>-</Text>
                     </Pressable>
@@ -1805,14 +1805,14 @@ const styles = StyleSheet.create({
     minHeight: 0,
     alignSelf: 'stretch',
   },
-  /** Largura tipo POS (tablet/desktop web): largura fixa; minHeight:0 para o carrinho poder encolher no eixo vertical. */
+  /** Largura tipo POS (tablet/desktop web): mais largura útil para a coluna «Produto»; minHeight:0 para encolher na vertical. */
   paymentPanelWeb: {
     flex: 0,
     flexGrow: 0,
     flexShrink: 0,
-    width: 400,
-    minWidth: 380,
-    maxWidth: 420,
+    width: 440,
+    minWidth: 400,
+    maxWidth: 480,
     minHeight: 0,
     alignSelf: 'stretch',
   },
@@ -1882,32 +1882,32 @@ const styles = StyleSheet.create({
     alignItems: 'flex-start',
     paddingRight: 6,
   },
-  /** Qtd: largura para dois botões 40px + valor (~112); alvo pedido 70px é insuficiente para ±40. */
+  /** Qtd: 40+40+ gaps curtos + número (~108) — liberta espaço para o nome do produto. */
   cartThQty: {
-    width: 112,
-    minWidth: 112,
-    maxWidth: 112,
+    width: 108,
+    minWidth: 108,
+    maxWidth: 108,
     flexShrink: 0,
     alignItems: 'center',
     justifyContent: 'center',
   },
   cartThUnit: {
-    width: 100,
-    minWidth: 100,
-    maxWidth: 100,
+    width: 90,
+    minWidth: 90,
+    maxWidth: 90,
     flexShrink: 0,
     alignItems: 'flex-end',
     justifyContent: 'center',
-    paddingRight: 4,
+    paddingRight: 2,
   },
   cartThTotal: {
-    width: 110,
-    minWidth: 110,
-    maxWidth: 110,
+    width: 98,
+    minWidth: 98,
+    maxWidth: 98,
     flexShrink: 0,
     alignItems: 'flex-end',
     justifyContent: 'center',
-    paddingRight: 10,
+    paddingRight: 8,
   },
   cartThUnitText: {
     textAlign: 'right',
@@ -1945,31 +1945,31 @@ const styles = StyleSheet.create({
   colQtyWebCart: {
     flexGrow: 0,
     flexShrink: 0,
-    width: 112,
-    minWidth: 112,
-    maxWidth: 112,
+    width: 108,
+    minWidth: 108,
+    maxWidth: 108,
     alignItems: 'center',
     justifyContent: 'center',
   },
   colUnitWebCart: {
     flexGrow: 0,
     flexShrink: 0,
-    width: 100,
-    minWidth: 100,
-    maxWidth: 100,
+    width: 90,
+    minWidth: 90,
+    maxWidth: 90,
     alignItems: 'flex-end',
     justifyContent: 'center',
-    paddingRight: 4,
+    paddingRight: 2,
   },
   colSubtotalWebCart: {
     flexGrow: 0,
     flexShrink: 0,
-    width: 110,
-    minWidth: 110,
-    maxWidth: 110,
+    width: 98,
+    minWidth: 98,
+    maxWidth: 98,
     alignItems: 'flex-end',
     justifyContent: 'center',
-    paddingRight: 10,
+    paddingRight: 8,
   },
 
   /** RN-web: conteúdo do ScrollView do carrinho não deve esticar com flexGrow. */
@@ -2060,6 +2060,10 @@ const styles = StyleSheet.create({
     gap: 6,
     flexWrap: 'nowrap',
     maxWidth: 112,
+  },
+  qtyControlsWebCart: {
+    gap: 3,
+    maxWidth: 108,
   },
   qtyButton: {
     width: 40,
