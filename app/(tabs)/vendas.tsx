@@ -88,10 +88,14 @@ function CartTableHeaderRow({ webCart }: { webCart: boolean }) {
 }
 
 /** Lista do carrinho dentro do painel Pagamento (substitui o bloco separado «Venda Atual»). */
+const PAYMENT_CART_ROW_APPROX = 56;
+const PAYMENT_CART_VISIBLE_CAP = 5;
+
 function PaymentCartLines({
   cart,
   cartListNeedsScroll,
   listVariant,
+  fillAvailableHeight,
   lineUnitPrice,
   updateCartQty,
   removeFromCart,
@@ -102,6 +106,8 @@ function PaymentCartLines({
   cart: CartItem[];
   cartListNeedsScroll: boolean;
   listVariant: 'wide' | 'stack';
+  /** true = painel com altura definida (tablet paisagem); flex:1 no ScrollView é seguro. */
+  fillAvailableHeight: boolean;
   lineUnitPrice: (item: CartItem) => number;
   updateCartQty: (productId: number, sellAs: 'box' | 'unit' | undefined, delta: number) => void;
   removeFromCart: (productId: number, sellAs: 'box' | 'unit' | undefined) => void;
@@ -109,9 +115,113 @@ function PaymentCartLines({
   showStockWarning: boolean;
   setShowStockWarning: (v: boolean) => void;
 }) {
+  const intrinsicListMinH =
+    cart.length === 0
+      ? 80
+      : Math.min(cart.length, PAYMENT_CART_VISIBLE_CAP) * PAYMENT_CART_ROW_APPROX + 12;
+  const intrinsicListMaxH = cartListNeedsScroll
+    ? PAYMENT_CART_VISIBLE_CAP * PAYMENT_CART_ROW_APPROX + 24
+    : undefined;
+
+  const scrollStyle = fillAvailableHeight
+    ? [
+        styles.summaryList,
+        listVariant === 'stack' && styles.summaryListMobile,
+        Platform.OS === 'web' &&
+          (cart.length === 0
+            ? styles.summaryListWebFix
+            : cartListNeedsScroll
+              ? styles.summaryListWebCartScroll
+              : styles.summaryListWebCartNoScroll),
+      ]
+    : [
+        styles.paymentCartListEmbed,
+        listVariant === 'stack' && styles.paymentCartListEmbedStack,
+        { minHeight: intrinsicListMinH },
+        ...(intrinsicListMaxH != null ? [{ maxHeight: intrinsicListMaxH }] : []),
+        Platform.OS === 'web' && cartListNeedsScroll && intrinsicListMaxH != null
+          ? { height: intrinsicListMaxH, maxHeight: intrinsicListMaxH }
+          : null,
+      ];
+
+  const listContent = (
+    <>
+      {cart.length === 0 ? (
+        <Text style={styles.emptyText}>Carrinho vazio. Selecciona produtos para iniciar a venda.</Text>
+      ) : (
+        <>
+          {hasInsufficientStock && showStockWarning && (
+            <View style={styles.warningRow}>
+              <Text style={styles.warningText}>
+                Alguns itens ultrapassam o stock disponível. Ajusta as quantidades.
+              </Text>
+              <Pressable style={styles.inlineCloseButton} onPress={() => setShowStockWarning(false)}>
+                <Text style={styles.inlineCloseButtonText}>X</Text>
+              </Pressable>
+            </View>
+          )}
+          {cart.map((item, idx) => {
+            const { product, quantity, sell_as } = item;
+            const unitP = lineUnitPrice(item);
+            const lineTotal = unitP * quantity;
+            const displayName = (product.name && String(product.name).trim()) || product.sku || 'Produto';
+            const sellHint = cartLineSellHint(displayName, sell_as, product);
+            const key = `${product.id}-${sell_as ?? 's'}-${idx}`;
+
+            return (
+              <View key={key} style={[styles.summaryRow, Platform.OS === 'web' && styles.summaryRowWebCart]}>
+                <View style={[styles.colName, Platform.OS === 'web' && styles.colNameWebCart]}>
+                  <Text style={styles.summaryItemName} numberOfLines={1}>
+                    {displayName}
+                  </Text>
+                  {sellHint ? (
+                    <Text style={styles.summaryItemMeta} numberOfLines={1}>
+                      {sellHint}
+                    </Text>
+                  ) : null}
+                </View>
+
+                <View style={[styles.colQty, Platform.OS === 'web' && styles.colQtyWebCart]}>
+                  <View style={styles.qtyControls}>
+                    <Pressable style={styles.qtyButton} onPress={() => updateCartQty(product.id, sell_as, -1)}>
+                      <Text style={styles.qtyButtonText}>-</Text>
+                    </Pressable>
+                    <Text style={styles.qtyText}>{quantity}</Text>
+                    <Pressable style={styles.qtyButton} onPress={() => updateCartQty(product.id, sell_as, 1)}>
+                      <Text style={styles.qtyButtonText}>+</Text>
+                    </Pressable>
+                  </View>
+                </View>
+
+                <View style={[styles.colUnit, Platform.OS === 'web' && styles.colUnitWebCart]}>
+                  <Text style={styles.summaryPriceText} numberOfLines={1} ellipsizeMode="tail">
+                    Kz {unitP.toFixed(2)}
+                  </Text>
+                </View>
+
+                <View style={[styles.colSubtotal, Platform.OS === 'web' && styles.colSubtotalWebCart]}>
+                  <Text style={styles.summarySubtotalText} numberOfLines={1} ellipsizeMode="tail">
+                    Kz {lineTotal.toFixed(2)}
+                  </Text>
+                </View>
+
+                <Pressable style={styles.removeButton} onPress={() => removeFromCart(product.id, sell_as)}>
+                  <Text style={styles.removeButtonText}>X</Text>
+                </Pressable>
+              </View>
+            );
+          })}
+        </>
+      )}
+    </>
+  );
+
+  /** RN-web: ScrollView dentro de ScrollView com scrollEnabled=false mede altura ~0 e sobrepõe blocos. Usar View. */
+  const webEmbedNoScroll = Platform.OS === 'web' && !fillAvailableHeight && !cartListNeedsScroll;
+
   return (
-    <View style={[styles.paymentCartBlock, styles.paymentBlockStack]}>
-      <Text style={styles.blockLabel}>Itens da venda</Text>
+    <View style={styles.paymentCartBlock}>
+      <Text style={styles.paymentCartTitle}>Itens da venda</Text>
       <Text style={styles.paymentCartHint}>
         {cart.length === 0
           ? 'Nenhum item — adiciona produtos acima'
@@ -120,89 +230,26 @@ function PaymentCartLines({
             : `${cart.length} itens`}
       </Text>
       <CartTableHeaderRow webCart={Platform.OS === 'web'} />
-      <ScrollView
-        style={[
-          styles.summaryList,
-          listVariant === 'stack' && styles.summaryListMobile,
-          Platform.OS === 'web' &&
-            (cart.length === 0
-              ? styles.summaryListWebFix
-              : cartListNeedsScroll
-                ? styles.summaryListWebCartScroll
-                : styles.summaryListWebCartNoScroll),
-        ]}
-        contentContainerStyle={[styles.summaryListContentFix, Platform.OS === 'web' && styles.summaryListContentWeb]}
-        showsVerticalScrollIndicator={cartListNeedsScroll}
-        scrollEnabled={cartListNeedsScroll}
-        nestedScrollEnabled>
-        {cart.length === 0 ? (
-          <Text style={styles.emptyText}>Carrinho vazio. Selecciona produtos para iniciar a venda.</Text>
-        ) : (
-          <>
-            {hasInsufficientStock && showStockWarning && (
-              <View style={styles.warningRow}>
-                <Text style={styles.warningText}>
-                  Alguns itens ultrapassam o stock disponível. Ajusta as quantidades.
-                </Text>
-                <Pressable style={styles.inlineCloseButton} onPress={() => setShowStockWarning(false)}>
-                  <Text style={styles.inlineCloseButtonText}>X</Text>
-                </Pressable>
-              </View>
-            )}
-            {cart.map((item, idx) => {
-              const { product, quantity, sell_as } = item;
-              const unitP = lineUnitPrice(item);
-              const lineTotal = unitP * quantity;
-              const displayName = (product.name && String(product.name).trim()) || product.sku || 'Produto';
-              const sellHint = cartLineSellHint(displayName, sell_as, product);
-              const key = `${product.id}-${sell_as ?? 's'}-${idx}`;
-
-              return (
-                <View key={key} style={[styles.summaryRow, Platform.OS === 'web' && styles.summaryRowWebCart]}>
-                  <View style={[styles.colName, Platform.OS === 'web' && styles.colNameWebCart]}>
-                    <Text style={styles.summaryItemName} numberOfLines={1}>
-                      {displayName}
-                    </Text>
-                    {sellHint ? (
-                      <Text style={styles.summaryItemMeta} numberOfLines={1}>
-                        {sellHint}
-                      </Text>
-                    ) : null}
-                  </View>
-
-                  <View style={[styles.colQty, Platform.OS === 'web' && styles.colQtyWebCart]}>
-                    <View style={styles.qtyControls}>
-                      <Pressable style={styles.qtyButton} onPress={() => updateCartQty(product.id, sell_as, -1)}>
-                        <Text style={styles.qtyButtonText}>-</Text>
-                      </Pressable>
-                      <Text style={styles.qtyText}>{quantity}</Text>
-                      <Pressable style={styles.qtyButton} onPress={() => updateCartQty(product.id, sell_as, 1)}>
-                        <Text style={styles.qtyButtonText}>+</Text>
-                      </Pressable>
-                    </View>
-                  </View>
-
-                  <View style={[styles.colUnit, Platform.OS === 'web' && styles.colUnitWebCart]}>
-                    <Text style={styles.summaryPriceText} numberOfLines={1} ellipsizeMode="tail">
-                      Kz {unitP.toFixed(2)}
-                    </Text>
-                  </View>
-
-                  <View style={[styles.colSubtotal, Platform.OS === 'web' && styles.colSubtotalWebCart]}>
-                    <Text style={styles.summarySubtotalText} numberOfLines={1} ellipsizeMode="tail">
-                      Kz {lineTotal.toFixed(2)}
-                    </Text>
-                  </View>
-
-                  <Pressable style={styles.removeButton} onPress={() => removeFromCart(product.id, sell_as)}>
-                    <Text style={styles.removeButtonText}>X</Text>
-                  </Pressable>
-                </View>
-              );
-            })}
-          </>
-        )}
-      </ScrollView>
+      {webEmbedNoScroll ? (
+        <View
+          style={[
+            styles.paymentCartListEmbed,
+            listVariant === 'stack' && styles.paymentCartListEmbedStack,
+            styles.paymentCartListEmbedWebGrow,
+            { minHeight: intrinsicListMinH },
+          ]}>
+          {listContent}
+        </View>
+      ) : (
+        <ScrollView
+          style={scrollStyle}
+          contentContainerStyle={[styles.summaryListContentFix, Platform.OS === 'web' && styles.summaryListContentWeb]}
+          showsVerticalScrollIndicator={cartListNeedsScroll}
+          scrollEnabled={cartListNeedsScroll}
+          nestedScrollEnabled>
+          {listContent}
+        </ScrollView>
+      )}
     </View>
   );
 }
@@ -1088,6 +1135,7 @@ export default function VendasScreen() {
                       cart={cart}
                       cartListNeedsScroll={cartListNeedsScroll}
                       listVariant="wide"
+                      fillAvailableHeight
                       lineUnitPrice={lineUnitPrice}
                       updateCartQty={updateCartQty}
                       removeFromCart={removeFromCart}
@@ -1453,6 +1501,7 @@ export default function VendasScreen() {
                       cart={cart}
                       cartListNeedsScroll={cartListNeedsScroll}
                       listVariant={isPhone ? 'stack' : 'wide'}
+                      fillAvailableHeight={false}
                       lineUnitPrice={lineUnitPrice}
                       updateCartQty={updateCartQty}
                       removeFromCart={removeFromCart}
@@ -1842,6 +1891,7 @@ export default function VendasScreen() {
                       cart={cart}
                       cartListNeedsScroll={cartListNeedsScroll}
                       listVariant="stack"
+                      fillAvailableHeight={false}
                       lineUnitPrice={lineUnitPrice}
                       updateCartQty={updateCartQty}
                       removeFromCart={removeFromCart}
@@ -2136,8 +2186,9 @@ const styles = StyleSheet.create({
     gap: 8,
   },
 
+  /** Sem flex:1 — dentro do ScrollView do telemóvel, flex:1 estica ao viewport e deixa «buraco» branco + layout RN-web partido. */
   mobilePosLayout: {
-    flex: 1,
+    width: '100%',
     flexDirection: 'column',
     gap: 10,
   },
@@ -2863,7 +2914,6 @@ const styles = StyleSheet.create({
     fontWeight: '900',
     color: '#111827',
     marginBottom: 6,
-    zIndex: 1,
   },
   paymentBlockTopSep: {
     borderTopWidth: 1,
@@ -2886,6 +2936,41 @@ const styles = StyleSheet.create({
     marginTop: 10,
     width: '100%',
     backgroundColor: '#ffffff',
+    flexGrow: 0,
+    flexShrink: 0,
+    alignSelf: 'stretch',
+  },
+  /**
+   * Painel Pagamento com height: auto (web móvel, retrato, ScrollView pai): nunca usar flex:1 no ScrollView
+   * da lista — no RN-web colapsa a 0px e as linhas somem / sobrepõem o bloco Método.
+   */
+  paymentCartListEmbed: {
+    width: '100%',
+    maxWidth: '100%',
+    borderRadius: 14,
+    paddingRight: 2,
+    paddingTop: 6,
+    paddingBottom: 6,
+    backgroundColor: '#f8fafc',
+    flexGrow: 0,
+    flexShrink: 0,
+    alignSelf: 'stretch',
+  },
+  paymentCartListEmbedStack: {
+    minWidth: 0,
+  },
+  /** Lista sem ScrollView no web: ocupar largura total e crescer com o conteúdo. */
+  paymentCartListEmbedWebGrow: {
+    alignSelf: 'stretch',
+    width: '100%',
+    maxWidth: '100%',
+  },
+  paymentCartTitle: {
+    fontSize: 14,
+    fontWeight: '900',
+    color: '#111827',
+    marginBottom: 6,
+    backgroundColor: 'transparent',
   },
   paymentCartHint: {
     fontSize: 12,
