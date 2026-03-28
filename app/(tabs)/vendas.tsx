@@ -667,8 +667,13 @@ export default function VendasScreen() {
                           Platform.OS === 'web' && styles.summaryListWebLandscapeCart,
                           Platform.OS === 'web' && styles.summaryListWebLandscapeCartMinH,
                         ]}
-                        contentContainerStyle={styles.summaryListContentFix}
-                        showsVerticalScrollIndicator={cart.length > 6}
+                        contentContainerStyle={[
+                          styles.summaryListContentFix,
+                          Platform.OS === 'web' && styles.summaryListContentWeb,
+                        ]}
+                        showsVerticalScrollIndicator={
+                          Platform.OS === 'web' ? cart.length > 1 : cart.length > 6
+                        }
                         scrollEnabled={Platform.OS === 'web' || cart.length > 6}
                         nestedScrollEnabled>
                         {cart.length === 0 ? (
@@ -1140,8 +1145,13 @@ export default function VendasScreen() {
 
                     <ScrollView
                       style={[styles.summaryList, Platform.OS === 'web' && styles.summaryListWebFix]}
-                      contentContainerStyle={styles.summaryListContentFix}
-                      showsVerticalScrollIndicator={cart.length > 6}
+                      contentContainerStyle={[
+                        styles.summaryListContentFix,
+                        Platform.OS === 'web' && styles.summaryListContentWeb,
+                      ]}
+                      showsVerticalScrollIndicator={
+                        Platform.OS === 'web' ? cart.length > 1 : cart.length > 6
+                      }
                       scrollEnabled={Platform.OS === 'web' || cart.length > 6}
                       nestedScrollEnabled>
                       {cart.length === 0 ? (
@@ -1624,8 +1634,13 @@ export default function VendasScreen() {
 
                     <ScrollView
                       style={[styles.summaryList, styles.summaryListMobile, Platform.OS === 'web' && styles.summaryListWebFix]}
-                      contentContainerStyle={styles.summaryListContentFix}
-                      showsVerticalScrollIndicator={cart.length > 6}
+                      contentContainerStyle={[
+                        styles.summaryListContentFix,
+                        Platform.OS === 'web' && styles.summaryListContentWeb,
+                      ]}
+                      showsVerticalScrollIndicator={
+                        Platform.OS === 'web' ? cart.length > 1 : cart.length > 6
+                      }
                       scrollEnabled={Platform.OS === 'web' || cart.length > 6}
                       nestedScrollEnabled>
                       {cart.length === 0 ? (
@@ -2318,8 +2333,8 @@ const styles = StyleSheet.create({
     flex: 0,
     flexGrow: 0,
     flexShrink: 0,
-    height: 268,
-    maxHeight: 268,
+    height: 320,
+    maxHeight: 320,
     minHeight: 160,
     overflow: 'hidden',
   },
@@ -2541,6 +2556,11 @@ const styles = StyleSheet.create({
   summaryListContentFix: {
     flexGrow: 1,
     paddingBottom: 4,
+  },
+  /** RN-web: flexGrow:1 on ScrollView content makes multi-row cart list measure as one viewport — only first row visible, no real scroll. */
+  summaryListContentWeb: {
+    flexGrow: 0,
+    width: '100%',
   },
   summaryListMobile: {
     flex: 0,
