@@ -60,7 +60,7 @@ function CartTableHeaderRow({ webCart }: { webCart: boolean }) {
         </View>
         <View style={styles.cartThUnit}>
           <Text style={[styles.th, styles.cartThUnitText]} numberOfLines={1}>
-            Unit.
+            P.unit
           </Text>
         </View>
         <View style={styles.cartThTotal}>
@@ -80,9 +80,41 @@ function CartTableHeaderRow({ webCart }: { webCart: boolean }) {
     <View style={styles.summaryTableHeader}>
       <Text style={[styles.th, styles.thQty]}>Qtd</Text>
       <Text style={[styles.th, styles.thName]}>Produto</Text>
-      <Text style={[styles.th, styles.thUnit]}>Unit</Text>
+      <Text style={[styles.th, styles.thUnit]}>P.unit</Text>
       <Text style={[styles.th, styles.thSubtotal]}>Total</Text>
       <Text style={[styles.th, styles.thRemove]}> </Text>
+    </View>
+  );
+}
+
+function PosPaymentMethodButtons({
+  paymentMethod,
+  setPaymentMethod,
+}: {
+  paymentMethod: 'cash' | 'card' | 'transfer' | 'other';
+  setPaymentMethod: (m: 'cash' | 'card' | 'transfer' | 'other') => void;
+}) {
+  return (
+    <View style={styles.paymentMethodTwoRow}>
+      {(['cash', 'card'] as const).map(method => (
+        <Pressable
+          key={method}
+          style={({ pressed }) => [
+            styles.paymentMethodButton,
+            paymentMethod === method && styles.paymentMethodButtonActive,
+            pressed && styles.chipPressed,
+          ]}
+          onPress={() => setPaymentMethod(method)}>
+          <Text
+            style={[
+              styles.paymentMethodButtonText,
+              paymentMethod === method && styles.paymentMethodButtonTextActive,
+            ]}
+            numberOfLines={1}>
+            {method === 'cash' ? 'Dinheiro' : 'Cartão'}
+          </Text>
+        </Pressable>
+      ))}
     </View>
   );
 }
@@ -220,36 +252,49 @@ function PaymentCartLines({
   const webEmbedNoScroll = Platform.OS === 'web' && !fillAvailableHeight && !cartListNeedsScroll;
 
   return (
-    <View style={styles.paymentCartBlock}>
-      <Text style={styles.paymentCartTitle}>Itens da venda</Text>
-      <Text style={styles.paymentCartHint}>
-        {cart.length === 0
-          ? 'Nenhum item — adiciona produtos acima'
-          : cart.length === 1
-            ? '1 item'
-            : `${cart.length} itens`}
-      </Text>
-      <CartTableHeaderRow webCart={Platform.OS === 'web'} />
-      {webEmbedNoScroll ? (
-        <View
-          style={[
-            styles.paymentCartListEmbed,
-            listVariant === 'stack' && styles.paymentCartListEmbedStack,
-            styles.paymentCartListEmbedWebGrow,
-            { minHeight: intrinsicListMinH },
-          ]}>
-          {listContent}
+    <View style={[styles.paymentCartBlock, fillAvailableHeight && styles.paymentCartBlockFill]}>
+      <View style={styles.paymentCartHeaderBlock}>
+        <Text style={styles.paymentCartTitle}>Itens da venda</Text>
+        <Text style={styles.paymentCartHint}>
+          {cart.length === 0
+            ? 'Nenhum item — adiciona produtos acima'
+            : cart.length === 1
+              ? '1 item'
+              : `${cart.length} itens`}
+        </Text>
+      </View>
+      <View
+        style={[
+          styles.paymentCartTableOuter,
+          fillAvailableHeight && styles.paymentCartTableOuterFill,
+        ]}>
+        <View style={styles.paymentCartTableHeaderWrap}>
+          <CartTableHeaderRow webCart={Platform.OS === 'web'} />
         </View>
-      ) : (
-        <ScrollView
-          style={scrollStyle}
-          contentContainerStyle={[styles.summaryListContentFix, Platform.OS === 'web' && styles.summaryListContentWeb]}
-          showsVerticalScrollIndicator={cartListNeedsScroll}
-          scrollEnabled={cartListNeedsScroll}
-          nestedScrollEnabled>
-          {listContent}
-        </ScrollView>
-      )}
+        {webEmbedNoScroll ? (
+          <View
+            style={[
+              styles.paymentCartListEmbed,
+              listVariant === 'stack' && styles.paymentCartListEmbedStack,
+              styles.paymentCartListEmbedWebGrow,
+              { minHeight: intrinsicListMinH },
+            ]}>
+            {listContent}
+          </View>
+        ) : (
+          <ScrollView
+            style={[
+              scrollStyle,
+              fillAvailableHeight && styles.paymentCartScrollFill,
+            ]}
+            contentContainerStyle={[styles.summaryListContentFix, Platform.OS === 'web' && styles.summaryListContentWeb]}
+            showsVerticalScrollIndicator={cartListNeedsScroll}
+            scrollEnabled={cartListNeedsScroll}
+            nestedScrollEnabled>
+            {listContent}
+          </ScrollView>
+        )}
+      </View>
     </View>
   );
 }
@@ -482,10 +527,48 @@ export default function VendasScreen() {
       : null;
 
   useEffect(() => {
+    if (paymentMethod === 'transfer' || paymentMethod === 'other') {
+      setPaymentMethod('cash');
+    }
+  }, [paymentMethod]);
+
+  useEffect(() => {
+    if (paymentMode === 'split') {
+      setPaymentMode('simple');
+    }
+  }, [paymentMode]);
+
+  useEffect(() => {
     if (paymentMode !== 'simple' || paymentMethod !== 'cash') {
       setCashReceived('');
     }
   }, [paymentMode, paymentMethod]);
+
+  const renderSimplePaymentAmount = () => {
+    const isCash = paymentMethod === 'cash';
+    return (
+      <>
+        <View style={styles.amountRow}>
+          <Text style={styles.amountLabel}>Recebido</Text>
+        </View>
+        <TextInput
+          editable={isCash}
+          style={[styles.posInput, !isCash && styles.posInputReadonly]}
+          keyboardType="decimal-pad"
+          value={isCash ? cashReceived : total.toFixed(2)}
+          placeholder={isCash ? '0' : undefined}
+          placeholderTextColor="#6b7280"
+          onChangeText={isCash ? setCashReceived : undefined}
+        />
+        <View style={styles.amountRow}>
+          <Text style={styles.amountLabel}>Troco</Text>
+          <Text style={styles.amountValueSecondary}>
+            {isCash ? (trocoNumber != null ? `${Math.max(0, trocoNumber).toFixed(2)} Kz` : '—') : '0.00 Kz'}
+          </Text>
+        </View>
+      </>
+    );
+  };
 
   useEffect(() => {
     if (hasInsufficientStock) {
@@ -981,154 +1064,9 @@ export default function VendasScreen() {
                       </View>
                     </View>
 
-                    <View style={[styles.paymentBlock, styles.paymentBlockStack, styles.paymentBlockTopSep]}>
+                    <View style={styles.paymentMethodSection}>
                       <Text style={styles.blockLabel}>Método</Text>
-                      {paymentMode === 'simple' ? (
-                        <>
-                          <View style={isPhone || Platform.OS === 'web' ? styles.paymentRow : styles.paymentRowTablet}>
-                            {(['cash', 'card', 'transfer', 'other'] as const).map(method => (
-                              <Pressable
-                                key={method}
-                                style={({ pressed }) => [
-                                  styles.posChip,
-                                  paymentMethod === method && styles.posChipActive,
-                                  pressed && styles.chipPressed,
-                                  !isPhone && Platform.OS !== 'web' && styles.paymentChip,
-                                  Platform.OS === 'web' && styles.posChipWeb,
-                                ]}
-                                onPress={() => setPaymentMethod(method)}>
-                                <Text
-                                  style={[
-                                    styles.chipText,
-                                    paymentMethod === method && styles.chipTextActive,
-                                  ]}>
-                                  {method === 'cash'
-                                    ? 'Dinheiro'
-                                    : method === 'card'
-                                      ? 'Cartão'
-                                      : method === 'transfer'
-                                        ? 'Transferência'
-                                        : 'Outro'}
-                                </Text>
-                              </Pressable>
-                            ))}
-                          </View>
-
-                          <Pressable
-                            style={({ pressed }) => [
-                              styles.secondaryButton,
-                              pressed && styles.secondaryButtonPressed,
-                            ]}
-                            onPress={() => {
-                              setPaymentMode('split');
-                              const half = Math.round((total / 2) * 100) / 100;
-                              setSplitPayments([
-                                { method: 'cash', amount: half },
-                                { method: 'card', amount: Math.round((total - half) * 100) / 100 },
-                              ]);
-                            }}>
-                            <Text style={styles.secondaryButtonText}>
-                              Pagar parte em dinheiro e parte em cartão
-                            </Text>
-                          </Pressable>
-                        </>
-                      ) : (
-                        <>
-                          <View style={styles.splitHeaderRow}>
-                            <Text style={styles.label}>Pagamento dividido</Text>
-                            <Pressable
-                              style={({ pressed }) => [
-                                styles.secondaryButtonSmall,
-                                pressed && styles.secondaryButtonPressed,
-                              ]}
-                              onPress={() => setPaymentMode('simple')}>
-                              <Text style={styles.secondaryButtonText}>Um só método</Text>
-                            </Pressable>
-                          </View>
-
-                          {splitPayments.map((p, index) => (
-                            <View key={index} style={styles.splitRow}>
-                              <View style={styles.splitMethodCol}>
-                                {(['cash', 'card', 'transfer', 'other'] as const).map(method => (
-                                  <Pressable
-                                    key={method}
-                                    style={({ pressed }) => [
-                                      styles.posChip,
-                                      p.method === method && styles.posChipActive,
-                                      pressed && styles.chipPressed,
-                                      Platform.OS === 'web' && styles.posChipWeb,
-                                    ]}
-                                    onPress={() =>
-                                      setSplitPayments(prev => {
-                                        const next = [...prev];
-                                        next[index] = { ...next[index], method };
-                                        return next;
-                                      })
-                                    }>
-                                    <Text
-                                      style={[
-                                        styles.chipText,
-                                        p.method === method && styles.chipTextActive,
-                                      ]}>
-                                      {method === 'cash'
-                                        ? 'Dinheiro'
-                                        : method === 'card'
-                                          ? 'Cartão'
-                                          : method === 'transfer'
-                                            ? 'Transferência'
-                                            : 'Outro'}
-                                    </Text>
-                                  </Pressable>
-                                ))}
-                              </View>
-
-                              <View style={styles.splitAmountCol}>
-                                <TextInput
-                                  style={styles.posInput}
-                                  keyboardType="decimal-pad"
-                                  value={p.amount > 0 ? String(p.amount) : ''}
-                                  placeholder="0"
-                                  placeholderTextColor="#6b7280"
-                                  onChangeText={txt =>
-                                    setSplitPayments(prev => {
-                                      const next = [...prev];
-                                      const v = parseFloat(txt.replace(',', '.'));
-                                      next[index] = {
-                                        ...next[index],
-                                        amount: !Number.isNaN(v) && v >= 0 ? v : 0,
-                                      };
-                                      return next;
-                                    })
-                                  }
-                                />
-                              </View>
-
-                              {splitPayments.length > 1 && (
-                                <Pressable
-                                  style={styles.removeButton}
-                                  onPress={() =>
-                                    setSplitPayments(prev => prev.filter((_, i) => i !== index))
-                                  }>
-                                  <Text style={styles.removeButtonText}>X</Text>
-                                </Pressable>
-                              )}
-                            </View>
-                          ))}
-
-                          <Pressable
-                            style={({ pressed }) => [
-                              styles.secondaryButtonSmall,
-                              pressed && styles.secondaryButtonPressed,
-                            ]}
-                            onPress={() =>
-                              setSplitPayments(prev => [...prev, { method: 'transfer', amount: 0 }])
-                            }>
-                            <Text style={styles.secondaryButtonText}>+ Adicionar método</Text>
-                          </Pressable>
-
-                          {/* split summary shown in payment amount block */}
-                        </>
-                      )}
+                      <PosPaymentMethodButtons paymentMethod={paymentMethod} setPaymentMethod={setPaymentMethod} />
                     </View>
 
                     <PaymentCartLines
@@ -1145,40 +1083,7 @@ export default function VendasScreen() {
                     />
 
                     <View style={[styles.paymentAmountBlock, styles.paymentAmountTopSep]}>
-                      {paymentMode === 'split' && (
-                        <View style={styles.amountRow}>
-                          <Text style={styles.amountLabel}>Soma pagamentos</Text>
-                          <Text style={styles.amountValue}>
-                            {splitPayments.reduce((s, p) => s + (p.amount || 0), 0).toFixed(2)} Kz
-                          </Text>
-                        </View>
-                      )}
-                    {paymentMode === 'simple' && paymentMethod === 'cash' ? (
-                      <>
-                        <View style={styles.amountRow}>
-                          <Text style={styles.amountLabel}>Recebido</Text>
-                        </View>
-                        <TextInput
-                          style={styles.posInput}
-                          keyboardType="decimal-pad"
-                          value={cashReceived}
-                          placeholder="0"
-                          placeholderTextColor="#6b7280"
-                          onChangeText={setCashReceived}
-                        />
-                        <View style={styles.amountRow}>
-                          <Text style={styles.amountLabel}>Troco</Text>
-                          <Text style={styles.amountValueSecondary}>
-                            {trocoNumber != null ? `${Math.max(0, trocoNumber).toFixed(2)} Kz` : '—'}
-                          </Text>
-                        </View>
-                      </>
-                    ) : (
-                      <View style={styles.amountRow}>
-                        <Text style={styles.amountLabel}>Troco</Text>
-                        <Text style={styles.amountValueSecondary}>—</Text>
-                      </View>
-                    )}
+                      {renderSimplePaymentAmount()}
                     </View>
 
                     <View style={styles.paymentFinalBlock}>
@@ -1347,154 +1252,9 @@ export default function VendasScreen() {
                       </View>
                     </View>
 
-                    <View style={[styles.paymentBlock, styles.paymentBlockStack, styles.paymentBlockTopSep]}>
+                    <View style={styles.paymentMethodSection}>
                       <Text style={styles.blockLabel}>Método</Text>
-                      {paymentMode === 'simple' ? (
-                        <>
-                          <View style={isPhone || Platform.OS === 'web' ? styles.paymentRow : styles.paymentRowTablet}>
-                            {(['cash', 'card', 'transfer', 'other'] as const).map(method => (
-                              <Pressable
-                                key={method}
-                                style={({ pressed }) => [
-                                  styles.posChip,
-                                  paymentMethod === method && styles.posChipActive,
-                                  pressed && styles.chipPressed,
-                                  !isPhone && Platform.OS !== 'web' && styles.paymentChip,
-                                  Platform.OS === 'web' && styles.posChipWeb,
-                                ]}
-                                onPress={() => setPaymentMethod(method)}>
-                                <Text
-                                  style={[
-                                    styles.chipText,
-                                    paymentMethod === method && styles.chipTextActive,
-                                  ]}>
-                                  {method === 'cash'
-                                    ? 'Dinheiro'
-                                    : method === 'card'
-                                      ? 'Cartão'
-                                      : method === 'transfer'
-                                        ? 'Transferência'
-                                        : 'Outro'}
-                                </Text>
-                              </Pressable>
-                            ))}
-                          </View>
-
-                          <Pressable
-                            style={({ pressed }) => [
-                              styles.secondaryButton,
-                              pressed && styles.secondaryButtonPressed,
-                            ]}
-                            onPress={() => {
-                              setPaymentMode('split');
-                              const half = Math.round((total / 2) * 100) / 100;
-                              setSplitPayments([
-                                { method: 'cash', amount: half },
-                                { method: 'card', amount: Math.round((total - half) * 100) / 100 },
-                              ]);
-                            }}>
-                            <Text style={styles.secondaryButtonText}>
-                              Pagar parte em dinheiro e parte em cartão
-                            </Text>
-                          </Pressable>
-                        </>
-                      ) : (
-                        <>
-                          <View style={styles.splitHeaderRow}>
-                            <Text style={styles.label}>Pagamento dividido</Text>
-                            <Pressable
-                              style={({ pressed }) => [
-                                styles.secondaryButtonSmall,
-                                pressed && styles.secondaryButtonPressed,
-                              ]}
-                              onPress={() => setPaymentMode('simple')}>
-                              <Text style={styles.secondaryButtonText}>Um só método</Text>
-                            </Pressable>
-                          </View>
-
-                          {splitPayments.map((p, index) => (
-                            <View key={index} style={styles.splitRow}>
-                              <View style={styles.splitMethodCol}>
-                                {(['cash', 'card', 'transfer', 'other'] as const).map(method => (
-                                  <Pressable
-                                    key={method}
-                                    style={({ pressed }) => [
-                                      styles.posChip,
-                                      p.method === method && styles.posChipActive,
-                                      pressed && styles.chipPressed,
-                                      Platform.OS === 'web' && styles.posChipWeb,
-                                    ]}
-                                    onPress={() =>
-                                      setSplitPayments(prev => {
-                                        const next = [...prev];
-                                        next[index] = { ...next[index], method };
-                                        return next;
-                                      })
-                                    }>
-                                    <Text
-                                      style={[
-                                        styles.chipText,
-                                        p.method === method && styles.chipTextActive,
-                                      ]}>
-                                      {method === 'cash'
-                                        ? 'Dinheiro'
-                                        : method === 'card'
-                                          ? 'Cartão'
-                                          : method === 'transfer'
-                                            ? 'Transferência'
-                                            : 'Outro'}
-                                    </Text>
-                                  </Pressable>
-                                ))}
-                              </View>
-
-                              <View style={styles.splitAmountCol}>
-                                <TextInput
-                                  style={styles.posInput}
-                                  keyboardType="decimal-pad"
-                                  value={p.amount > 0 ? String(p.amount) : ''}
-                                  placeholder="0"
-                                  placeholderTextColor="#6b7280"
-                                  onChangeText={txt =>
-                                    setSplitPayments(prev => {
-                                      const next = [...prev];
-                                      const v = parseFloat(txt.replace(',', '.'));
-                                      next[index] = {
-                                        ...next[index],
-                                        amount: !Number.isNaN(v) && v >= 0 ? v : 0,
-                                      };
-                                      return next;
-                                    })
-                                  }
-                                />
-                              </View>
-
-                              {splitPayments.length > 1 && (
-                                <Pressable
-                                  style={styles.removeButton}
-                                  onPress={() =>
-                                    setSplitPayments(prev => prev.filter((_, i) => i !== index))
-                                  }>
-                                  <Text style={styles.removeButtonText}>X</Text>
-                                </Pressable>
-                              )}
-                            </View>
-                          ))}
-
-                          <Pressable
-                            style={({ pressed }) => [
-                              styles.secondaryButtonSmall,
-                              pressed && styles.secondaryButtonPressed,
-                            ]}
-                            onPress={() =>
-                              setSplitPayments(prev => [...prev, { method: 'transfer', amount: 0 }])
-                            }>
-                            <Text style={styles.secondaryButtonText}>+ Adicionar método</Text>
-                          </Pressable>
-
-                          {/* split summary shown in payment amount block */}
-                        </>
-                      )}
+                      <PosPaymentMethodButtons paymentMethod={paymentMethod} setPaymentMethod={setPaymentMethod} />
                     </View>
 
                     <PaymentCartLines
@@ -1511,40 +1271,7 @@ export default function VendasScreen() {
                     />
 
                     <View style={[styles.paymentAmountBlock, styles.paymentAmountTopSep]}>
-                      {paymentMode === 'split' && (
-                        <View style={styles.amountRow}>
-                          <Text style={styles.amountLabel}>Soma pagamentos</Text>
-                          <Text style={styles.amountValue}>
-                            {splitPayments.reduce((s, p) => s + (p.amount || 0), 0).toFixed(2)} Kz
-                          </Text>
-                        </View>
-                      )}
-                    {paymentMode === 'simple' && paymentMethod === 'cash' ? (
-                      <>
-                        <View style={styles.amountRow}>
-                          <Text style={styles.amountLabel}>Recebido</Text>
-                        </View>
-                        <TextInput
-                          style={styles.posInput}
-                          keyboardType="decimal-pad"
-                          value={cashReceived}
-                          placeholder="0"
-                          placeholderTextColor="#6b7280"
-                          onChangeText={setCashReceived}
-                        />
-                        <View style={styles.amountRow}>
-                          <Text style={styles.amountLabel}>Troco</Text>
-                          <Text style={styles.amountValueSecondary}>
-                            {trocoNumber != null ? `${Math.max(0, trocoNumber).toFixed(2)} Kz` : '—'}
-                          </Text>
-                        </View>
-                      </>
-                    ) : (
-                      <View style={styles.amountRow}>
-                        <Text style={styles.amountLabel}>Troco</Text>
-                        <Text style={styles.amountValueSecondary}>—</Text>
-                      </View>
-                    )}
+                      {renderSimplePaymentAmount()}
                     </View>
 
                     <View style={styles.paymentFinalBlock}>
@@ -1762,129 +1489,9 @@ export default function VendasScreen() {
                       </View>
                     </View>
 
-                    <View style={[styles.paymentBlock, styles.paymentBlockStack, styles.paymentBlockTopSep]}>
+                    <View style={styles.paymentMethodSection}>
                       <Text style={styles.blockLabel}>Método</Text>
-                      {paymentMode === 'simple' ? (
-                        <>
-                          <View style={styles.paymentRow}>
-                            {(['cash', 'card', 'transfer', 'other'] as const).map(method => (
-                              <Pressable
-                                key={method}
-                                style={({ pressed }) => [
-                                  styles.posChip,
-                                  paymentMethod === method && styles.posChipActive,
-                                  pressed && styles.chipPressed,
-                                  Platform.OS === 'web' && styles.posChipWeb,
-                                ]}
-                                onPress={() => setPaymentMethod(method)}>
-                                <Text
-                                  style={[styles.chipText, paymentMethod === method && styles.chipTextActive]}
-                                  numberOfLines={1}
-                                  ellipsizeMode="tail">
-                                  {method === 'cash'
-                                    ? 'Dinheiro'
-                                    : method === 'card'
-                                      ? 'Cartão'
-                                      : method === 'transfer'
-                                        ? 'Transferência'
-                                        : 'Outro'}
-                                </Text>
-                              </Pressable>
-                            ))}
-                          </View>
-
-                          <Pressable
-                            style={({ pressed }) => [styles.secondaryButton, pressed && styles.secondaryButtonPressed]}
-                            onPress={() => {
-                              setPaymentMode('split');
-                              const half = Math.round((total / 2) * 100) / 100;
-                              setSplitPayments([
-                                { method: 'cash', amount: half },
-                                { method: 'card', amount: Math.round((total - half) * 100) / 100 },
-                              ]);
-                            }}>
-                            <Text style={styles.secondaryButtonText}>Pagar parte em dinheiro e parte em cartão</Text>
-                          </Pressable>
-                        </>
-                      ) : (
-                        <>
-                          <View style={styles.splitHeaderRow}>
-                            <Text style={styles.label}>Pagamento dividido</Text>
-                            <Pressable
-                              style={({ pressed }) => [styles.secondaryButtonSmall, pressed && styles.secondaryButtonPressed]}
-                              onPress={() => setPaymentMode('simple')}>
-                              <Text style={styles.secondaryButtonText}>Um só método</Text>
-                            </Pressable>
-                          </View>
-
-                          {splitPayments.map((p, index) => (
-                            <View key={index} style={styles.splitRow}>
-                              <View style={styles.splitMethodCol}>
-                                {(['cash', 'card', 'transfer', 'other'] as const).map(method => (
-                                  <Pressable
-                                    key={method}
-                                    style={({ pressed }) => [
-                                      styles.posChip,
-                                      p.method === method && styles.posChipActive,
-                                      pressed && styles.chipPressed,
-                                      Platform.OS === 'web' && styles.posChipWeb,
-                                    ]}
-                                    onPress={() =>
-                                      setSplitPayments(prev => {
-                                        const next = [...prev];
-                                        next[index] = { ...next[index], method };
-                                        return next;
-                                      })
-                                    }>
-                                    <Text
-                                      style={[styles.chipText, p.method === method && styles.chipTextActive]}
-                                      numberOfLines={1}
-                                      ellipsizeMode="tail">
-                                      {method === 'cash'
-                                        ? 'Dinheiro'
-                                        : method === 'card'
-                                          ? 'Cartão'
-                                          : method === 'transfer'
-                                            ? 'Transferência'
-                                            : 'Outro'}
-                                    </Text>
-                                  </Pressable>
-                                ))}
-                              </View>
-
-                              <View style={styles.splitAmountCol}>
-                                <TextInput
-                                  style={styles.posInput}
-                                  keyboardType="decimal-pad"
-                                  value={p.amount > 0 ? String(p.amount) : ''}
-                                  placeholder="0"
-                                  placeholderTextColor="#6b7280"
-                                  onChangeText={txt =>
-                                    setSplitPayments(prev => {
-                                      const next = [...prev];
-                                      const v = parseFloat(txt.replace(',', '.'));
-                                      next[index] = { ...next[index], amount: !Number.isNaN(v) && v >= 0 ? v : 0 };
-                                      return next;
-                                    })
-                                  }
-                                />
-                              </View>
-
-                              {splitPayments.length > 1 && (
-                                <Pressable style={styles.removeButton} onPress={() => setSplitPayments(prev => prev.filter((_, i) => i !== index))}>
-                                  <Text style={styles.removeButtonText}>X</Text>
-                                </Pressable>
-                              )}
-                            </View>
-                          ))}
-
-                          <Pressable
-                            style={({ pressed }) => [styles.secondaryButtonSmall, pressed && styles.secondaryButtonPressed]}
-                            onPress={() => setSplitPayments(prev => [...prev, { method: 'transfer', amount: 0 }])}>
-                            <Text style={styles.secondaryButtonText}>+ Adicionar método</Text>
-                          </Pressable>
-                        </>
-                      )}
+                      <PosPaymentMethodButtons paymentMethod={paymentMethod} setPaymentMethod={setPaymentMethod} />
                     </View>
 
                     <PaymentCartLines
@@ -1901,40 +1508,7 @@ export default function VendasScreen() {
                     />
 
                     <View style={[styles.paymentAmountBlock, styles.paymentAmountTopSep]}>
-                      {paymentMode === 'split' && (
-                        <View style={styles.amountRow}>
-                          <Text style={styles.amountLabel}>Soma pagamentos</Text>
-                          <Text style={styles.amountValue}>{splitPayments.reduce((s, p) => s + (p.amount || 0), 0).toFixed(2)} Kz</Text>
-                        </View>
-                      )}
-
-                      {paymentMode === 'simple' && paymentMethod === 'cash' ? (
-                        <>
-                          <View style={styles.amountRow}>
-                            <Text style={styles.amountLabel}>Recebido</Text>
-                          </View>
-                          <TextInput
-                            style={styles.posInput}
-                            keyboardType="decimal-pad"
-                            value={cashReceived}
-                            placeholder="0"
-                            placeholderTextColor="#6b7280"
-                            onChangeText={setCashReceived}
-                          />
-
-                          <View style={styles.amountRow}>
-                            <Text style={styles.amountLabel}>Troco</Text>
-                            <Text style={styles.amountValueSecondary}>
-                              {trocoNumber != null ? `${Math.max(0, trocoNumber).toFixed(2)} Kz` : '—'}
-                            </Text>
-                          </View>
-                        </>
-                      ) : (
-                        <View style={styles.amountRow}>
-                          <Text style={styles.amountLabel}>Troco</Text>
-                          <Text style={styles.amountValueSecondary}>—</Text>
-                        </View>
-                      )}
+                      {renderSimplePaymentAmount()}
                     </View>
 
                     <View style={styles.paymentFinalBlock}>
@@ -2263,6 +1837,9 @@ const styles = StyleSheet.create({
     borderColor: '#475569',
     padding: 8,
     gap: 8,
+    flexDirection: 'column',
+    minHeight: 0,
+    alignSelf: 'stretch',
   },
   paymentPanelWeb: {
     flex: 0.34,
@@ -2324,38 +1901,38 @@ const styles = StyleSheet.create({
 
   /** Web cart header row: outer gap; cells are Views (CartTableHeaderRow), not flex Text. */
   summaryTableHeaderWebCart: {
-    gap: 6,
+    gap: 4,
     paddingHorizontal: 4,
   },
   cartThProd: {
     flex: 1,
     flexShrink: 1,
-    minWidth: 80,
-    maxWidth: 300,
+    minWidth: 56,
+    maxWidth: 280,
     justifyContent: 'center',
     alignItems: 'flex-start',
   },
   cartThQty: {
-    width: 108,
-    minWidth: 108,
+    width: 100,
+    minWidth: 100,
     alignItems: 'center',
     justifyContent: 'center',
   },
   cartThUnit: {
-    width: 86,
-    minWidth: 86,
+    width: 74,
+    minWidth: 74,
     alignItems: 'flex-end',
     justifyContent: 'center',
   },
   cartThTotal: {
-    width: 90,
-    minWidth: 90,
+    width: 76,
+    minWidth: 76,
     alignItems: 'flex-end',
     justifyContent: 'center',
   },
   cartThRemove: {
-    width: 44,
-    minWidth: 44,
+    width: 40,
+    minWidth: 40,
     alignItems: 'center',
     justifyContent: 'center',
   },
@@ -2385,35 +1962,33 @@ const styles = StyleSheet.create({
     flex: 0,
     flexGrow: 0,
     flexShrink: 0,
-    minWidth: 108,
-    width: 108,
+    minWidth: 100,
+    width: 100,
   },
   colUnitWebCart: {
     flex: 0,
     flexGrow: 0,
     flexShrink: 0,
-    minWidth: 86,
-    width: 86,
+    minWidth: 74,
+    width: 74,
     alignItems: 'flex-end',
   },
   colSubtotalWebCart: {
     flex: 0,
     flexGrow: 0,
     flexShrink: 0,
-    minWidth: 90,
-    width: 90,
+    minWidth: 76,
+    width: 76,
     alignItems: 'flex-end',
   },
 
   summaryList: {
     flex: 1,
-    borderRadius: 4,
+    borderRadius: 0,
     paddingRight: 0,
     paddingTop: 0,
     paddingBottom: 0,
     backgroundColor: '#ffffff',
-    borderWidth: 1,
-    borderColor: '#64748b',
     overflow: 'hidden',
   },
   /** react-native-web: ScrollView with scrollEnabled false often gets 0 height; minHeight + content flex fixes cart rows. */
@@ -2867,6 +2442,9 @@ const styles = StyleSheet.create({
   paymentAmountBlock: {
     gap: 10,
     paddingVertical: 6,
+    flexShrink: 0,
+    width: '100%',
+    alignSelf: 'stretch',
   },
   amountRow: {
     flexDirection: 'row',
@@ -2893,6 +2471,9 @@ const styles = StyleSheet.create({
     paddingTop: 8,
     borderTopWidth: 1,
     borderTopColor: '#94a3b8',
+    flexShrink: 0,
+    width: '100%',
+    alignSelf: 'stretch',
   },
   panelTitleSmall: {
     fontSize: 16,
@@ -2955,6 +2536,51 @@ const styles = StyleSheet.create({
     marginTop: 6,
     backgroundColor: 'transparent',
   },
+  paymentMethodSection: {
+    width: '100%',
+    flexGrow: 0,
+    flexShrink: 0,
+    alignSelf: 'stretch',
+    paddingTop: 10,
+    marginTop: 6,
+    borderTopWidth: 1,
+    borderTopColor: '#94a3b8',
+    backgroundColor: '#f8fafc',
+  },
+  paymentMethodTwoRow: {
+    flexDirection: 'row',
+    gap: 8,
+    width: '100%',
+    alignSelf: 'stretch',
+  },
+  paymentMethodButton: {
+    flex: 1,
+    minHeight: 44,
+    borderRadius: 4,
+    borderWidth: 1,
+    borderColor: '#94a3b8',
+    backgroundColor: '#e2e8f0',
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingVertical: 10,
+    paddingHorizontal: 8,
+  },
+  paymentMethodButtonActive: {
+    backgroundColor: '#15803d',
+    borderColor: '#14532d',
+  },
+  paymentMethodButtonText: {
+    fontSize: 13,
+    fontWeight: '800',
+    color: '#1e293b',
+  },
+  paymentMethodButtonTextActive: {
+    color: '#ffffff',
+  },
+  posInputReadonly: {
+    backgroundColor: '#e2e8f0',
+    color: '#475569',
+  },
   paymentCartBlock: {
     borderTopWidth: 1,
     borderTopColor: '#94a3b8',
@@ -2966,6 +2592,41 @@ const styles = StyleSheet.create({
     flexShrink: 0,
     alignSelf: 'stretch',
   },
+  paymentCartBlockFill: {
+    flex: 1,
+    minHeight: 0,
+    minWidth: 0,
+  },
+  paymentCartHeaderBlock: {
+    width: '100%',
+    flexShrink: 0,
+    alignSelf: 'stretch',
+  },
+  paymentCartTableOuter: {
+    width: '100%',
+    alignSelf: 'stretch',
+    flexShrink: 0,
+    borderWidth: 1,
+    borderColor: '#64748b',
+    borderRadius: 4,
+    backgroundColor: '#ffffff',
+    overflow: 'hidden',
+  },
+  paymentCartTableOuterFill: {
+    flex: 1,
+    minHeight: 100,
+    minWidth: 0,
+  },
+  paymentCartTableHeaderWrap: {
+    width: '100%',
+    flexShrink: 0,
+  },
+  paymentCartScrollFill: {
+    flex: 1,
+    minHeight: 0,
+    width: '100%',
+    alignSelf: 'stretch',
+  },
   /**
    * Painel Pagamento com height: auto (web móvel, retrato, ScrollView pai): nunca usar flex:1 no ScrollView
    * da lista — no RN-web colapsa a 0px e as linhas somem / sobrepõem o bloco Método.
@@ -2973,13 +2634,11 @@ const styles = StyleSheet.create({
   paymentCartListEmbed: {
     width: '100%',
     maxWidth: '100%',
-    borderRadius: 4,
+    borderRadius: 0,
     paddingRight: 0,
     paddingTop: 0,
     paddingBottom: 0,
     backgroundColor: '#ffffff',
-    borderWidth: 1,
-    borderColor: '#64748b',
     flexGrow: 0,
     flexShrink: 0,
     alignSelf: 'stretch',
@@ -3125,6 +2784,8 @@ const styles = StyleSheet.create({
     height: 'auto',
     padding: 8,
     gap: 8,
+    flexDirection: 'column',
+    width: '100%',
   },
   paymentPanelMobileStack: {
     flex: 0,
@@ -3134,12 +2795,16 @@ const styles = StyleSheet.create({
     padding: 8,
     gap: 8,
     alignSelf: 'stretch',
+    flexDirection: 'column',
+    width: '100%',
   },
   paymentPanelTabletPortrait: {
     flex: 0,
     minWidth: 0,
     maxWidth: 9999,
     height: 'auto',
+    flexDirection: 'column',
+    width: '100%',
   },
 
   categoryBarMobile: {
