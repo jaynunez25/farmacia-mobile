@@ -87,6 +87,126 @@ function CartTableHeaderRow({ webCart }: { webCart: boolean }) {
   );
 }
 
+/** Lista do carrinho dentro do painel Pagamento (substitui o bloco separado «Venda Atual»). */
+function PaymentCartLines({
+  cart,
+  cartListNeedsScroll,
+  listVariant,
+  lineUnitPrice,
+  updateCartQty,
+  removeFromCart,
+  hasInsufficientStock,
+  showStockWarning,
+  setShowStockWarning,
+}: {
+  cart: CartItem[];
+  cartListNeedsScroll: boolean;
+  listVariant: 'wide' | 'stack';
+  lineUnitPrice: (item: CartItem) => number;
+  updateCartQty: (productId: number, sellAs: 'box' | 'unit' | undefined, delta: number) => void;
+  removeFromCart: (productId: number, sellAs: 'box' | 'unit' | undefined) => void;
+  hasInsufficientStock: boolean;
+  showStockWarning: boolean;
+  setShowStockWarning: (v: boolean) => void;
+}) {
+  return (
+    <View style={[styles.paymentCartBlock, styles.paymentBlockStack]}>
+      <Text style={styles.blockLabel}>Itens da venda</Text>
+      <Text style={styles.paymentCartHint}>
+        {cart.length === 0
+          ? 'Nenhum item — adiciona produtos acima'
+          : cart.length === 1
+            ? '1 item'
+            : `${cart.length} itens`}
+      </Text>
+      <CartTableHeaderRow webCart={Platform.OS === 'web'} />
+      <ScrollView
+        style={[
+          styles.summaryList,
+          listVariant === 'stack' && styles.summaryListMobile,
+          Platform.OS === 'web' &&
+            (cart.length === 0
+              ? styles.summaryListWebFix
+              : cartListNeedsScroll
+                ? styles.summaryListWebCartScroll
+                : styles.summaryListWebCartNoScroll),
+        ]}
+        contentContainerStyle={[styles.summaryListContentFix, Platform.OS === 'web' && styles.summaryListContentWeb]}
+        showsVerticalScrollIndicator={cartListNeedsScroll}
+        scrollEnabled={cartListNeedsScroll}
+        nestedScrollEnabled>
+        {cart.length === 0 ? (
+          <Text style={styles.emptyText}>Carrinho vazio. Selecciona produtos para iniciar a venda.</Text>
+        ) : (
+          <>
+            {hasInsufficientStock && showStockWarning && (
+              <View style={styles.warningRow}>
+                <Text style={styles.warningText}>
+                  Alguns itens ultrapassam o stock disponível. Ajusta as quantidades.
+                </Text>
+                <Pressable style={styles.inlineCloseButton} onPress={() => setShowStockWarning(false)}>
+                  <Text style={styles.inlineCloseButtonText}>X</Text>
+                </Pressable>
+              </View>
+            )}
+            {cart.map((item, idx) => {
+              const { product, quantity, sell_as } = item;
+              const unitP = lineUnitPrice(item);
+              const lineTotal = unitP * quantity;
+              const displayName = (product.name && String(product.name).trim()) || product.sku || 'Produto';
+              const sellHint = cartLineSellHint(displayName, sell_as, product);
+              const key = `${product.id}-${sell_as ?? 's'}-${idx}`;
+
+              return (
+                <View key={key} style={[styles.summaryRow, Platform.OS === 'web' && styles.summaryRowWebCart]}>
+                  <View style={[styles.colName, Platform.OS === 'web' && styles.colNameWebCart]}>
+                    <Text style={styles.summaryItemName} numberOfLines={1}>
+                      {displayName}
+                    </Text>
+                    {sellHint ? (
+                      <Text style={styles.summaryItemMeta} numberOfLines={1}>
+                        {sellHint}
+                      </Text>
+                    ) : null}
+                  </View>
+
+                  <View style={[styles.colQty, Platform.OS === 'web' && styles.colQtyWebCart]}>
+                    <View style={styles.qtyControls}>
+                      <Pressable style={styles.qtyButton} onPress={() => updateCartQty(product.id, sell_as, -1)}>
+                        <Text style={styles.qtyButtonText}>-</Text>
+                      </Pressable>
+                      <Text style={styles.qtyText}>{quantity}</Text>
+                      <Pressable style={styles.qtyButton} onPress={() => updateCartQty(product.id, sell_as, 1)}>
+                        <Text style={styles.qtyButtonText}>+</Text>
+                      </Pressable>
+                    </View>
+                  </View>
+
+                  <View style={[styles.colUnit, Platform.OS === 'web' && styles.colUnitWebCart]}>
+                    <Text style={styles.summaryPriceText} numberOfLines={1} ellipsizeMode="tail">
+                      Kz {unitP.toFixed(2)}
+                    </Text>
+                  </View>
+
+                  <View style={[styles.colSubtotal, Platform.OS === 'web' && styles.colSubtotalWebCart]}>
+                    <Text style={styles.summarySubtotalText} numberOfLines={1} ellipsizeMode="tail">
+                      Kz {lineTotal.toFixed(2)}
+                    </Text>
+                  </View>
+
+                  <Pressable style={styles.removeButton} onPress={() => removeFromCart(product.id, sell_as)}>
+                    <Text style={styles.removeButtonText}>X</Text>
+                  </Pressable>
+                </View>
+              );
+            })}
+          </>
+        )}
+      </ScrollView>
+    </View>
+  );
+}
+
 export default function VendasScreen() {
   const router = useRouter();
   const { width, height } = useWindowDimensions();
@@ -655,126 +775,6 @@ export default function VendasScreen() {
               {isTablet ? (isTabletLandscape ? (
                 <View style={[styles.posRowLayout, Platform.OS === 'web' && styles.posRowLayoutWeb]}>
                   <View style={[styles.leftArea, Platform.OS === 'web' && styles.leftAreaWeb]}>
-                    <View
-                      style={[
-                        styles.summaryPanel,
-                        Platform.OS === 'web' && styles.summaryPanelWebLandscape,
-                        Platform.OS === 'web' && cartListNeedsScroll && styles.summaryPanelWebLandscapeCapped,
-                      ]}>
-                      <View style={styles.summaryHeader}>
-                        <View style={{ flex: 1 }}>
-                          <Text style={styles.panelTitle}>Venda Atual</Text>
-                          <Text style={styles.panelSubtitle}>{cart.length} itens</Text>
-                        </View>
-                      </View>
-
-                      <CartTableHeaderRow webCart={Platform.OS === 'web'} />
-
-                      <ScrollView
-                        style={[
-                          styles.summaryList,
-                          Platform.OS === 'web' &&
-                            (cart.length === 0
-                              ? styles.summaryListWebFix
-                              : cartListNeedsScroll
-                                ? styles.summaryListWebCartScroll
-                                : styles.summaryListWebCartNoScroll),
-                        ]}
-                        contentContainerStyle={[
-                          styles.summaryListContentFix,
-                          Platform.OS === 'web' && styles.summaryListContentWeb,
-                        ]}
-                        showsVerticalScrollIndicator={cartListNeedsScroll}
-                        scrollEnabled={cartListNeedsScroll}
-                        nestedScrollEnabled>
-                        {cart.length === 0 ? (
-                          <Text style={styles.emptyText}>Carrinho vazio. Selecciona produtos para iniciar a venda.</Text>
-                        ) : (
-                          <>
-                            {hasInsufficientStock && showStockWarning && (
-                              <View style={styles.warningRow}>
-                                <Text style={styles.warningText}>
-                                  Alguns itens ultrapassam o stock disponível. Ajusta as quantidades.
-                                </Text>
-                                <Pressable style={styles.inlineCloseButton} onPress={() => setShowStockWarning(false)}>
-                                  <Text style={styles.inlineCloseButtonText}>X</Text>
-                                </Pressable>
-                              </View>
-                            )}
-                            {cart.map((item, idx) => {
-                              const { product, quantity, sell_as } = item;
-                              const unitP = lineUnitPrice(item);
-                              const lineTotal = unitP * quantity;
-                              const displayName = (product.name && String(product.name).trim()) || product.sku || 'Produto';
-                              const sellHint = cartLineSellHint(displayName, sell_as, product);
-
-                              const key = `${product.id}-${sell_as ?? 's'}-${idx}`;
-
-                              return (
-                                <View key={key} style={[styles.summaryRow, Platform.OS === 'web' && styles.summaryRowWebCart]}>
-                                  <View style={[styles.colName, Platform.OS === 'web' && styles.colNameWebCart]}>
-                                    <Text style={styles.summaryItemName} numberOfLines={1}>
-                                      {displayName}
-                                    </Text>
-                                    {sellHint ? (
-                                      <Text style={styles.summaryItemMeta} numberOfLines={1}>
-                                        {sellHint}
-                                      </Text>
-                                    ) : null}
-                                  </View>
-
-                                  <View style={[styles.colQty, Platform.OS === 'web' && styles.colQtyWebCart]}>
-                                    <View style={styles.qtyControls}>
-                                      <Pressable
-                                        style={styles.qtyButton}
-                                        onPress={() => updateCartQty(product.id, sell_as, -1)}>
-                                        <Text style={styles.qtyButtonText}>-</Text>
-                                      </Pressable>
-                                      <Text style={styles.qtyText}>{quantity}</Text>
-                                      <Pressable
-                                        style={styles.qtyButton}
-                                        onPress={() => updateCartQty(product.id, sell_as, 1)}>
-                                        <Text style={styles.qtyButtonText}>+</Text>
-                                      </Pressable>
-                                    </View>
-                                  </View>
-
-                                  <View style={[styles.colUnit, Platform.OS === 'web' && styles.colUnitWebCart]}>
-                                    <Text
-                                      style={styles.summaryPriceText}
-                                      numberOfLines={1}
-                                      ellipsizeMode="tail">
-                                      Kz {unitP.toFixed(2)}
-                                    </Text>
-                                  </View>
-
-                                  <View style={[styles.colSubtotal, Platform.OS === 'web' && styles.colSubtotalWebCart]}>
-                                    <Text
-                                      style={styles.summarySubtotalText}
-                                      numberOfLines={1}
-                                      ellipsizeMode="tail">
-                                      Kz {lineTotal.toFixed(2)}
-                                    </Text>
-                                  </View>
-
-                                  <Pressable
-                                    style={styles.removeButton}
-                                    onPress={() => removeFromCart(product.id, sell_as)}>
-                                    <Text style={styles.removeButtonText}>X</Text>
-                                  </Pressable>
-                                </View>
-                              );
-                            })}
-                          </>
-                        )}
-                      </ScrollView>
-
-                      <View style={styles.summaryFooter}>
-                        <Text style={styles.summaryFooterLabel}>Total</Text>
-                        <Text style={styles.summaryFooterValue}>{total.toFixed(2)} Kz</Text>
-                      </View>
-                    </View>
-
                     <View style={[styles.productPanel, Platform.OS === 'web' && styles.productPanelWebLandscape]}>
                       <View style={styles.productPanelHeader}>
                         <View style={{ flex: 1 }}>
@@ -934,7 +934,7 @@ export default function VendasScreen() {
                       </View>
                     </View>
 
-                    <View style={[styles.paymentBlock, styles.paymentBlockTopSep]}>
+                    <View style={[styles.paymentBlock, styles.paymentBlockStack, styles.paymentBlockTopSep]}>
                       <Text style={styles.blockLabel}>Método</Text>
                       {paymentMode === 'simple' ? (
                         <>
@@ -1084,6 +1084,18 @@ export default function VendasScreen() {
                       )}
                     </View>
 
+                    <PaymentCartLines
+                      cart={cart}
+                      cartListNeedsScroll={cartListNeedsScroll}
+                      listVariant="wide"
+                      lineUnitPrice={lineUnitPrice}
+                      updateCartQty={updateCartQty}
+                      removeFromCart={removeFromCart}
+                      hasInsufficientStock={hasInsufficientStock}
+                      showStockWarning={showStockWarning}
+                      setShowStockWarning={setShowStockWarning}
+                    />
+
                     <View style={[styles.paymentAmountBlock, styles.paymentAmountTopSep]}>
                       {paymentMode === 'split' && (
                         <View style={styles.amountRow}>
@@ -1140,125 +1152,6 @@ export default function VendasScreen() {
                 </View>
               ) : (
                 <View style={[styles.posColumnLayout, isPhone && styles.posColumnLayoutMobile]}>
-                  <View
-                    style={[
-                      styles.summaryPanel,
-                      isPhone ? styles.summaryPanelMobile : styles.summaryPanelTabletPortrait,
-                      Platform.OS === 'web' && !isPhone && styles.summaryPanelTabletPortraitWeb,
-                    ]}>
-                    <View style={styles.summaryHeader}>
-                      <View style={{ flex: 1 }}>
-                        <Text style={styles.panelTitle}>Venda Atual</Text>
-                        <Text style={styles.panelSubtitle}>{cart.length} itens</Text>
-                      </View>
-                    </View>
-
-                    <CartTableHeaderRow webCart={Platform.OS === 'web'} />
-
-                    <ScrollView
-                      style={[
-                        styles.summaryList,
-                        Platform.OS === 'web' &&
-                          (cart.length === 0
-                            ? styles.summaryListWebFix
-                            : cartListNeedsScroll
-                              ? styles.summaryListWebCartScroll
-                              : styles.summaryListWebCartNoScroll),
-                      ]}
-                      contentContainerStyle={[
-                        styles.summaryListContentFix,
-                        Platform.OS === 'web' && styles.summaryListContentWeb,
-                      ]}
-                      showsVerticalScrollIndicator={cartListNeedsScroll}
-                      scrollEnabled={cartListNeedsScroll}
-                      nestedScrollEnabled>
-                      {cart.length === 0 ? (
-                        <Text style={styles.emptyText}>Carrinho vazio. Selecciona produtos para iniciar a venda.</Text>
-                      ) : (
-                        <>
-                          {hasInsufficientStock && showStockWarning && (
-                            <View style={styles.warningRow}>
-                              <Text style={styles.warningText}>
-                                Alguns itens ultrapassam o stock disponível. Ajusta as quantidades.
-                              </Text>
-                              <Pressable style={styles.inlineCloseButton} onPress={() => setShowStockWarning(false)}>
-                                <Text style={styles.inlineCloseButtonText}>X</Text>
-                              </Pressable>
-                            </View>
-                          )}
-                          {cart.map((item, idx) => {
-                            const { product, quantity, sell_as } = item;
-                            const unitP = lineUnitPrice(item);
-                            const lineTotal = unitP * quantity;
-                            const displayName = (product.name && String(product.name).trim()) || product.sku || 'Produto';
-                            const sellHint = cartLineSellHint(displayName, sell_as, product);
-                            const key = `${product.id}-${sell_as ?? 's'}-${idx}`;
-
-                            return (
-                              <View key={key} style={[styles.summaryRow, Platform.OS === 'web' && styles.summaryRowWebCart]}>
-                                <View style={[styles.colName, Platform.OS === 'web' && styles.colNameWebCart]}>
-                                  <Text style={styles.summaryItemName} numberOfLines={1}>
-                                    {displayName}
-                                  </Text>
-                                  {sellHint ? (
-                                    <Text style={styles.summaryItemMeta} numberOfLines={1}>
-                                      {sellHint}
-                                    </Text>
-                                  ) : null}
-                                </View>
-
-                                <View style={[styles.colQty, Platform.OS === 'web' && styles.colQtyWebCart]}>
-                                  <View style={styles.qtyControls}>
-                                    <Pressable
-                                      style={styles.qtyButton}
-                                      onPress={() => updateCartQty(product.id, sell_as, -1)}>
-                                      <Text style={styles.qtyButtonText}>-</Text>
-                                    </Pressable>
-                                    <Text style={styles.qtyText}>{quantity}</Text>
-                                    <Pressable
-                                      style={styles.qtyButton}
-                                      onPress={() => updateCartQty(product.id, sell_as, 1)}>
-                                      <Text style={styles.qtyButtonText}>+</Text>
-                                    </Pressable>
-                                  </View>
-                                </View>
-
-                                <View style={[styles.colUnit, Platform.OS === 'web' && styles.colUnitWebCart]}>
-                                  <Text
-                                    style={styles.summaryPriceText}
-                                    numberOfLines={1}
-                                    ellipsizeMode="tail">
-                                    Kz {unitP.toFixed(2)}
-                                  </Text>
-                                </View>
-
-                                <View style={[styles.colSubtotal, Platform.OS === 'web' && styles.colSubtotalWebCart]}>
-                                  <Text
-                                    style={styles.summarySubtotalText}
-                                    numberOfLines={1}
-                                    ellipsizeMode="tail">
-                                    Kz {lineTotal.toFixed(2)}
-                                  </Text>
-                                </View>
-
-                                <Pressable
-                                  style={styles.removeButton}
-                                  onPress={() => removeFromCart(product.id, sell_as)}>
-                                  <Text style={styles.removeButtonText}>X</Text>
-                                </Pressable>
-                              </View>
-                            );
-                          })}
-                        </>
-                      )}
-                    </ScrollView>
-
-                    <View style={styles.summaryFooter}>
-                      <Text style={styles.summaryFooterLabel}>Total</Text>
-                      <Text style={styles.summaryFooterValue}>{total.toFixed(2)} Kz</Text>
-                    </View>
-                  </View>
-
                   <View
                     style={[
                       styles.productPanel,
@@ -1556,6 +1449,18 @@ export default function VendasScreen() {
                       )}
                     </View>
 
+                    <PaymentCartLines
+                      cart={cart}
+                      cartListNeedsScroll={cartListNeedsScroll}
+                      listVariant={isPhone ? 'stack' : 'wide'}
+                      lineUnitPrice={lineUnitPrice}
+                      updateCartQty={updateCartQty}
+                      removeFromCart={removeFromCart}
+                      hasInsufficientStock={hasInsufficientStock}
+                      showStockWarning={showStockWarning}
+                      setShowStockWarning={setShowStockWarning}
+                    />
+
                     <View style={[styles.paymentAmountBlock, styles.paymentAmountTopSep]}>
                       {paymentMode === 'split' && (
                         <View style={styles.amountRow}>
@@ -1640,110 +1545,6 @@ export default function VendasScreen() {
               )) : (
                 <ScrollView style={styles.mobileScroll} contentContainerStyle={styles.mobileScrollContent} showsVerticalScrollIndicator={false}>
                   <View style={styles.mobilePosLayout}>
-                  <View style={[styles.summaryPanel, styles.summaryPanelMobileStack]}>
-                    <View style={styles.summaryHeader}>
-                      <View style={{ flex: 1 }}>
-                        <Text style={styles.panelTitle}>Venda Atual</Text>
-                        <Text style={styles.panelSubtitle}>{cart.length} itens</Text>
-                      </View>
-                    </View>
-
-                    <CartTableHeaderRow webCart={Platform.OS === 'web'} />
-
-                    <ScrollView
-                      style={[
-                        styles.summaryList,
-                        styles.summaryListMobile,
-                        Platform.OS === 'web' &&
-                          (cart.length === 0
-                            ? styles.summaryListWebFix
-                            : cartListNeedsScroll
-                              ? styles.summaryListWebCartScroll
-                              : styles.summaryListWebCartNoScroll),
-                      ]}
-                      contentContainerStyle={[
-                        styles.summaryListContentFix,
-                        Platform.OS === 'web' && styles.summaryListContentWeb,
-                      ]}
-                      showsVerticalScrollIndicator={cartListNeedsScroll}
-                      scrollEnabled={cartListNeedsScroll}
-                      nestedScrollEnabled>
-                      {cart.length === 0 ? (
-                        <Text style={styles.emptyText}>Carrinho vazio. Selecciona produtos para iniciar a venda.</Text>
-                      ) : (
-                        <>
-                          {hasInsufficientStock && showStockWarning && (
-                            <View style={styles.warningRow}>
-                              <Text style={styles.warningText}>
-                                Alguns itens ultrapassam o stock disponível. Ajusta as quantidades.
-                              </Text>
-                              <Pressable style={styles.inlineCloseButton} onPress={() => setShowStockWarning(false)}>
-                                <Text style={styles.inlineCloseButtonText}>X</Text>
-                              </Pressable>
-                            </View>
-                          )}
-                          {cart.map((item, idx) => {
-                            const { product, quantity, sell_as } = item;
-                            const unitP = lineUnitPrice(item);
-                            const lineTotal = unitP * quantity;
-                            const displayName = (product.name && String(product.name).trim()) || product.sku || 'Produto';
-                            const sellHint = cartLineSellHint(displayName, sell_as, product);
-
-                            const key = `${product.id}-${sell_as ?? 's'}-${idx}`;
-
-                            return (
-                              <View key={key} style={[styles.summaryRow, Platform.OS === 'web' && styles.summaryRowWebCart]}>
-                                <View style={[styles.colName, Platform.OS === 'web' && styles.colNameWebCart]}>
-                                  <Text style={styles.summaryItemName} numberOfLines={1}>
-                                    {displayName}
-                                  </Text>
-                                  {sellHint ? (
-                                    <Text style={styles.summaryItemMeta} numberOfLines={1}>
-                                      {sellHint}
-                                    </Text>
-                                  ) : null}
-                                </View>
-
-                                <View style={[styles.colQty, Platform.OS === 'web' && styles.colQtyWebCart]}>
-                                  <View style={styles.qtyControls}>
-                                    <Pressable style={styles.qtyButton} onPress={() => updateCartQty(product.id, sell_as, -1)}>
-                                      <Text style={styles.qtyButtonText}>-</Text>
-                                    </Pressable>
-                                    <Text style={styles.qtyText}>{quantity}</Text>
-                                    <Pressable style={styles.qtyButton} onPress={() => updateCartQty(product.id, sell_as, 1)}>
-                                      <Text style={styles.qtyButtonText}>+</Text>
-                                    </Pressable>
-                                  </View>
-                                </View>
-
-                                <View style={[styles.colUnit, Platform.OS === 'web' && styles.colUnitWebCart]}>
-                                  <Text style={styles.summaryPriceText} numberOfLines={1} ellipsizeMode="tail">
-                                    Kz {unitP.toFixed(2)}
-                                  </Text>
-                                </View>
-
-                                <View style={[styles.colSubtotal, Platform.OS === 'web' && styles.colSubtotalWebCart]}>
-                                  <Text style={styles.summarySubtotalText} numberOfLines={1} ellipsizeMode="tail">
-                                    Kz {lineTotal.toFixed(2)}
-                                  </Text>
-                                </View>
-
-                                <Pressable style={styles.removeButton} onPress={() => removeFromCart(product.id, sell_as)}>
-                                  <Text style={styles.removeButtonText}>X</Text>
-                                </Pressable>
-                              </View>
-                            );
-                          })}
-                        </>
-                      )}
-                    </ScrollView>
-
-                    <View style={styles.summaryFooter}>
-                      <Text style={styles.summaryFooterLabel}>Total</Text>
-                      <Text style={styles.summaryFooterValue}>{total.toFixed(2)} Kz</Text>
-                    </View>
-                  </View>
-
                   <View style={[styles.productPanel, styles.productPanelMobile]}>
                     <View style={styles.productPanelHeader}>
                       <View style={{ flex: 1 }}>
@@ -2036,6 +1837,18 @@ export default function VendasScreen() {
                         </>
                       )}
                     </View>
+
+                    <PaymentCartLines
+                      cart={cart}
+                      cartListNeedsScroll={cartListNeedsScroll}
+                      listVariant="stack"
+                      lineUnitPrice={lineUnitPrice}
+                      updateCartQty={updateCartQty}
+                      removeFromCart={removeFromCart}
+                      hasInsufficientStock={hasInsufficientStock}
+                      showStockWarning={showStockWarning}
+                      setShowStockWarning={setShowStockWarning}
+                    />
 
                     <View style={[styles.paymentAmountBlock, styles.paymentAmountTopSep]}>
                       {paymentMode === 'split' && (
@@ -2353,29 +2166,6 @@ const styles = StyleSheet.create({
     gap: 12,
   },
 
-  /** Web landscape: cresce até 5 linhas; com 6+ itens usa cap + scroll na lista. */
-  summaryPanelWebLandscape: {
-    flex: 0,
-    flexGrow: 0,
-    flexShrink: 0,
-    minHeight: 160,
-    overflow: 'hidden',
-  },
-  summaryPanelWebLandscapeCapped: {
-    maxHeight: 680,
-  },
-
-  summaryPanel: {
-    flex: 0.2,
-    minHeight: 160,
-    maxHeight: 210,
-    backgroundColor: '#ffffff',
-    borderRadius: 16,
-    borderWidth: 1,
-    borderColor: '#e5e7eb',
-    padding: 10,
-    gap: 6,
-  },
   productPanel: {
     flex: 1,
     minHeight: 0,
@@ -3089,6 +2879,20 @@ const styles = StyleSheet.create({
     marginTop: 6,
     backgroundColor: '#ffffff',
   },
+  paymentCartBlock: {
+    borderTopWidth: 1,
+    borderTopColor: '#eef2f7',
+    paddingTop: 14,
+    marginTop: 10,
+    width: '100%',
+    backgroundColor: '#ffffff',
+  },
+  paymentCartHint: {
+    fontSize: 12,
+    color: '#6b7280',
+    fontWeight: '600',
+    marginBottom: 6,
+  },
   paymentRow: {
     flexDirection: 'row',
     flexWrap: 'wrap',
@@ -3186,32 +2990,6 @@ const styles = StyleSheet.create({
     color: '#ffffff',
     fontWeight: '900',
     fontSize: 16,
-  },
-
-  summaryPanelMobile: {
-    flex: 0,
-    height: 'auto',
-    minHeight: 0,
-    maxHeight: 9999,
-  },
-  summaryPanelMobileStack: {
-    flex: 0,
-    height: 'auto',
-    minHeight: 0,
-    maxHeight: 9999,
-  },
-  summaryPanelTabletPortrait: {
-    flex: 0,
-    height: 250,
-    maxHeight: 250,
-    minHeight: 250,
-  },
-  /** Web retrato: 250px cortava o carrinho a 1 linha; altura segue o conteúdo até ~5 linhas. */
-  summaryPanelTabletPortraitWeb: {
-    // RN-web: soltar altura fixa 250px do retrato nativo.
-    height: 'auto' as any,
-    maxHeight: 720,
-    minHeight: 300,
   },
 
   productPanelMobile: {
