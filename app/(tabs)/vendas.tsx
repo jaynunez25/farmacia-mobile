@@ -43,6 +43,50 @@ function cartLineSellHint(displayName: string, sell_as: CartItem['sell_as'], pro
   return '';
 }
 
+/** react-native-web: flex + minWidth:0 on <Text> table headers collapses width and stacks letters vertically; use Views as cells. */
+function CartTableHeaderRow({ webCart }: { webCart: boolean }) {
+  if (webCart) {
+    return (
+      <View style={[styles.summaryTableHeader, styles.summaryTableHeaderWebCart]}>
+        <View style={styles.cartThProd}>
+          <Text style={styles.th} numberOfLines={1}>
+            Produto
+          </Text>
+        </View>
+        <View style={styles.cartThQty}>
+          <Text style={styles.th} numberOfLines={1}>
+            Qtd
+          </Text>
+        </View>
+        <View style={styles.cartThUnit}>
+          <Text style={[styles.th, styles.cartThUnitText]} numberOfLines={1}>
+            Unit.
+          </Text>
+        </View>
+        <View style={styles.cartThTotal}>
+          <Text style={[styles.th, styles.cartThTotalText]} numberOfLines={1}>
+            Total
+          </Text>
+        </View>
+        <View style={styles.cartThRemove}>
+          <Text style={styles.th} numberOfLines={1}>
+            {' '}
+          </Text>
+        </View>
+      </View>
+    );
+  }
+  return (
+    <View style={styles.summaryTableHeader}>
+      <Text style={[styles.th, styles.thName]}>Produto</Text>
+      <Text style={[styles.th, styles.thQty]}>Qtd</Text>
+      <Text style={[styles.th, styles.thUnit]}>Unit</Text>
+      <Text style={[styles.th, styles.thSubtotal]}>Total</Text>
+      <Text style={[styles.th, styles.thRemove]}> </Text>
+    </View>
+  );
+}
+
 export default function VendasScreen() {
   const router = useRouter();
   const { width, height } = useWindowDimensions();
@@ -615,13 +659,7 @@ export default function VendasScreen() {
                         </View>
                       </View>
 
-                      <View style={[styles.summaryTableHeader, Platform.OS === 'web' && styles.summaryTableHeaderWebCart]}>
-                        <Text style={[styles.th, styles.thName, Platform.OS === 'web' && styles.thNameWebCart]}>Produto</Text>
-                        <Text style={[styles.th, styles.thQty, Platform.OS === 'web' && styles.thQtyWebCart]}>Qtd</Text>
-                        <Text style={[styles.th, styles.thUnit, Platform.OS === 'web' && styles.thUnitWebCart]}>Unit.</Text>
-                        <Text style={[styles.th, styles.thSubtotal, Platform.OS === 'web' && styles.thSubtotalWebCart]}>Total</Text>
-                        <Text style={[styles.th, styles.thRemove]}> </Text>
-                      </View>
+                      <CartTableHeaderRow webCart={Platform.OS === 'web'} />
 
                       <ScrollView
                         style={[styles.summaryList, Platform.OS === 'web' && styles.summaryListWebLandscapeCart]}
@@ -1092,13 +1130,7 @@ export default function VendasScreen() {
                       </View>
                     </View>
 
-                    <View style={[styles.summaryTableHeader, Platform.OS === 'web' && styles.summaryTableHeaderWebCart]}>
-                      <Text style={[styles.th, styles.thName, Platform.OS === 'web' && styles.thNameWebCart]}>Produto</Text>
-                      <Text style={[styles.th, styles.thQty, Platform.OS === 'web' && styles.thQtyWebCart]}>Qtd</Text>
-                      <Text style={[styles.th, styles.thUnit, Platform.OS === 'web' && styles.thUnitWebCart]}>Unit.</Text>
-                      <Text style={[styles.th, styles.thSubtotal, Platform.OS === 'web' && styles.thSubtotalWebCart]}>Total</Text>
-                      <Text style={[styles.th, styles.thRemove]}> </Text>
-                    </View>
+                    <CartTableHeaderRow webCart={Platform.OS === 'web'} />
 
                     <ScrollView
                       style={[styles.summaryList, Platform.OS === 'web' && styles.summaryListWebFix]}
@@ -1580,13 +1612,7 @@ export default function VendasScreen() {
                       </View>
                     </View>
 
-                    <View style={[styles.summaryTableHeader, Platform.OS === 'web' && styles.summaryTableHeaderWebCart]}>
-                      <Text style={[styles.th, styles.thName, Platform.OS === 'web' && styles.thNameWebCart]}>Produto</Text>
-                      <Text style={[styles.th, styles.thQty, Platform.OS === 'web' && styles.thQtyWebCart]}>Qtd</Text>
-                      <Text style={[styles.th, styles.thUnit, Platform.OS === 'web' && styles.thUnitWebCart]}>Unit.</Text>
-                      <Text style={[styles.th, styles.thSubtotal, Platform.OS === 'web' && styles.thSubtotalWebCart]}>Total</Text>
-                      <Text style={[styles.th, styles.thRemove]}> </Text>
-                    </View>
+                    <CartTableHeaderRow webCart={Platform.OS === 'web'} />
 
                     <ScrollView
                       style={[styles.summaryList, styles.summaryListMobile, Platform.OS === 'web' && styles.summaryListWebFix]}
@@ -2401,33 +2427,50 @@ const styles = StyleSheet.create({
   thSubtotal: { flex: 1, textAlign: 'left', minWidth: 0 },
   thRemove: { width: 44, textAlign: 'center', flexShrink: 0 },
 
-  /** Web: keep cart columns compact so prices stay under headers (flex:1 was stretching Unit/Total apart). */
+  /** Web cart header row: outer gap; cells are Views (CartTableHeaderRow), not flex Text. */
   summaryTableHeaderWebCart: {
     gap: 6,
     paddingHorizontal: 2,
   },
-  thNameWebCart: {
+  cartThProd: {
     flex: 1,
-    minWidth: 96,
+    flexShrink: 1,
+    minWidth: 80,
     maxWidth: 300,
+    justifyContent: 'center',
+    alignItems: 'flex-start',
   },
-  thQtyWebCart: {
-    flexGrow: 0,
-    flexShrink: 0,
+  cartThQty: {
     width: 108,
-    textAlign: 'center',
+    minWidth: 108,
+    alignItems: 'center',
+    justifyContent: 'center',
   },
-  thUnitWebCart: {
-    flexGrow: 0,
-    flexShrink: 0,
+  cartThUnit: {
     width: 86,
-    textAlign: 'right',
+    minWidth: 86,
+    alignItems: 'flex-end',
+    justifyContent: 'center',
   },
-  thSubtotalWebCart: {
-    flexGrow: 0,
-    flexShrink: 0,
+  cartThTotal: {
     width: 90,
+    minWidth: 90,
+    alignItems: 'flex-end',
+    justifyContent: 'center',
+  },
+  cartThRemove: {
+    width: 44,
+    minWidth: 44,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  cartThUnitText: {
     textAlign: 'right',
+    width: '100%',
+  },
+  cartThTotalText: {
+    textAlign: 'right',
+    width: '100%',
   },
   summaryRowWebCart: {
     gap: 6,
@@ -2436,19 +2479,22 @@ const styles = StyleSheet.create({
   },
   colNameWebCart: {
     flex: 1,
-    minWidth: 96,
+    flexShrink: 1,
+    minWidth: 80,
     maxWidth: 300,
   },
   colQtyWebCart: {
     flex: 0,
     flexGrow: 0,
     flexShrink: 0,
+    minWidth: 108,
     width: 108,
   },
   colUnitWebCart: {
     flex: 0,
     flexGrow: 0,
     flexShrink: 0,
+    minWidth: 86,
     width: 86,
     alignItems: 'flex-end',
   },
@@ -2456,6 +2502,7 @@ const styles = StyleSheet.create({
     flex: 0,
     flexGrow: 0,
     flexShrink: 0,
+    minWidth: 90,
     width: 90,
     alignItems: 'flex-end',
   },
