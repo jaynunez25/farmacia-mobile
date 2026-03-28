@@ -27,6 +27,22 @@ type CartItem = {
   sell_as?: 'box' | 'unit';
 };
 
+/** Second line under product name: sell-mode hint only (price/qty live in their columns). Skips unit/pack labels that duplicate the product title. */
+function cartLineSellHint(displayName: string, sell_as: CartItem['sell_as'], product: Product): string {
+  const dn = displayName.trim().toLowerCase();
+  if (sell_as === 'box') {
+    const p = (product.pack_name || '').trim();
+    if (p && p.toLowerCase() !== dn) return p;
+    return 'Por caixa';
+  }
+  if (sell_as === 'unit') {
+    const u = (product.unit_name || '').trim();
+    if (u && u.toLowerCase() !== dn) return u;
+    return 'Por unidade';
+  }
+  return '';
+}
+
 export default function VendasScreen() {
   const router = useRouter();
   const { width, height } = useWindowDimensions();
@@ -591,7 +607,7 @@ export default function VendasScreen() {
               {isTablet ? (isTabletLandscape ? (
                 <View style={[styles.posRowLayout, Platform.OS === 'web' && styles.posRowLayoutWeb]}>
                   <View style={[styles.leftArea, Platform.OS === 'web' && styles.leftAreaWeb]}>
-                    <View style={styles.summaryPanel}>
+                    <View style={[styles.summaryPanel, Platform.OS === 'web' && styles.summaryPanelWebLandscape]}>
                       <View style={styles.summaryHeader}>
                         <View style={{ flex: 1 }}>
                           <Text style={styles.panelTitle}>Venda Atual</Text>
@@ -599,16 +615,16 @@ export default function VendasScreen() {
                         </View>
                       </View>
 
-                      <View style={styles.summaryTableHeader}>
-                        <Text style={[styles.th, styles.thName]}>Produto</Text>
-                        <Text style={[styles.th, styles.thQty]}>Qtd</Text>
-                        <Text style={[styles.th, styles.thUnit]}>Unit</Text>
-                        <Text style={[styles.th, styles.thSubtotal]}>Total</Text>
+                      <View style={[styles.summaryTableHeader, Platform.OS === 'web' && styles.summaryTableHeaderWebCart]}>
+                        <Text style={[styles.th, styles.thName, Platform.OS === 'web' && styles.thNameWebCart]}>Produto</Text>
+                        <Text style={[styles.th, styles.thQty, Platform.OS === 'web' && styles.thQtyWebCart]}>Qtd</Text>
+                        <Text style={[styles.th, styles.thUnit, Platform.OS === 'web' && styles.thUnitWebCart]}>Unit.</Text>
+                        <Text style={[styles.th, styles.thSubtotal, Platform.OS === 'web' && styles.thSubtotalWebCart]}>Total</Text>
                         <Text style={[styles.th, styles.thRemove]}> </Text>
                       </View>
 
                       <ScrollView
-                        style={[styles.summaryList, Platform.OS === 'web' && styles.summaryListWebFix]}
+                        style={[styles.summaryList, Platform.OS === 'web' && styles.summaryListWebLandscapeCart]}
                         contentContainerStyle={styles.summaryListContentFix}
                         showsVerticalScrollIndicator={cart.length > 6}
                         scrollEnabled={cart.length > 6}
@@ -631,28 +647,25 @@ export default function VendasScreen() {
                               const { product, quantity, sell_as } = item;
                               const unitP = lineUnitPrice(item);
                               const lineTotal = unitP * quantity;
-                              const label =
-                                sell_as === 'box'
-                                  ? product.pack_name || 'caixas'
-                                  : sell_as === 'unit'
-                                    ? product.unit_name || 'un.'
-                                    : '';
                               const displayName = (product.name && String(product.name).trim()) || product.sku || 'Produto';
+                              const sellHint = cartLineSellHint(displayName, sell_as, product);
 
                               const key = `${product.id}-${sell_as ?? 's'}-${idx}`;
 
                               return (
-                                <View key={key} style={styles.summaryRow}>
-                                  <View style={[styles.colName]}>
+                                <View key={key} style={[styles.summaryRow, Platform.OS === 'web' && styles.summaryRowWebCart]}>
+                                  <View style={[styles.colName, Platform.OS === 'web' && styles.colNameWebCart]}>
                                     <Text style={styles.summaryItemName} numberOfLines={1}>
                                       {displayName}
                                     </Text>
-                                    <Text style={styles.summaryItemMeta} numberOfLines={1}>
-                                      Kz {unitP.toFixed(2)} · {quantity} {label ? label : ''}
-                                    </Text>
+                                    {sellHint ? (
+                                      <Text style={styles.summaryItemMeta} numberOfLines={1}>
+                                        {sellHint}
+                                      </Text>
+                                    ) : null}
                                   </View>
 
-                                  <View style={styles.colQty}>
+                                  <View style={[styles.colQty, Platform.OS === 'web' && styles.colQtyWebCart]}>
                                     <View style={styles.qtyControls}>
                                       <Pressable
                                         style={styles.qtyButton}
@@ -668,7 +681,7 @@ export default function VendasScreen() {
                                     </View>
                                   </View>
 
-                                  <View style={styles.colUnit}>
+                                  <View style={[styles.colUnit, Platform.OS === 'web' && styles.colUnitWebCart]}>
                                     <Text
                                       style={styles.summaryPriceText}
                                       numberOfLines={1}
@@ -677,7 +690,7 @@ export default function VendasScreen() {
                                     </Text>
                                   </View>
 
-                                  <View style={styles.colSubtotal}>
+                                  <View style={[styles.colSubtotal, Platform.OS === 'web' && styles.colSubtotalWebCart]}>
                                     <Text
                                       style={styles.summarySubtotalText}
                                       numberOfLines={1}
@@ -704,7 +717,7 @@ export default function VendasScreen() {
                       </View>
                     </View>
 
-                    <View style={styles.productPanel}>
+                    <View style={[styles.productPanel, Platform.OS === 'web' && styles.productPanelWebLandscape]}>
                       <View style={styles.productPanelHeader}>
                         <View style={{ flex: 1 }}>
                           <Text style={styles.panelTitle}>Produtos</Text>
@@ -828,7 +841,7 @@ export default function VendasScreen() {
                       </View>
                     </View>
 
-                    <View style={styles.categoryBar}>
+                    <View style={[styles.categoryBar, Platform.OS === 'web' && styles.categoryBarWebLandscape]}>
                       <ScrollView
                         horizontal
                         showsHorizontalScrollIndicator={false}
@@ -1079,11 +1092,11 @@ export default function VendasScreen() {
                       </View>
                     </View>
 
-                    <View style={styles.summaryTableHeader}>
-                      <Text style={[styles.th, styles.thName]}>Produto</Text>
-                      <Text style={[styles.th, styles.thQty]}>Qtd</Text>
-                      <Text style={[styles.th, styles.thUnit]}>Unit</Text>
-                      <Text style={[styles.th, styles.thSubtotal]}>Total</Text>
+                    <View style={[styles.summaryTableHeader, Platform.OS === 'web' && styles.summaryTableHeaderWebCart]}>
+                      <Text style={[styles.th, styles.thName, Platform.OS === 'web' && styles.thNameWebCart]}>Produto</Text>
+                      <Text style={[styles.th, styles.thQty, Platform.OS === 'web' && styles.thQtyWebCart]}>Qtd</Text>
+                      <Text style={[styles.th, styles.thUnit, Platform.OS === 'web' && styles.thUnitWebCart]}>Unit.</Text>
+                      <Text style={[styles.th, styles.thSubtotal, Platform.OS === 'web' && styles.thSubtotalWebCart]}>Total</Text>
                       <Text style={[styles.th, styles.thRemove]}> </Text>
                     </View>
 
@@ -1111,27 +1124,24 @@ export default function VendasScreen() {
                             const { product, quantity, sell_as } = item;
                             const unitP = lineUnitPrice(item);
                             const lineTotal = unitP * quantity;
-                            const label =
-                              sell_as === 'box'
-                                ? product.pack_name || 'caixas'
-                                : sell_as === 'unit'
-                                  ? product.unit_name || 'un.'
-                                  : '';
                             const displayName = (product.name && String(product.name).trim()) || product.sku || 'Produto';
+                            const sellHint = cartLineSellHint(displayName, sell_as, product);
                             const key = `${product.id}-${sell_as ?? 's'}-${idx}`;
 
                             return (
-                              <View key={key} style={styles.summaryRow}>
-                                <View style={[styles.colName]}>
+                              <View key={key} style={[styles.summaryRow, Platform.OS === 'web' && styles.summaryRowWebCart]}>
+                                <View style={[styles.colName, Platform.OS === 'web' && styles.colNameWebCart]}>
                                   <Text style={styles.summaryItemName} numberOfLines={1}>
                                     {displayName}
                                   </Text>
-                                  <Text style={styles.summaryItemMeta} numberOfLines={1}>
-                                    Kz {unitP.toFixed(2)} · {quantity} {label ? label : ''}
-                                  </Text>
+                                  {sellHint ? (
+                                    <Text style={styles.summaryItemMeta} numberOfLines={1}>
+                                      {sellHint}
+                                    </Text>
+                                  ) : null}
                                 </View>
 
-                                <View style={styles.colQty}>
+                                <View style={[styles.colQty, Platform.OS === 'web' && styles.colQtyWebCart]}>
                                   <View style={styles.qtyControls}>
                                     <Pressable
                                       style={styles.qtyButton}
@@ -1147,7 +1157,7 @@ export default function VendasScreen() {
                                   </View>
                                 </View>
 
-                                <View style={styles.colUnit}>
+                                <View style={[styles.colUnit, Platform.OS === 'web' && styles.colUnitWebCart]}>
                                   <Text
                                     style={styles.summaryPriceText}
                                     numberOfLines={1}
@@ -1156,7 +1166,7 @@ export default function VendasScreen() {
                                   </Text>
                                 </View>
 
-                                <View style={styles.colSubtotal}>
+                                <View style={[styles.colSubtotal, Platform.OS === 'web' && styles.colSubtotalWebCart]}>
                                   <Text
                                     style={styles.summarySubtotalText}
                                     numberOfLines={1}
@@ -1570,11 +1580,11 @@ export default function VendasScreen() {
                       </View>
                     </View>
 
-                    <View style={styles.summaryTableHeader}>
-                      <Text style={[styles.th, styles.thName]}>Produto</Text>
-                      <Text style={[styles.th, styles.thQty]}>Qtd</Text>
-                      <Text style={[styles.th, styles.thUnit]}>Unit</Text>
-                      <Text style={[styles.th, styles.thSubtotal]}>Total</Text>
+                    <View style={[styles.summaryTableHeader, Platform.OS === 'web' && styles.summaryTableHeaderWebCart]}>
+                      <Text style={[styles.th, styles.thName, Platform.OS === 'web' && styles.thNameWebCart]}>Produto</Text>
+                      <Text style={[styles.th, styles.thQty, Platform.OS === 'web' && styles.thQtyWebCart]}>Qtd</Text>
+                      <Text style={[styles.th, styles.thUnit, Platform.OS === 'web' && styles.thUnitWebCart]}>Unit.</Text>
+                      <Text style={[styles.th, styles.thSubtotal, Platform.OS === 'web' && styles.thSubtotalWebCart]}>Total</Text>
                       <Text style={[styles.th, styles.thRemove]}> </Text>
                     </View>
 
@@ -1602,28 +1612,25 @@ export default function VendasScreen() {
                             const { product, quantity, sell_as } = item;
                             const unitP = lineUnitPrice(item);
                             const lineTotal = unitP * quantity;
-                            const label =
-                              sell_as === 'box'
-                                ? product.pack_name || 'caixas'
-                                : sell_as === 'unit'
-                                  ? product.unit_name || 'un.'
-                                  : '';
                             const displayName = (product.name && String(product.name).trim()) || product.sku || 'Produto';
+                            const sellHint = cartLineSellHint(displayName, sell_as, product);
 
                             const key = `${product.id}-${sell_as ?? 's'}-${idx}`;
 
                             return (
-                              <View key={key} style={styles.summaryRow}>
-                                <View style={[styles.colName]}>
+                              <View key={key} style={[styles.summaryRow, Platform.OS === 'web' && styles.summaryRowWebCart]}>
+                                <View style={[styles.colName, Platform.OS === 'web' && styles.colNameWebCart]}>
                                   <Text style={styles.summaryItemName} numberOfLines={1}>
                                     {displayName}
                                   </Text>
-                                  <Text style={styles.summaryItemMeta} numberOfLines={1}>
-                                    Kz {unitP.toFixed(2)} · {quantity} {label ? label : ''}
-                                  </Text>
+                                  {sellHint ? (
+                                    <Text style={styles.summaryItemMeta} numberOfLines={1}>
+                                      {sellHint}
+                                    </Text>
+                                  ) : null}
                                 </View>
 
-                                <View style={styles.colQty}>
+                                <View style={[styles.colQty, Platform.OS === 'web' && styles.colQtyWebCart]}>
                                   <View style={styles.qtyControls}>
                                     <Pressable style={styles.qtyButton} onPress={() => updateCartQty(product.id, sell_as, -1)}>
                                       <Text style={styles.qtyButtonText}>-</Text>
@@ -1635,13 +1642,13 @@ export default function VendasScreen() {
                                   </View>
                                 </View>
 
-                                <View style={styles.colUnit}>
+                                <View style={[styles.colUnit, Platform.OS === 'web' && styles.colUnitWebCart]}>
                                   <Text style={styles.summaryPriceText} numberOfLines={1} ellipsizeMode="tail">
                                     Kz {unitP.toFixed(2)}
                                   </Text>
                                 </View>
 
-                                <View style={styles.colSubtotal}>
+                                <View style={[styles.colSubtotal, Platform.OS === 'web' && styles.colSubtotalWebCart]}>
                                   <Text style={styles.summarySubtotalText} numberOfLines={1} ellipsizeMode="tail">
                                     Kz {lineTotal.toFixed(2)}
                                   </Text>
@@ -2266,6 +2273,19 @@ const styles = StyleSheet.create({
     flex: 1,
     minWidth: 0,
     minHeight: 0,
+    overflow: 'hidden',
+    gap: 12,
+  },
+
+  /** Web landscape: fixed cart slot so product panel flex does not paint over the cart (Yoga/RN-web quirk). */
+  summaryPanelWebLandscape: {
+    flex: 0,
+    flexGrow: 0,
+    flexShrink: 0,
+    height: 268,
+    maxHeight: 268,
+    minHeight: 160,
+    overflow: 'hidden',
   },
 
   summaryPanel: {
@@ -2289,6 +2309,11 @@ const styles = StyleSheet.create({
     padding: 10,
     gap: 6,
   },
+  productPanelWebLandscape: {
+    flex: 1,
+    minHeight: 0,
+    overflow: 'hidden',
+  },
   categoryBar: {
     flex: 0.1,
     minHeight: 64,
@@ -2299,6 +2324,14 @@ const styles = StyleSheet.create({
     borderColor: '#e5e7eb',
     paddingVertical: 6,
     paddingHorizontal: 8,
+  },
+  categoryBarWebLandscape: {
+    flex: 0,
+    flexGrow: 0,
+    flexShrink: 0,
+    height: 64,
+    minHeight: 64,
+    maxHeight: 64,
   },
 
   paymentPanel: {
@@ -2368,6 +2401,65 @@ const styles = StyleSheet.create({
   thSubtotal: { flex: 1, textAlign: 'left', minWidth: 0 },
   thRemove: { width: 44, textAlign: 'center', flexShrink: 0 },
 
+  /** Web: keep cart columns compact so prices stay under headers (flex:1 was stretching Unit/Total apart). */
+  summaryTableHeaderWebCart: {
+    gap: 6,
+    paddingHorizontal: 2,
+  },
+  thNameWebCart: {
+    flex: 1,
+    minWidth: 96,
+    maxWidth: 300,
+  },
+  thQtyWebCart: {
+    flexGrow: 0,
+    flexShrink: 0,
+    width: 108,
+    textAlign: 'center',
+  },
+  thUnitWebCart: {
+    flexGrow: 0,
+    flexShrink: 0,
+    width: 86,
+    textAlign: 'right',
+  },
+  thSubtotalWebCart: {
+    flexGrow: 0,
+    flexShrink: 0,
+    width: 90,
+    textAlign: 'right',
+  },
+  summaryRowWebCart: {
+    gap: 6,
+    marginBottom: 6,
+    paddingVertical: 8,
+  },
+  colNameWebCart: {
+    flex: 1,
+    minWidth: 96,
+    maxWidth: 300,
+  },
+  colQtyWebCart: {
+    flex: 0,
+    flexGrow: 0,
+    flexShrink: 0,
+    width: 108,
+  },
+  colUnitWebCart: {
+    flex: 0,
+    flexGrow: 0,
+    flexShrink: 0,
+    width: 86,
+    alignItems: 'flex-end',
+  },
+  colSubtotalWebCart: {
+    flex: 0,
+    flexGrow: 0,
+    flexShrink: 0,
+    width: 90,
+    alignItems: 'flex-end',
+  },
+
   summaryList: {
     flex: 1,
     borderRadius: 14,
@@ -2379,6 +2471,11 @@ const styles = StyleSheet.create({
   /** react-native-web: ScrollView with scrollEnabled false often gets 0 height; minHeight + content flex fixes cart rows. */
   summaryListWebFix: {
     minHeight: 80,
+  },
+  /** Web landscape POS cart: fill bounded summary panel; scroll inside instead of expanding past siblings. */
+  summaryListWebLandscapeCart: {
+    flex: 1,
+    minHeight: 0,
   },
   summaryListContentFix: {
     flexGrow: 1,
