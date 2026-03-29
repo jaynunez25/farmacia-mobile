@@ -224,6 +224,24 @@ export interface IncidentFlagResponse {
   notes: string | null;
 }
 
+/** Admin report: per cashier per calendar day (UTC). */
+export interface CashierDayActivityRow {
+  user_id: number;
+  display_name: string | null;
+  username: string;
+  sale_count: number;
+  total_sales: number | string;
+  cash_sales_total: number | string;
+  card_sales_total: number | string;
+  first_sale_at: string | null;
+  last_sale_at: string | null;
+  opened_session: boolean;
+  closed_session: boolean;
+  cash_difference_at_close: number | string | null;
+  closing_notes: string | null;
+  session_id_closed: number | null;
+}
+
 export const api = {
   auth: {
     login: (username: string, password: string) =>
@@ -566,6 +584,19 @@ export const api = {
         clocked_out_at: string | null;
         is_clocked_in: boolean;
       }>('/attendance/status'),
+    getSite: () =>
+      request<{
+        configured: boolean;
+        site_lat: number | null;
+        site_lon: number | null;
+        radius_meters: number | null;
+      }>('/attendance/site'),
+  },
+  reports: {
+    getCashierDaily: (date: string) =>
+      request<CashierDayActivityRow[]>(
+        `/reports/cashier-daily?date=${encodeURIComponent(date)}`,
+      ),
   },
 };
 

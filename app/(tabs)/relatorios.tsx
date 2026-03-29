@@ -14,7 +14,7 @@ import * as Print from 'expo-print';
 import * as Sharing from 'expo-sharing';
 
 import { useAuth } from '@/contexts/AuthContext';
-import { api } from '@/services/api';
+import { api, type CashierDayActivityRow } from '@/services/api';
 import type { StockMovement } from '@/types';
 import { getErrorMessage } from '@/utils/errorMessage';
 import { isAdminRole, isStockAuditorRole } from '@/utils/roles';
@@ -40,6 +40,33 @@ function formatMovementDate(iso: string): string {
     });
   } catch {
     return iso;
+  }
+}
+
+function shiftIsoDate(isoDay: string, delta: number): string {
+  const d = new Date(isoDay + 'T12:00:00.000Z');
+  d.setUTCDate(d.getUTCDate() + delta);
+  return d.toISOString().slice(0, 10);
+}
+
+function formatReportMoney(value: number | string): string {
+  const x = typeof value === 'string' ? parseFloat(value) : value;
+  if (!Number.isFinite(x)) return String(value);
+  return `${x.toLocaleString('pt-PT', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} Kz`;
+}
+
+function formatReportDateTime(iso: string | null): string {
+  if (!iso) return '—';
+  try {
+    return new Date(iso).toLocaleString('pt-PT', {
+      day: '2-digit',
+      month: '2-digit',
+      year: 'numeric',
+      hour: '2-digit',
+      minute: '2-digit',
+    });
+  } catch {
+    return '—';
   }
 }
 
@@ -108,11 +135,11 @@ export default function RelatoriosScreen() {
   } | null>(null);
   const [auditMovements, setAuditMovements] = useState<StockMovement[]>([]);
   const [exportingPdf, setExportingPdf] = useState(false);
-  const [attendanceStatus, setAttendanceStatus] = useState<{
-    clocked_in_at: string | null;
-    clocked_out_at: string | null;
-    is_clocked_in: boolean;
-  } | null>(null);
+
+  const [reportDate, setReportDate] = useState(() => new Date().toISOString().slice(0, 10));
+  const [cashierDaily, setCashierDaily] = useState<CashierDayActivityRow[]>([]);
+  const [cashierLoading, setCashierLoading] = useState(false);
+  const [cashierError, setCashierError] = useState<string | null>(null);
 
   useEffect(() => {
     const load = async () => {
@@ -120,18 +147,15 @@ export default function RelatoriosScreen() {
       setError(null);
       try {
         if (isAdmin) {
-          const [summary, movements, attendance] = await Promise.all([
+          const [summary, movements] = await Promise.all([
             api.sales.getHistorySummary({}),
             api.stockMovements.list({ limit: 500 }),
-            api.attendance.getStatus(),
           ]);
           setSalesSummary(summary);
           setAuditMovements(movements);
-          setAttendanceStatus(attendance);
         } else if (isStockAuditor) {
           const movements = await api.stockMovements.list({ limit: 500 });
           setSalesSummary(null);
-          setAttendanceStatus(null);
           setAuditMovements(movements);
         }
       } catch (e) {
@@ -142,6 +166,27 @@ export default function RelatoriosScreen() {
     };
     void load();
   }, [isAdmin, isStockAuditor]);
+
+  useEffect(() => {
+    if (!isAdmin) return;
+    let cancelled = false;
+    const loadCashier = async () => {
+      setCashierLoading(true);
+      setCashierError(null);
+      try {
+        const rows = await api.reports.getCashierDaily(reportDate);
+        if (!cancelled) setCashierDaily(rows);
+      } catch (e) {
+        if (!cancelled) setCashierError(getErrorMessage(e));
+      } finally {
+        if (!cancelled) setCashierLoading(false);
+      }
+    };
+    void loadCashier();
+    return () => {
+      cancelled = true;
+    };
+  }, [isAdmin, reportDate]);
 
   const handleExportAuditPdf = async () => {
     if (auditMovements.length === 0) {
@@ -185,7 +230,9 @@ export default function RelatoriosScreen() {
       <ScrollView contentContainerStyle={styles.container}>
         <Text style={styles.title}>Relatórios e Audit</Text>
         <Text style={styles.subtitle}>
-          Consulta resultados do dia, histórico de vendas e relatórios de sessões de caixa.
+          {isAdmin
+            ? 'Resumo financeiro, actividade por caixa por dia e auditoria de stock.'
+            : 'Auditoria de movimentos de stock e exportação PDF.'}
         </Text>
 
         {loading && (
@@ -229,39 +276,87 @@ export default function RelatoriosScreen() {
           </View>
         )}
 
-        {isAdmin && attendanceStatus && !loading && (
+        {isAdmin && !loading && (
           <View style={styles.card}>
-            <Text style={styles.cardTitle}>Relatório de ponto (Clock in / Clock out)</Text>
-            <Text style={styles.cardLine}>
-              <Text style={styles.cardLabel}>Dia: </Text>
-              {new Date().toLocaleDateString('pt-PT')}
-            </Text>
-            <Text style={styles.cardLine}>
-              <Text style={styles.cardLabel}>Entrada: </Text>
-              {attendanceStatus.clocked_in_at
-                ? new Date(attendanceStatus.clocked_in_at).toLocaleTimeString('pt-PT', {
-                    hour: '2-digit',
-                    minute: '2-digit',
-                  })
-                : '—'}
-            </Text>
-            <Text style={styles.cardLine}>
-              <Text style={styles.cardLabel}>Saída: </Text>
-              {attendanceStatus.clocked_out_at
-                ? new Date(attendanceStatus.clocked_out_at).toLocaleTimeString('pt-PT', {
-                    hour: '2-digit',
-                    minute: '2-digit',
-                  })
-                : '—'}
-            </Text>
+            <Text style={styles.cardTitle}>Actividade por caixa (por dia)</Text>
             <Text style={styles.cardMeta}>
-              {attendanceStatus.is_clocked_in ? 'Utilizador com sessão de ponto aberta.' : 'Utilizador fora de ponto.'}
+              Rastreio operacional: vendas e envolvimento na sessão de caixa (abrir/fechar). Dia em UTC
+              (servidor).
             </Text>
-            <Pressable
-              style={({ pressed }) => [styles.linkButton, pressed && styles.linkButtonPressed]}
-              onPress={() => router.push('/(tabs)/ponto')}>
-              <Text style={styles.linkButtonText}>Ir para Ponto</Text>
-            </Pressable>
+            <View style={styles.dateRow}>
+              <Pressable
+                style={({ pressed }) => [styles.dateNavBtn, pressed && styles.dateNavBtnPressed]}
+                onPress={() => setReportDate((d) => shiftIsoDate(d, -1))}>
+                <Text style={styles.dateNavBtnText}>◀ Dia anterior</Text>
+              </Pressable>
+              <Text style={styles.dateLabel}>
+                {new Date(reportDate + 'T12:00:00.000Z').toLocaleDateString('pt-PT', {
+                  weekday: 'short',
+                  day: '2-digit',
+                  month: '2-digit',
+                  year: 'numeric',
+                })}
+              </Text>
+              <Pressable
+                style={({ pressed }) => [styles.dateNavBtn, pressed && styles.dateNavBtnPressed]}
+                onPress={() => setReportDate((d) => shiftIsoDate(d, 1))}>
+                <Text style={styles.dateNavBtnText}>Próximo dia ▶</Text>
+              </Pressable>
+            </View>
+            {cashierLoading && (
+              <ActivityIndicator style={{ marginVertical: 12 }} color="#16a34a" />
+            )}
+            {cashierError && (
+              <Text style={styles.errorInline}>{cashierError}</Text>
+            )}
+            {!cashierLoading &&
+              !cashierError &&
+              cashierDaily.map((row) => (
+                <View key={row.user_id} style={styles.cashierBlock}>
+                  <Text style={styles.cashierName}>
+                    {row.display_name || row.username}
+                    <Text style={styles.cashierMeta}> · #{row.user_id}</Text>
+                  </Text>
+                  <Text style={styles.cardLine}>
+                    <Text style={styles.cardLabel}>Vendas: </Text>
+                    {row.sale_count} · Total: {formatReportMoney(row.total_sales)}
+                  </Text>
+                  <Text style={styles.cardLine}>
+                    <Text style={styles.cardLabel}>Dinheiro / Cartão: </Text>
+                    {formatReportMoney(row.cash_sales_total)} / {formatReportMoney(row.card_sales_total)}
+                  </Text>
+                  <Text style={styles.cardLine}>
+                    <Text style={styles.cardLabel}>1.ª venda / última: </Text>
+                    {formatReportDateTime(row.first_sale_at)} · {formatReportDateTime(row.last_sale_at)}
+                  </Text>
+                  <Text style={styles.cardLine}>
+                    <Text style={styles.cardLabel}>Abriu sessão: </Text>
+                    {row.opened_session ? 'Sim' : 'Não'}
+                    {' · '}
+                    <Text style={styles.cardLabel}>Fechou sessão: </Text>
+                    {row.closed_session ? 'Sim' : 'Não'}
+                    {row.session_id_closed != null ? ` (sessão #${row.session_id_closed})` : ''}
+                  </Text>
+                  {(row.cash_difference_at_close != null || row.closing_notes) && (
+                    <Text style={styles.cardLine}>
+                      <Text style={styles.cardLabel}>Diferença caixa no fecho: </Text>
+                      {row.cash_difference_at_close != null
+                        ? formatReportMoney(row.cash_difference_at_close)
+                        : '—'}
+                      {row.closing_notes ? (
+                        <>
+                          {'\n'}
+                          <Text style={styles.cardLabel}>Notas fecho: </Text>
+                          {row.closing_notes}
+                        </>
+                      ) : null}
+                    </Text>
+                  )}
+                </View>
+              ))}
+            {!cashierLoading && !cashierError && cashierDaily.length === 0 && (
+              <Text style={styles.cardMeta}>Sem actividade registada neste dia.</Text>
+            )}
           </View>
         )}
 
@@ -410,6 +505,57 @@ const styles = StyleSheet.create({
     fontSize: 13,
     fontWeight: '600',
     color: '#e5e7eb',
+  },
+  dateRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    marginVertical: 10,
+    gap: 8,
+  },
+  dateNavBtn: {
+    paddingVertical: 8,
+    paddingHorizontal: 10,
+    borderRadius: 8,
+    backgroundColor: '#111827',
+  },
+  dateNavBtnPressed: {
+    opacity: 0.85,
+  },
+  dateNavBtnText: {
+    fontSize: 12,
+    fontWeight: '600',
+    color: '#e5e7eb',
+  },
+  dateLabel: {
+    flex: 1,
+    textAlign: 'center',
+    fontSize: 14,
+    fontWeight: '600',
+    color: '#f1f5f9',
+  },
+  cashierBlock: {
+    marginTop: 12,
+    paddingTop: 12,
+    borderTopWidth: 1,
+    borderTopColor: '#1f2937',
+    gap: 4,
+  },
+  cashierName: {
+    fontSize: 15,
+    fontWeight: '700',
+    color: '#e5e7eb',
+    marginBottom: 4,
+  },
+  cashierMeta: {
+    fontSize: 12,
+    fontWeight: '400',
+    color: '#9ca3af',
+  },
+  errorInline: {
+    color: '#fecaca',
+    fontSize: 13,
+    marginTop: 8,
   },
 });
 

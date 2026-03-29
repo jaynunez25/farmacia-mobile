@@ -12,7 +12,10 @@ export default function TabLayout() {
   const colorScheme = useColorScheme();
   const { user } = useAuth();
   const r = user?.role != null ? normalizeAppRole(user.role) : null;
-  const showPontoCaixaVendas = r == null || r === 'admin' || r === 'cashier';
+  /** Caixa + Vendas: admin e caixa (não stock_auditor). */
+  const showCaixaVendas = r == null || r === 'admin' || r === 'cashier';
+  /** Ponto: apenas auditor de stock (geolocalização). Admin e caixa não usam ponto. */
+  const showPonto = r === 'stock_auditor';
   const showRelatoriosTab = r == null || r === 'admin' || r === 'stock_auditor';
 
   return (
@@ -33,7 +36,7 @@ export default function TabLayout() {
         name="ponto"
         options={{
           title: 'Ponto',
-          href: showPontoCaixaVendas ? undefined : null,
+          href: showPonto ? undefined : null,
           tabBarIcon: ({ color }) => <IconSymbol size={24} name="clock.fill" color={color} />,
         }}
       />
@@ -41,7 +44,7 @@ export default function TabLayout() {
         name="caixa"
         options={{
           title: 'Caixa',
-          href: showPontoCaixaVendas ? undefined : null,
+          href: showCaixaVendas ? undefined : null,
           tabBarIcon: ({ color }) => <IconSymbol size={24} name="banknote.fill" color={color} />,
         }}
       />
@@ -49,7 +52,7 @@ export default function TabLayout() {
         name="vendas"
         options={{
           title: 'Vendas',
-          href: showPontoCaixaVendas ? undefined : null,
+          href: showCaixaVendas ? undefined : null,
           tabBarIcon: ({ color }) => <IconSymbol size={24} name="cart.fill" color={color} />,
         }}
       />

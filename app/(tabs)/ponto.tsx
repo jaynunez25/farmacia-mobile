@@ -1,3 +1,4 @@
+import { useRouter } from 'expo-router';
 import { useCallback, useEffect, useState } from 'react';
 import {
   ActivityIndicator,
@@ -12,8 +13,10 @@ import {
 import { SafeAreaView } from 'react-native-safe-area-context';
 import * as Location from 'expo-location';
 
+import { useAuth } from '@/contexts/AuthContext';
 import { api } from '@/services/api';
 import { getErrorMessage } from '@/utils/errorMessage';
+import { normalizeAppRole } from '@/utils/roles';
 
 function formatTime(iso: string | null): string {
   if (!iso) return '—';
@@ -28,6 +31,10 @@ function formatTime(iso: string | null): string {
 }
 
 export default function PontoScreen() {
+  const router = useRouter();
+  const { user } = useAuth();
+  const [siteConfigured, setSiteConfigured] = useState<boolean | null>(null);
+
   const [status, setStatus] = useState<{
     clocked_in_at: string | null;
     clocked_out_at: string | null;
@@ -52,8 +59,20 @@ export default function PontoScreen() {
   }, []);
 
   useEffect(() => {
+    if (user && normalizeAppRole(user.role) !== 'stock_auditor') {
+      router.replace('/(tabs)/dashboard');
+      return;
+    }
     loadStatus();
-  }, [loadStatus]);
+  }, [loadStatus, user, router]);
+
+  useEffect(() => {
+    if (!user || normalizeAppRole(user.role) !== 'stock_auditor') return;
+    api.attendance
+      .getSite()
+      .then((s) => setSiteConfigured(s.configured))
+      .catch(() => setSiteConfigured(null));
+  }, [user]);
 
   const onRefresh = useCallback(() => {
     setRefreshing(true);
@@ -101,6 +120,15 @@ export default function PontoScreen() {
         <Text style={styles.subtitle}>
           Só pode marcar entrada e saída quando estiver no local de trabalho (geolocalização).
         </Text>
+
+        {siteConfigured === false && (
+          <View style={styles.warnBox}>
+            <Text style={styles.warnText}>
+              O perímetro do local de trabalho não está configurado no servidor. Contacte o administrador
+              (ATTENDANCE_SITE_LAT / LON / RADIUS).
+            </Text>
+          </View>
+        )}
 
         {loading && !status && (
           <View style={styles.center}>
@@ -205,6 +233,19 @@ const styles = StyleSheet.create({
   errorText: {
     color: '#fee2e2',
     fontSize: 13,
+  },
+  warnBox: {
+    padding: 12,
+    borderRadius: 10,
+    backgroundColor: '#422006',
+    borderWidth: 1,
+    borderColor: '#a16207',
+    marginBottom: 16,
+  },
+  warnText: {
+    color: '#fef9c3',
+    fontSize: 13,
+    lineHeight: 18,
   },
   statusCard: {
     padding: 16,
