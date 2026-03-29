@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import {
   ActivityIndicator,
   FlatList,
@@ -34,6 +34,12 @@ export default function StockScreen() {
   /** Draft back/front per product. undefined = use server value, null = user cleared, number = user entered. */
   const [draftCounts, setDraftCounts] = useState<Record<number, { back?: number | null; front?: number | null }>>({});
   const [confirmingId, setConfirmingId] = useState<number | null>(null);
+
+  /** Catálogo demo antigo usava SKUs longos (ex.: ANT-METR-TAB-013). Seed real usa formato curto (ex.: ANTI-0001). */
+  const showsLegacyDemoCatalog = useMemo(
+    () => products.length > 0 && products.some((p) => (p.sku || '').split('-').length >= 4),
+    [products],
+  );
 
   const loadProducts = async (opts?: { refresh?: boolean }) => {
     if (opts?.refresh) {
@@ -350,6 +356,20 @@ export default function StockScreen() {
         </View>
       )}
 
+      {showsLegacyDemoCatalog && (
+        <View style={styles.legacyBanner}>
+          <Text style={styles.legacyBannerTitle}>Base de dados antiga (demonstração)</Text>
+          <Text style={styles.legacyBannerText}>
+            SKUs longos (ex. ANT-METR-TAB-013) e stock a zero = catálogo fictício ainda na cloud. As
+            quantidades do levantamento não aparecem até correres o seed na mesma base que o Railway usa a API.
+            No PC: na pasta backend,{' '}
+            <Text style={styles.legacyBannerMono}>railway run python seed_products.py --yes</Text>
+            {' '}ou <Text style={styles.legacyBannerMono}>DATABASE_URL=… python seed_products.py --yes</Text>.
+            Guia: <Text style={styles.legacyBannerMono}>farmacia-web/backend/RUN_SEED.md</Text>.
+          </Text>
+        </View>
+      )}
+
       {!loading && !error && (
         <FlatList
           data={products}
@@ -498,6 +518,30 @@ const styles = StyleSheet.create({
   initialErrorText: {
     color: '#fef3c7',
     fontSize: 13,
+  },
+  legacyBanner: {
+    marginBottom: 12,
+    padding: 12,
+    borderRadius: 10,
+    backgroundColor: '#1e1b4b',
+    borderWidth: 1,
+    borderColor: '#6366f1',
+  },
+  legacyBannerTitle: {
+    fontWeight: '700',
+    color: '#e0e7ff',
+    marginBottom: 6,
+    fontSize: 14,
+  },
+  legacyBannerText: {
+    color: '#c7d2fe',
+    fontSize: 12,
+    lineHeight: 18,
+  },
+  legacyBannerMono: {
+    fontFamily: 'monospace',
+    color: '#fde047',
+    fontSize: 11,
   },
   listContent: {
     paddingVertical: 8,
