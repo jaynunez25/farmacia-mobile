@@ -30,6 +30,14 @@ const totalFromBreakdown = (breakdown: DenominationMap): number =>
 
 const toCurrency = (value: number) => `${value.toFixed(2)} Kz`;
 
+/** Apresentação: separador de milhares alinhado ao mock POS (ex.: 20,000). */
+const formatDenominationLabel = (value: number) =>
+  `${value.toLocaleString('en-US')} Kz`;
+
+/** Grelha 2 colunas: notas maiores à esquerda, menores à direita (todas as denominações, sem duplicar). */
+const OPENING_DENOM_LEFT = DENOMINATIONS.slice(0, 7);
+const OPENING_DENOM_RIGHT = DENOMINATIONS.slice(7);
+
 export default function CaixaScreen() {
   const [summary, setSummary] = useState<CashSessionSummary | null>(null);
   const [loading, setLoading] = useState(true);
@@ -199,15 +207,26 @@ export default function CaixaScreen() {
           style={{ flex: 1 }}
           behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
           <ScrollView
-            contentContainerStyle={styles.container}
+            contentContainerStyle={[styles.container, !session && styles.containerOpenFlow]}
             keyboardShouldPersistTaps="handled">
-            <Text style={styles.title}>Caixa</Text>
-            <Text style={styles.subtitle}>
-              Abre e fecha sessões de caixa para registar vendas de forma segura.
-            </Text>
+            {session ? (
+              <>
+                <Text style={styles.title}>Caixa</Text>
+                <Text style={styles.subtitle}>
+                  Abre e fecha sessões de caixa para registar vendas de forma segura.
+                </Text>
+              </>
+            ) : (
+              <View style={styles.openPageHeader}>
+                <Text style={styles.openPageTitle}>Sessão de Caixa</Text>
+                <Text style={styles.openPageSubtitle}>
+                  Abra uma sessão de caixa antes de iniciar o registo de vendas. Insira o fundo inicial para começar.
+                </Text>
+              </View>
+            )}
 
             {error && (
-              <View style={styles.errorBox}>
+              <View style={[styles.errorBox, !session && styles.openErrorBox]}>
                 <Text style={styles.errorTitle}>Erro</Text>
                 <Text style={styles.errorText}>{error}</Text>
               </View>
@@ -260,55 +279,79 @@ export default function CaixaScreen() {
             )}
 
             {!session && (
-              <View style={styles.section}>
-                <Text style={styles.sectionTitle}>Abrir sessão de caixa</Text>
-                <Text style={styles.helperText}>
-                  Antes de registar vendas, abre uma sessão de caixa com o fundo inicial.
+              <View style={styles.openCard}>
+                <Text style={styles.openCardTitle}>Abrir sessão de caixa</Text>
+                <Text style={styles.openCardHelper}>
+                  Insira o dinheiro disponível na gaveta para definir o fundo inicial da sessão.
                 </Text>
-                <View style={styles.field}>
-                  <Text style={styles.label}>Denominações (abertura)</Text>
-                  {DENOMINATIONS.map(denom => {
-                    const qty = openingBreakdown[String(denom)] ?? 0;
-                    const lineTotal = qty * denom;
-                    return (
-                      <View style={styles.denomRow} key={`open-${denom}`}>
-                        <Text style={styles.denomLabel}>{denom} Kz</Text>
-                        <TextInput
-                          style={styles.denomQtyInput}
-                          keyboardType="number-pad"
-                          value={String(qty)}
-                          onChangeText={value => setDenominationQty('opening', denom, value)}
-                          placeholder="0"
-                          placeholderTextColor="#6b7280"
-                        />
-                        <Text style={styles.denomSubtotal}>{toCurrency(lineTotal)}</Text>
-                      </View>
-                    );
-                  })}
-                  <Text style={styles.totalLine}>
-                    <Text style={styles.fieldLabel}>Total abertura: </Text>
-                    {toCurrency(openingTotal)}
-                  </Text>
+
+                <View style={styles.openDenomGrid}>
+                  <View style={styles.openDenomCol}>
+                    {OPENING_DENOM_LEFT.map(denom => {
+                      const qty = openingBreakdown[String(denom)] ?? 0;
+                      const lineTotal = qty * denom;
+                      return (
+                        <View style={styles.openDenomCell} key={`open-${denom}`}>
+                          <Text style={styles.openDenomValueLabel}>{formatDenominationLabel(denom)}</Text>
+                          <TextInput
+                            style={styles.openDenomQtyInput}
+                            keyboardType="number-pad"
+                            value={String(qty)}
+                            onChangeText={value => setDenominationQty('opening', denom, value)}
+                            placeholder="0"
+                            placeholderTextColor="#6b7280"
+                          />
+                          <Text style={styles.openDenomLineTotal}>{toCurrency(lineTotal)}</Text>
+                        </View>
+                      );
+                    })}
+                  </View>
+                  <View style={styles.openDenomCol}>
+                    {OPENING_DENOM_RIGHT.map(denom => {
+                      const qty = openingBreakdown[String(denom)] ?? 0;
+                      const lineTotal = qty * denom;
+                      return (
+                        <View style={styles.openDenomCell} key={`open-${denom}`}>
+                          <Text style={styles.openDenomValueLabel}>{formatDenominationLabel(denom)}</Text>
+                          <TextInput
+                            style={styles.openDenomQtyInput}
+                            keyboardType="number-pad"
+                            value={String(qty)}
+                            onChangeText={value => setDenominationQty('opening', denom, value)}
+                            placeholder="0"
+                            placeholderTextColor="#6b7280"
+                          />
+                          <Text style={styles.openDenomLineTotal}>{toCurrency(lineTotal)}</Text>
+                        </View>
+                      );
+                    })}
+                  </View>
                 </View>
-                <View style={styles.field}>
-                  <Text style={styles.label}>Notas / observações (opcional)</Text>
+
+                <View style={styles.openTotalBar}>
+                  <Text style={styles.openTotalLabel}>Total abertura</Text>
+                  <Text style={styles.openTotalValue}>{toCurrency(openingTotal)}</Text>
+                </View>
+
+                <View style={styles.openNotesBlock}>
+                  <Text style={styles.openNotesLabel}>Notas / observações (opcional)</Text>
                   <TextInput
-                    style={[styles.input, styles.inputMultiline]}
+                    style={styles.openNotesInput}
                     value={openingNotes}
                     onChangeText={setOpeningNotes}
                     placeholder="Ex.: Troco contado com supervisor."
                     placeholderTextColor="#6b7280"
                     multiline
-                    numberOfLines={3}
+                    numberOfLines={4}
                   />
                 </View>
+
                 <Pressable
-                  style={[
-                    styles.primaryButton,
-                    openingSaving && styles.primaryButtonDisabled,
-                  ]}
+                  style={[styles.openPrimaryButton, openingSaving && styles.openPrimaryButtonDisabled]}
                   onPress={openingSaving ? undefined : handleOpen}>
-                  <Text style={styles.primaryButtonText}>{openingSaving ? 'A abrir...' : 'Abrir sessão de caixa'}</Text>
+                  <Text style={styles.openPrimaryButtonText}>
+                    {openingSaving ? 'A abrir...' : 'Abrir sessão de caixa'}
+                  </Text>
                 </Pressable>
               </View>
             )}
@@ -394,6 +437,166 @@ const styles = StyleSheet.create({
     paddingHorizontal: 16,
     paddingVertical: 16,
     gap: 16,
+  },
+  containerOpenFlow: {
+    alignItems: 'center',
+    paddingBottom: 28,
+    maxWidth: 720,
+    width: '100%' as const,
+    alignSelf: 'center',
+  },
+  openPageHeader: {
+    width: '100%',
+    alignItems: 'center',
+    marginBottom: 4,
+    paddingHorizontal: 8,
+  },
+  openPageTitle: {
+    fontSize: 24,
+    fontWeight: '800',
+    color: '#f9fafb',
+    textAlign: 'center',
+    letterSpacing: 0.2,
+  },
+  openPageSubtitle: {
+    marginTop: 10,
+    fontSize: 14,
+    lineHeight: 21,
+    color: '#94a3b8',
+    textAlign: 'center',
+    maxWidth: 520,
+  },
+  openErrorBox: {
+    width: '100%',
+    maxWidth: 640,
+    borderRadius: 4,
+  },
+  openCard: {
+    width: '100%',
+    maxWidth: 640,
+    marginTop: 8,
+    padding: 18,
+    backgroundColor: '#0c111d',
+    borderWidth: 1,
+    borderColor: '#1e293b',
+    borderRadius: 4,
+    gap: 14,
+  },
+  openCardTitle: {
+    fontSize: 16,
+    fontWeight: '800',
+    color: '#f1f5f9',
+    letterSpacing: 0.15,
+  },
+  openCardHelper: {
+    fontSize: 13,
+    lineHeight: 19,
+    color: '#94a3b8',
+    marginTop: -6,
+  },
+  openDenomGrid: {
+    flexDirection: 'row',
+    gap: 12,
+    marginTop: 4,
+  },
+  openDenomCol: {
+    flex: 1,
+    minWidth: 0,
+    gap: 0,
+  },
+  openDenomCell: {
+    borderBottomWidth: 1,
+    borderBottomColor: '#1e293b',
+    paddingVertical: 10,
+    gap: 6,
+  },
+  openDenomValueLabel: {
+    fontSize: 13,
+    fontWeight: '700',
+    color: '#e2e8f0',
+  },
+  openDenomQtyInput: {
+    height: 44,
+    borderRadius: 4,
+    borderWidth: 1,
+    borderColor: '#334155',
+    paddingHorizontal: 12,
+    backgroundColor: '#020617',
+    color: '#f9fafb',
+    fontSize: 15,
+    fontWeight: '600',
+  },
+  openDenomLineTotal: {
+    fontSize: 12,
+    fontWeight: '700',
+    color: '#64748b',
+    textAlign: 'right',
+  },
+  openTotalBar: {
+    marginTop: 6,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    paddingVertical: 14,
+    paddingHorizontal: 14,
+    backgroundColor: '#111827',
+    borderWidth: 1,
+    borderColor: '#334155',
+    borderRadius: 4,
+  },
+  openTotalLabel: {
+    fontSize: 15,
+    fontWeight: '800',
+    color: '#f9fafb',
+    textTransform: 'uppercase',
+    letterSpacing: 0.6,
+  },
+  openTotalValue: {
+    fontSize: 18,
+    fontWeight: '800',
+    color: '#4ade80',
+  },
+  openNotesBlock: {
+    gap: 8,
+    marginTop: 2,
+  },
+  openNotesLabel: {
+    fontSize: 12,
+    fontWeight: '700',
+    color: '#94a3b8',
+    textTransform: 'uppercase',
+    letterSpacing: 0.5,
+  },
+  openNotesInput: {
+    minHeight: 88,
+    borderRadius: 4,
+    borderWidth: 1,
+    borderColor: '#334155',
+    paddingHorizontal: 12,
+    paddingVertical: 10,
+    backgroundColor: '#020617',
+    color: '#f9fafb',
+    fontSize: 14,
+    textAlignVertical: 'top',
+  },
+  openPrimaryButton: {
+    marginTop: 6,
+    minHeight: 52,
+    borderRadius: 4,
+    backgroundColor: '#16a34a',
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingVertical: 14,
+    paddingHorizontal: 16,
+  },
+  openPrimaryButtonDisabled: {
+    backgroundColor: '#4b5563',
+  },
+  openPrimaryButtonText: {
+    color: '#f9fafb',
+    fontSize: 15,
+    fontWeight: '800',
+    letterSpacing: 0.3,
   },
   center: {
     flex: 1,
