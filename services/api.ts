@@ -8,6 +8,7 @@ import type {
   Sale,
   SaleHistoryResponse,
   SaleSummaryResponse,
+  StockAuditIssue,
   StockMovement,
 } from '../types';
 
@@ -411,6 +412,19 @@ export const api = {
         method: 'POST',
         body: JSON.stringify(data),
       }),
+  },
+  stockAuditIssues: {
+    list: (params?: { status?: string; product_id?: number; skip?: number; limit?: number }) => {
+      const sp = new URLSearchParams();
+      if (params?.status) sp.set('status', params.status);
+      if (params?.product_id != null) sp.set('product_id', String(params.product_id));
+      if (params?.skip != null) sp.set('skip', String(params.skip));
+      if (params?.limit != null) sp.set('limit', String(params.limit));
+      const q = sp.toString();
+      return request<StockAuditIssue[]>(`/stock-audit-issues${q ? `?${q}` : ''}`);
+    },
+    resolve: (issueId: number) =>
+      request<StockAuditIssue>(`/stock-audit-issues/${issueId}/resolve`, { method: 'PATCH' }),
   },
   sales: {
     list: (params?: { skip?: number; limit?: number }) => {

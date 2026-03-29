@@ -70,6 +70,17 @@ export interface StockDisplayPack {
     performed_by: number | null;
     created_at: string;
   }
+
+  export interface StockAuditIssue {
+    id: number;
+    product_id: number;
+    issue_type: string;
+    issue_note: string | null;
+    status: string;
+    reviewed_by: number | null;
+    reviewed_at: string | null;
+    created_at: string;
+  }
   
   export interface SaleItem {
     id: number;
