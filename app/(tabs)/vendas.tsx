@@ -85,8 +85,8 @@ function PosPaymentMethodButtons({
   paymentMethod,
   setPaymentMethod,
 }: {
-  paymentMethod: 'cash' | 'card' | 'transfer' | 'other';
-  setPaymentMethod: (m: 'cash' | 'card' | 'transfer' | 'other') => void;
+  paymentMethod: 'cash' | 'card';
+  setPaymentMethod: (m: 'cash' | 'card') => void;
 }) {
   return (
     <View style={styles.paymentMethodTwoRow}>
@@ -294,11 +294,9 @@ export default function VendasScreen() {
   const [selectedProduct, setSelectedProduct] = useState<Product | null>(null);
   const [selectedQty, setSelectedQty] = useState('1');
 
-  const [paymentMethod, setPaymentMethod] = useState<'cash' | 'card' | 'transfer' | 'other'>('cash');
+  const [paymentMethod, setPaymentMethod] = useState<'cash' | 'card'>('cash');
   const [paymentMode, setPaymentMode] = useState<'simple' | 'split'>('simple');
-  const [splitPayments, setSplitPayments] = useState<
-    { method: 'cash' | 'card' | 'transfer' | 'other'; amount: number }[]
-  >([
+  const [splitPayments, setSplitPayments] = useState<{ method: 'cash' | 'card'; amount: number }[]>([
     { method: 'cash', amount: 0 },
     { method: 'card', amount: 0 },
   ]);
@@ -489,12 +487,6 @@ export default function VendasScreen() {
     paymentMode === 'simple' && paymentMethod === 'cash' && cashReceivedNumber != null
       ? cashReceivedNumber - total
       : null;
-
-  useEffect(() => {
-    if (paymentMethod === 'transfer' || paymentMethod === 'other') {
-      setPaymentMethod('cash');
-    }
-  }, [paymentMethod]);
 
   useEffect(() => {
     if (paymentMode === 'split') {

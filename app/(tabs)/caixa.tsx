@@ -14,6 +14,7 @@ import {
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
+import { useAuth } from '@/contexts/AuthContext';
 import { api, type CashSessionSummary } from '@/services/api';
 import { getErrorMessage } from '@/utils/errorMessage';
 
@@ -40,6 +41,7 @@ const OPENING_DENOM_LEFT = DENOMINATIONS.slice(0, 7);
 const OPENING_DENOM_RIGHT = DENOMINATIONS.slice(7);
 
 export default function CaixaScreen() {
+  const { user } = useAuth();
   const [summary, setSummary] = useState<CashSessionSummary | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -112,7 +114,10 @@ export default function CaixaScreen() {
         opening_breakdown: openingBreakdown,
         notes: openingNotes.trim() || undefined,
       });
-      setSummary({ session, ...{
+      const openerLabel = (user?.display_name?.trim() || user?.username || '').trim() || null;
+      setSummary({
+        session,
+        opened_by_display_name: openerLabel,
         total_cash_sales: '0',
         total_card_sales: '0',
         total_transfer_sales: '0',
@@ -123,7 +128,7 @@ export default function CaixaScreen() {
         expected_cash_in_till: session.opening_float,
         transaction_count: 0,
         voided_count: 0,
-      }});
+      });
       Alert.alert('Sessão aberta', 'A sessão de caixa foi aberta com sucesso.');
       setOpeningBreakdown(makeEmptyBreakdown());
       setOpeningNotes('');
@@ -218,6 +223,10 @@ export default function CaixaScreen() {
         ? `+${toCurrency(differenceAmount)}`
         : toCurrency(differenceAmount);
 
+  const openedByLabel =
+    summary?.opened_by_display_name?.trim() ||
+    (session != null ? `Utilizador #${session.opened_by}` : '—');
+
   return (
     <SafeAreaView style={styles.safeArea}>
       {loading && (
@@ -237,7 +246,8 @@ export default function CaixaScreen() {
               <>
                 <Text style={styles.title}>Caixa</Text>
                 <Text style={styles.subtitle}>
-                  Abre e fecha sessões de caixa para registar vendas de forma segura.
+                  Sessão única da loja: todos os operadores usam a mesma gaveta até fechar. O esperado na gaveta inclui
+                  apenas dinheiro (cartão não entra no físico).
                 </Text>
               </>
             ) : (
@@ -260,7 +270,8 @@ export default function CaixaScreen() {
               <View style={styles.openCard}>
                 <Text style={styles.openCardTitle}>Abrir sessão de caixa</Text>
                 <Text style={styles.openCardHelper}>
-                  Insira o dinheiro disponível na gaveta para definir o fundo inicial da sessão.
+                  Insira o dinheiro disponível na gaveta para definir o fundo inicial da sessão. Só pode existir uma
+                  sessão aberta por loja; outros operadores continuarão na mesma sessão até fechar.
                 </Text>
 
                 <View style={styles.openDenomGrid}>
@@ -336,6 +347,12 @@ export default function CaixaScreen() {
 
             {session && summary && (
               <View style={styles.closeFlow}>
+                <View style={styles.closeActiveBanner}>
+                  <Text style={styles.closeActiveBannerText}>
+                    Sessão da loja activa — aberta por <Text style={styles.closeActiveBannerStrong}>{openedByLabel}</Text>.
+                    Qualquer caixa autorizado pode vender e fechar; não é necessário abrir outra sessão.
+                  </Text>
+                </View>
                 <View
                   style={[
                     styles.closeStatCardsRow,
@@ -347,6 +364,7 @@ export default function CaixaScreen() {
                     <Text style={styles.closeStatCardValue} numberOfLines={2}>
                       {sessionOpenedSinceLabel}
                     </Text>
+                    <Text style={styles.closeStatCardMeta}>Aberto por: {openedByLabel}</Text>
                   </View>
                   <View style={styles.closeStatCard}>
                     <Text style={styles.closeStatCardIcon}>💵</Text>
@@ -357,6 +375,9 @@ export default function CaixaScreen() {
                     <Text style={styles.closeStatCardIcon}>🛒</Text>
                     <Text style={styles.closeStatCardTitle}>Total de vendas</Text>
                     <Text style={styles.closeStatCardValue}>{summary.total_sales} Kz</Text>
+                    <Text style={styles.closeStatCardMeta}>
+                      Dinheiro: {summary.total_cash_sales} Kz · Cartão: {summary.total_card_sales} Kz
+                    </Text>
                   </View>
                 </View>
 
@@ -420,8 +441,11 @@ export default function CaixaScreen() {
                       <Text style={styles.closeResumoValueHero}>{toCurrency(closingCountedTotal)}</Text>
                     </View>
                     <View style={styles.closeResumoMetric}>
-                      <Text style={styles.closeResumoLabel}>Esperado</Text>
+                      <Text style={styles.closeResumoLabel}>Esperado na gaveta</Text>
                       <Text style={styles.closeResumoValueHero}>{toCurrency(expectedCash)}</Text>
+                      <Text style={styles.closeEsperadoHint}>
+                        Fundo inicial + vendas em dinheiro. Vendas em cartão não entram no dinheiro físico da gaveta.
+                      </Text>
                     </View>
                     <View
                       style={[
@@ -668,6 +692,23 @@ const styles = StyleSheet.create({
     gap: 16,
     marginTop: 4,
   },
+  closeActiveBanner: {
+    width: '100%',
+    padding: 12,
+    borderRadius: 4,
+    borderWidth: 1,
+    borderColor: '#1e3a5f',
+    backgroundColor: 'rgba(30, 58, 95, 0.35)',
+  },
+  closeActiveBannerText: {
+    fontSize: 13,
+    lineHeight: 20,
+    color: '#cbd5e1',
+  },
+  closeActiveBannerStrong: {
+    fontWeight: '800',
+    color: '#f1f5f9',
+  },
   closeStatCardsRow: {
     flexDirection: 'row',
     gap: 10,
@@ -702,6 +743,13 @@ const styles = StyleSheet.create({
     fontWeight: '800',
     color: '#f1f5f9',
     lineHeight: 22,
+  },
+  closeStatCardMeta: {
+    marginTop: 8,
+    fontSize: 12,
+    fontWeight: '600',
+    color: '#64748b',
+    lineHeight: 17,
   },
   closeMainRow: {
     flexDirection: 'row',
@@ -754,6 +802,13 @@ const styles = StyleSheet.create({
     fontSize: 20,
     fontWeight: '800',
     color: '#f9fafb',
+  },
+  closeEsperadoHint: {
+    marginTop: 8,
+    fontSize: 11,
+    lineHeight: 16,
+    color: '#64748b',
+    fontWeight: '600',
   },
   closeDiffBox: {
     marginTop: 10,

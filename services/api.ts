@@ -174,6 +174,8 @@ export interface CashSessionResponse {
 
 export interface CashSessionSummary {
   session: CashSessionResponse;
+  /** Nome de quem abriu a sessão (loja partilha uma única sessão até fechar). */
+  opened_by_display_name?: string | null;
   total_cash_sales: string;
   total_card_sales: string;
   total_transfer_sales: string;
