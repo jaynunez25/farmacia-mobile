@@ -10,6 +10,7 @@ export interface StockDisplayPack {
     sku: string;
     barcode: string | null;
     name: string;
+    documentary_name?: string | null;
     category: string | null;
     category_code: string | null;
     brand: string | null;
@@ -36,6 +37,14 @@ export interface StockDisplayPack {
     location: string | null;
     is_verified: boolean;
     source_type: string | null;
+    boxes?: number | null;
+    blisters?: number | null;
+    units_per_blister?: number | null;
+    loose_units?: number | null;
+    other_pack_count?: number | null;
+    other_pack_type?: string | null;
+    notes?: string | null;
+    needs_audit_review?: boolean;
     created_at: string;
     updated_at: string;
     /** For pack products: total_units, full_boxes, loose_units. */

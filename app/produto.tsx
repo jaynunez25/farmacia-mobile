@@ -108,6 +108,20 @@ export default function ProdutoDetailScreen() {
             {product.barcode && <Text style={styles.meta}>Código: {product.barcode}</Text>}
             <Text style={styles.meta}>Stock actual: {product.stock_quantity}</Text>
             <Text style={styles.meta}>Stock mínimo: {product.minimum_stock}</Text>
+            {product.documentary_name ? (
+              <Text style={styles.meta}>Nome documental: {product.documentary_name}</Text>
+            ) : null}
+            {product.boxes != null ? <Text style={styles.meta}>Caixas: {product.boxes}</Text> : null}
+            {product.blisters != null ? (
+              <Text style={styles.meta}>Blisters: {product.blisters}</Text>
+            ) : null}
+            {product.loose_units != null ? (
+              <Text style={styles.meta}>Unidades soltas: {product.loose_units}</Text>
+            ) : null}
+            {product.notes ? <Text style={styles.meta}>Notas: {product.notes}</Text> : null}
+            {product.needs_audit_review ? (
+              <Text style={styles.auditBadge}>Precisa revisão de auditoria</Text>
+            ) : null}
           </View>
 
           {canManageProducts ? (
@@ -167,6 +181,12 @@ const styles = StyleSheet.create({
     fontSize: 14,
     color: '#9ca3af',
     marginTop: 4,
+  },
+  auditBadge: {
+    marginTop: 8,
+    color: '#fca5a5',
+    fontSize: 13,
+    fontWeight: '700',
   },
   errorBox: {
     padding: 12,
