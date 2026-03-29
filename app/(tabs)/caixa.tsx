@@ -9,6 +9,7 @@ import {
   StyleSheet,
   Text,
   TextInput,
+  useWindowDimensions,
   View,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
@@ -193,6 +194,29 @@ export default function CaixaScreen() {
   };
 
   const session = summary?.session ?? null;
+  const { width: windowWidth } = useWindowDimensions();
+  const closingLayoutNarrow = windowWidth < 720;
+
+  const sessionOpenedSinceLabel =
+    session != null
+      ? (() => {
+          const d = new Date(session.opened_at);
+          const now = new Date();
+          const sameDay =
+            d.getFullYear() === now.getFullYear() &&
+            d.getMonth() === now.getMonth() &&
+            d.getDate() === now.getDate();
+          const time = d.toLocaleTimeString('pt-PT', { hour: '2-digit', minute: '2-digit' });
+          return sameDay ? `Hoje às ${time}` : d.toLocaleString('pt-PT');
+        })()
+      : '';
+
+  const differenceDisplay =
+    Math.abs(differenceAmount) < 0.009
+      ? toCurrency(0)
+      : differenceAmount > 0
+        ? `+${toCurrency(differenceAmount)}`
+        : toCurrency(differenceAmount);
 
   return (
     <SafeAreaView style={styles.safeArea}>
@@ -229,52 +253,6 @@ export default function CaixaScreen() {
               <View style={[styles.errorBox, !session && styles.openErrorBox]}>
                 <Text style={styles.errorTitle}>Erro</Text>
                 <Text style={styles.errorText}>{error}</Text>
-              </View>
-            )}
-
-            {session && (
-              <View style={styles.section}>
-                <Text style={styles.sectionTitle}>Sessão actual</Text>
-                <Text style={styles.fieldText}>
-                  <Text style={styles.fieldLabel}>Data: </Text>
-                  {session.date}
-                </Text>
-                <Text style={styles.fieldText}>
-                  <Text style={styles.fieldLabel}>Aberto por: </Text>
-                  {session.opened_by}
-                </Text>
-                <Text style={styles.fieldText}>
-                  <Text style={styles.fieldLabel}>Aberto em: </Text>
-                  {new Date(session.opened_at).toLocaleString()}
-                </Text>
-                <Text style={styles.fieldText}>
-                  <Text style={styles.fieldLabel}>Fundo inicial: </Text>
-                  {session.opening_float} Kz
-                </Text>
-                {summary && (
-                  <>
-                    <Text style={styles.fieldText}>
-                      <Text style={styles.fieldLabel}>Vendas em dinheiro: </Text>
-                      {summary.total_cash_sales} Kz
-                    </Text>
-                    <Text style={styles.fieldText}>
-                      <Text style={styles.fieldLabel}>Vendas cartão: </Text>
-                      {summary.total_card_sales} Kz
-                    </Text>
-                    <Text style={styles.fieldText}>
-                      <Text style={styles.fieldLabel}>Vendas transferência: </Text>
-                      {summary.total_transfer_sales} Kz
-                    </Text>
-                    <Text style={styles.fieldText}>
-                      <Text style={styles.fieldLabel}>Total vendas: </Text>
-                      {summary.total_sales} Kz
-                    </Text>
-                    <Text style={styles.fieldText}>
-                      <Text style={styles.fieldLabel}>Esperado em caixa: </Text>
-                      {summary.expected_cash_in_till} Kz
-                    </Text>
-                  </>
-                )}
               </View>
             )}
 
@@ -356,68 +334,137 @@ export default function CaixaScreen() {
               </View>
             )}
 
-            {session && (
-              <View style={styles.section}>
-                <Text style={styles.sectionTitle}>Fechar sessão</Text>
-                <Text style={styles.helperText}>
-                  No fim do turno, conta o dinheiro físico e fecha a sessão para comparar o esperado com o contado.
-                </Text>
-                <View style={styles.field}>
-                  <Text style={styles.label}>Denominações (fecho)</Text>
-                  {DENOMINATIONS.map(denom => {
-                    const qty = closingBreakdown[String(denom)] ?? 0;
-                    const lineTotal = qty * denom;
-                    return (
-                      <View style={styles.denomRow} key={`close-${denom}`}>
-                        <Text style={styles.denomLabel}>{denom} Kz</Text>
-                        <TextInput
-                          style={styles.denomQtyInput}
-                          keyboardType="number-pad"
-                          value={String(qty)}
-                          onChangeText={value => setDenominationQty('closing', denom, value)}
-                          placeholder="0"
-                          placeholderTextColor="#6b7280"
-                        />
-                        <Text style={styles.denomSubtotal}>{toCurrency(lineTotal)}</Text>
+            {session && summary && (
+              <View style={styles.closeFlow}>
+                <View
+                  style={[
+                    styles.closeStatCardsRow,
+                    closingLayoutNarrow && styles.closeStatCardsRowStack,
+                  ]}>
+                  <View style={styles.closeStatCard}>
+                    <Text style={styles.closeStatCardIcon}>🕐</Text>
+                    <Text style={styles.closeStatCardTitle}>Sessão aberta desde</Text>
+                    <Text style={styles.closeStatCardValue} numberOfLines={2}>
+                      {sessionOpenedSinceLabel}
+                    </Text>
+                  </View>
+                  <View style={styles.closeStatCard}>
+                    <Text style={styles.closeStatCardIcon}>💵</Text>
+                    <Text style={styles.closeStatCardTitle}>Fundo inicial</Text>
+                    <Text style={styles.closeStatCardValue}>{session.opening_float} Kz</Text>
+                  </View>
+                  <View style={styles.closeStatCard}>
+                    <Text style={styles.closeStatCardIcon}>🛒</Text>
+                    <Text style={styles.closeStatCardTitle}>Total de vendas</Text>
+                    <Text style={styles.closeStatCardValue}>{summary.total_sales} Kz</Text>
+                  </View>
+                </View>
+
+                <View
+                  style={[styles.closeMainRow, closingLayoutNarrow && styles.closeMainRowStack]}>
+                  <View style={[styles.closePanel, styles.closePanelCount]}>
+                    <Text style={styles.closePanelHeading}>Contagem de Dinheiro</Text>
+                    <View style={styles.openDenomGrid}>
+                      <View style={styles.openDenomCol}>
+                        {OPENING_DENOM_LEFT.map(denom => {
+                          const qty = closingBreakdown[String(denom)] ?? 0;
+                          const lineTotal = qty * denom;
+                          return (
+                            <View style={styles.openDenomCell} key={`close-${denom}`}>
+                              <Text style={styles.openDenomValueLabel}>{formatDenominationLabel(denom)}</Text>
+                              <TextInput
+                                style={styles.openDenomQtyInput}
+                                keyboardType="number-pad"
+                                value={String(qty)}
+                                onChangeText={value => setDenominationQty('closing', denom, value)}
+                                placeholder="0"
+                                placeholderTextColor="#6b7280"
+                              />
+                              <Text style={styles.openDenomLineTotal}>{toCurrency(lineTotal)}</Text>
+                            </View>
+                          );
+                        })}
                       </View>
-                    );
-                  })}
+                      <View style={styles.openDenomCol}>
+                        {OPENING_DENOM_RIGHT.map(denom => {
+                          const qty = closingBreakdown[String(denom)] ?? 0;
+                          const lineTotal = qty * denom;
+                          return (
+                            <View style={styles.openDenomCell} key={`close-${denom}`}>
+                              <Text style={styles.openDenomValueLabel}>{formatDenominationLabel(denom)}</Text>
+                              <TextInput
+                                style={styles.openDenomQtyInput}
+                                keyboardType="number-pad"
+                                value={String(qty)}
+                                onChangeText={value => setDenominationQty('closing', denom, value)}
+                                placeholder="0"
+                                placeholderTextColor="#6b7280"
+                              />
+                              <Text style={styles.openDenomLineTotal}>{toCurrency(lineTotal)}</Text>
+                            </View>
+                          );
+                        })}
+                      </View>
+                    </View>
+                  </View>
+
+                  <View
+                    style={[
+                      styles.closePanel,
+                      styles.closePanelResumo,
+                      closingLayoutNarrow && styles.closePanelResumoFull,
+                    ]}>
+                    <Text style={styles.closePanelHeading}>Resumo</Text>
+                    <View style={styles.closeResumoMetric}>
+                      <Text style={styles.closeResumoLabel}>Total contado</Text>
+                      <Text style={styles.closeResumoValueHero}>{toCurrency(closingCountedTotal)}</Text>
+                    </View>
+                    <View style={styles.closeResumoMetric}>
+                      <Text style={styles.closeResumoLabel}>Esperado</Text>
+                      <Text style={styles.closeResumoValueHero}>{toCurrency(expectedCash)}</Text>
+                    </View>
+                    <View
+                      style={[
+                        styles.closeDiffBox,
+                        differenceAmount > 0.009 && styles.closeDiffBoxPositive,
+                        differenceAmount < -0.009 && styles.closeDiffBoxNegative,
+                        Math.abs(differenceAmount) < 0.009 && styles.closeDiffBoxNeutral,
+                      ]}>
+                      <Text style={styles.closeResumoLabel}>Diferença</Text>
+                      <Text
+                        style={[
+                          styles.closeDiffValue,
+                          differenceAmount > 0.009 && styles.closeDiffValuePositive,
+                          differenceAmount < -0.009 && styles.closeDiffValueNegative,
+                        ]}>
+                        {differenceDisplay}
+                      </Text>
+                    </View>
+                    <Text style={styles.closeResumoHint}>Registe discrepâncias se necessário.</Text>
+                  </View>
                 </View>
-                <View style={styles.calculationBox}>
-                  <Text style={styles.fieldText}><Text style={styles.fieldLabel}>Fundo inicial: </Text>{summary?.session?.opening_float ?? '0'} Kz</Text>
-                  <Text style={styles.fieldText}><Text style={styles.fieldLabel}>Vendas em dinheiro: </Text>{summary?.total_cash_sales ?? '0'} Kz</Text>
-                  <Text style={styles.fieldText}><Text style={styles.fieldLabel}>Reembolsos em dinheiro: </Text>{summary?.cash_refunds ?? '0'} Kz</Text>
-                  <Text style={styles.fieldText}><Text style={styles.fieldLabel}>Reforços de caixa: </Text>0.00 Kz</Text>
-                  <Text style={styles.fieldText}><Text style={styles.fieldLabel}>Retiradas de caixa: </Text>{summary?.approved_cash_drops ?? '0'} Kz</Text>
-                  <Text style={styles.fieldText}><Text style={styles.fieldLabel}>Esperado em caixa: </Text>{toCurrency(expectedCash)}</Text>
-                  <Text style={styles.fieldText}><Text style={styles.fieldLabel}>Total contado: </Text>{toCurrency(closingCountedTotal)}</Text>
-                  <Text style={styles.fieldText}><Text style={styles.fieldLabel}>Diferença: </Text>{toCurrency(differenceAmount)}</Text>
-                  {differenceAmount > 0 ? (
-                    <Text style={styles.excessText}>Excesso de caixa: {toCurrency(Math.abs(differenceAmount))}</Text>
-                  ) : null}
-                  {differenceAmount < 0 ? (
-                    <Text style={styles.shortText}>Falta de caixa: {toCurrency(Math.abs(differenceAmount))}</Text>
-                  ) : null}
-                </View>
-                <View style={styles.field}>
-                  <Text style={styles.label}>Notas / incidentes {Math.abs(differenceAmount) > 0.009 ? '(obrigatório com diferença)' : '(opcional)'}</Text>
+
+                <View style={styles.closeNotesBlock}>
+                  <Text style={styles.closeNotesLabel}>
+                    Notas / incidentes {Math.abs(differenceAmount) > 0.009 ? '(obrigatório com diferença)' : '(opcional)'}
+                  </Text>
                   <TextInput
-                    style={[styles.input, styles.inputMultiline]}
+                    style={styles.closeNotesInput}
                     value={closingNotes}
                     onChangeText={setClosingNotes}
                     placeholder="Regista discrepâncias ou incidentes."
                     placeholderTextColor="#6b7280"
                     multiline
-                    numberOfLines={3}
+                    numberOfLines={4}
                   />
                 </View>
+
                 <Pressable
-                  style={[
-                    styles.dangerButton,
-                    closingSaving && styles.dangerButtonDisabled,
-                  ]}
+                  style={[styles.closeDangerButton, closingSaving && styles.closeDangerButtonDisabled]}
                   onPress={closingSaving ? undefined : handleClose}>
-                  <Text style={styles.dangerButtonText}>{closingSaving ? 'A fechar...' : 'Fechar sessão de caixa'}</Text>
+                  <Text style={styles.closeDangerButtonText}>
+                    {closingSaving ? 'A fechar...' : 'Fechar sessão de caixa'}
+                  </Text>
                 </Pressable>
               </View>
             )}
@@ -612,75 +659,183 @@ const styles = StyleSheet.create({
     marginTop: 4,
     fontSize: 14,
     color: '#9ca3af',
+    lineHeight: 20,
   },
-  section: {
-    borderRadius: 12,
-    padding: 12,
-    backgroundColor: '#020617',
-    borderWidth: 1,
-    borderColor: '#111827',
-    gap: 8,
+  closeFlow: {
+    width: '100%',
+    maxWidth: 1100,
+    alignSelf: 'center',
+    gap: 16,
+    marginTop: 4,
   },
-  sectionTitle: {
-    fontSize: 15,
-    fontWeight: '600',
-    color: '#e5e7eb',
-  },
-  helperText: {
-    fontSize: 13,
-    color: '#9ca3af',
-  },
-  field: {
-    gap: 4,
-  },
-  denomRow: {
+  closeStatCardsRow: {
     flexDirection: 'row',
-    alignItems: 'center',
-    gap: 8,
+    gap: 10,
+    width: '100%',
   },
-  denomLabel: {
-    width: 86,
-    fontSize: 13,
-    color: '#e5e7eb',
-    fontWeight: '600',
+  closeStatCardsRowStack: {
+    flexDirection: 'column',
   },
-  denomQtyInput: {
+  closeStatCard: {
     flex: 1,
-    height: 40,
-    borderRadius: 10,
+    minWidth: 0,
+    backgroundColor: '#0c111d',
     borderWidth: 1,
-    borderColor: '#1f2937',
-    paddingHorizontal: 12,
-    backgroundColor: '#020617',
+    borderColor: '#1e293b',
+    borderRadius: 4,
+    padding: 14,
+  },
+  closeStatCardIcon: {
+    fontSize: 18,
+    marginBottom: 8,
+  },
+  closeStatCardTitle: {
+    fontSize: 11,
+    fontWeight: '800',
+    color: '#94a3b8',
+    textTransform: 'uppercase',
+    letterSpacing: 0.6,
+  },
+  closeStatCardValue: {
+    marginTop: 8,
+    fontSize: 16,
+    fontWeight: '800',
+    color: '#f1f5f9',
+    lineHeight: 22,
+  },
+  closeMainRow: {
+    flexDirection: 'row',
+    gap: 14,
+    width: '100%',
+    alignItems: 'flex-start',
+  },
+  closeMainRowStack: {
+    flexDirection: 'column',
+  },
+  closePanel: {
+    backgroundColor: '#0c111d',
+    borderWidth: 1,
+    borderColor: '#1e293b',
+    borderRadius: 4,
+    padding: 16,
+    gap: 12,
+  },
+  closePanelCount: {
+    flex: 1,
+    minWidth: 0,
+  },
+  closePanelResumo: {
+    width: 300,
+    maxWidth: '100%' as const,
+    flexShrink: 0,
+  },
+  closePanelResumoFull: {
+    width: '100%',
+  },
+  closePanelHeading: {
+    fontSize: 16,
+    fontWeight: '800',
+    color: '#f1f5f9',
+    letterSpacing: 0.2,
+    marginBottom: 4,
+  },
+  closeResumoMetric: {
+    gap: 6,
+    marginBottom: 4,
+  },
+  closeResumoLabel: {
+    fontSize: 11,
+    fontWeight: '800',
+    color: '#94a3b8',
+    textTransform: 'uppercase',
+    letterSpacing: 0.55,
+  },
+  closeResumoValueHero: {
+    fontSize: 20,
+    fontWeight: '800',
     color: '#f9fafb',
   },
-  denomSubtotal: {
-    width: 110,
-    textAlign: 'right',
-    fontSize: 13,
-    color: '#cbd5e1',
+  closeDiffBox: {
+    marginTop: 10,
+    paddingVertical: 16,
+    paddingHorizontal: 14,
+    borderRadius: 4,
+    borderWidth: 1,
   },
-  totalLine: {
+  closeDiffBoxPositive: {
+    backgroundColor: 'rgba(22, 163, 74, 0.14)',
+    borderColor: '#15803d',
+  },
+  closeDiffBoxNegative: {
+    backgroundColor: 'rgba(127, 29, 29, 0.35)',
+    borderColor: '#991b1b',
+  },
+  closeDiffBoxNeutral: {
+    backgroundColor: 'rgba(51, 65, 85, 0.35)',
+    borderColor: '#475569',
+  },
+  closeDiffValue: {
     marginTop: 6,
-    fontSize: 14,
-    color: '#e5e7eb',
+    fontSize: 26,
+    fontWeight: '900',
+    color: '#e2e8f0',
+    letterSpacing: 0.3,
   },
-  label: {
-    fontSize: 13,
-    color: '#9ca3af',
+  closeDiffValuePositive: {
+    color: '#4ade80',
   },
-  input: {
-    height: 44,
-    borderRadius: 10,
+  closeDiffValueNegative: {
+    color: '#fca5a5',
+  },
+  closeResumoHint: {
+    marginTop: 12,
+    fontSize: 12,
+    color: '#64748b',
+    lineHeight: 18,
+  },
+  closeNotesBlock: {
+    gap: 8,
+    width: '100%',
+  },
+  closeNotesLabel: {
+    fontSize: 12,
+    fontWeight: '700',
+    color: '#94a3b8',
+    textTransform: 'uppercase',
+    letterSpacing: 0.5,
+  },
+  closeNotesInput: {
+    minHeight: 88,
+    borderRadius: 4,
     borderWidth: 1,
-    borderColor: '#1f2937',
+    borderColor: '#334155',
     paddingHorizontal: 12,
+    paddingVertical: 10,
     backgroundColor: '#020617',
     color: '#f9fafb',
-  },
-  inputMultiline: {
-    height: 88,
+    fontSize: 14,
     textAlignVertical: 'top',
+  },
+  closeDangerButton: {
+    width: '100%',
+    minHeight: 52,
+    borderRadius: 4,
+    backgroundColor: '#7f1d1d',
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingVertical: 14,
+    paddingHorizontal: 16,
+    marginTop: 4,
+  },
+  closeDangerButtonDisabled: {
+    backgroundColor: '#991b1b',
+    opacity: 0.85,
+  },
+  closeDangerButtonText: {
+    color: '#fee2e2',
+    fontSize: 15,
+    fontWeight: '800',
+    letterSpacing: 0.3,
   },
   errorBox: {
     padding: 12,
@@ -695,63 +850,6 @@ const styles = StyleSheet.create({
   errorText: {
     color: '#fee2e2',
     fontSize: 13,
-  },
-  fieldText: {
-    fontSize: 13,
-    color: '#e5e7eb',
-  },
-  fieldLabel: {
-    fontWeight: '600',
-  },
-  calculationBox: {
-    borderRadius: 10,
-    borderWidth: 1,
-    borderColor: '#1f2937',
-    backgroundColor: '#0b1220',
-    padding: 10,
-    gap: 4,
-  },
-  excessText: {
-    marginTop: 4,
-    color: '#4ade80',
-    fontWeight: '700',
-  },
-  shortText: {
-    marginTop: 4,
-    color: '#fca5a5',
-    fontWeight: '700',
-  },
-  primaryButton: {
-    marginTop: 8,
-    height: 44,
-    borderRadius: 999,
-    backgroundColor: '#16a34a',
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  primaryButtonText: {
-    color: '#f9fafb',
-    fontSize: 15,
-    fontWeight: '600',
-  },
-  primaryButtonDisabled: {
-    backgroundColor: '#4b5563',
-  },
-  dangerButton: {
-    marginTop: 8,
-    height: 44,
-    borderRadius: 999,
-    backgroundColor: '#7f1d1d',
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  dangerButtonText: {
-    color: '#fee2e2',
-    fontSize: 15,
-    fontWeight: '600',
-  },
-  dangerButtonDisabled: {
-    backgroundColor: '#991b1b',
   },
 });
 
