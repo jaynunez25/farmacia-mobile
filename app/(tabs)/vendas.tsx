@@ -45,6 +45,64 @@ function cartLineSellHint(displayName: string, sell_as: CartItem['sell_as'], pro
   return '';
 }
 
+/** Pack detection aligned with POS `isPackProduct` (display-only breakdown for sell modal). */
+/** Same truthiness as `isPackProduct` inside the screen (pack / lâmina flows). */
+function isPackProductForSellModal(p: Product): boolean {
+  const raw = (p.can_sell_by_box || p.can_sell_by_unit) && (p.units_per_pack ?? 0) > 0;
+  return Boolean(raw);
+}
+
+/** Local presentation for the sell-mode modal; uses existing `stock_quantity`, `stock_display_pack`, flags. */
+function computePosSellModalStock(p: Product): {
+  total: number;
+  boxes: number;
+  laminae: number;
+  showBoxLine: boolean;
+  showLaminaLine: boolean;
+  isLowStock: boolean;
+  isOutOfStock: boolean;
+  boxButtonDisabled: boolean;
+  unitButtonDisabled: boolean;
+} {
+  const total = Math.max(0, Math.floor(Number(p.stock_quantity) || 0));
+  const pack = isPackProductForSellModal(p);
+  const upp = Math.max(1, Math.floor(Number(p.units_per_pack) || 1));
+
+  let boxes = 0;
+  let laminae = 0;
+  if (pack) {
+    if (p.stock_display_pack) {
+      boxes = Math.max(0, Math.floor(p.stock_display_pack.full_boxes));
+      laminae = Math.max(0, Math.floor(p.stock_display_pack.loose_units));
+    } else {
+      boxes = Math.floor(total / upp);
+      laminae = total % upp;
+    }
+  }
+
+  const showBoxLine = pack && !!p.can_sell_by_box;
+  const showLaminaLine = pack && !!p.can_sell_by_unit;
+
+  const isOutOfStock = total <= 0;
+  const minStock = Math.max(0, Math.floor(Number(p.minimum_stock) || 0));
+  const isLowStock = total > 0 && minStock > 0 && total <= minStock;
+
+  const boxButtonDisabled = isOutOfStock || (pack && (!p.can_sell_by_box || boxes < 1));
+  const unitButtonDisabled = isOutOfStock || (pack && !p.can_sell_by_unit);
+
+  return {
+    total,
+    boxes,
+    laminae,
+    showBoxLine,
+    showLaminaLine,
+    isLowStock,
+    isOutOfStock,
+    boxButtonDisabled,
+    unitButtonDisabled,
+  };
+}
+
 /** react-native-web: flex + minWidth:0 on <Text> table headers collapses width and stacks letters vertically; use Views as cells. */
 function CartTableHeaderRow({ webCart }: { webCart: boolean }) {
   if (webCart) {
@@ -564,12 +622,16 @@ export default function VendasScreen() {
 
   const confirmSellAsBox = () => {
     if (!sellModeProduct) return;
+    const stockInfo = computePosSellModalStock(sellModeProduct);
+    if (stockInfo.boxButtonDisabled) return;
     addProductToCart(sellModeProduct, 'manual', { qty: 1, sellAs: 'box' });
     closeSellModeModal();
   };
 
   const confirmSellAsUnit = () => {
     if (!sellModeProduct) return;
+    const stockInfo = computePosSellModalStock(sellModeProduct);
+    if (stockInfo.unitButtonDisabled) return;
     const qty = Math.max(1, parseInt(unitSellQty || '1', 10) || 1);
     addProductToCart(sellModeProduct, 'manual', { qty, sellAs: 'unit' });
     closeSellModeModal();
@@ -756,6 +818,10 @@ export default function VendasScreen() {
   };
 
   const sellModePrices = getSellModePrices();
+  const sellModeStockInfo = useMemo(
+    () => (sellModeProduct ? computePosSellModalStock(sellModeProduct) : null),
+    [sellModeProduct],
+  );
 
   return (
     <SafeAreaView style={styles.safeArea}>
