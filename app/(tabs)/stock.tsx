@@ -15,6 +15,7 @@ import { useRouter } from 'expo-router';
 import { useAuth } from '@/contexts/AuthContext';
 import { api } from '@/services/api';
 import type { Product } from '@/types';
+import { fetchAllProducts } from '@/utils/fetchAllProducts';
 import { getErrorMessage } from '@/utils/errorMessage';
 import { isAdminRole } from '@/utils/roles';
 
@@ -50,11 +51,10 @@ export default function StockScreen() {
     setError(null);
     setInitialSaveError(null);
     try {
-      const data = await api.products.list({
+      const data = await fetchAllProducts({
         search: search.trim() || undefined,
         category: selectedCategory === 'Todos' ? undefined : selectedCategory,
         low_stock: false,
-        limit: 100,
       });
       setProducts(data);
     } catch (err) {
@@ -276,6 +276,11 @@ export default function StockScreen() {
         <View style={styles.headerText}>
           <Text style={styles.title}>Stock</Text>
           <Text style={styles.subtitle}>Gestão do inventário e reposição.</Text>
+          {!loading && !error && (
+            <Text style={styles.productCount}>
+              {products.length} produto{products.length === 1 ? '' : 's'}
+            </Text>
+          )}
         </View>
         {canManageProducts ? (
           <Pressable
@@ -419,6 +424,12 @@ const styles = StyleSheet.create({
     marginTop: 4,
     fontSize: 14,
     color: '#9ca3af',
+  },
+  productCount: {
+    marginTop: 6,
+    fontSize: 13,
+    fontWeight: '600',
+    color: '#cbd5e1',
   },
   searchRow: {
     marginBottom: 8,

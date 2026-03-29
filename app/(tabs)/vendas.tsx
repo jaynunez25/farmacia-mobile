@@ -20,6 +20,7 @@ import { useRouter } from 'expo-router';
 import { api } from '@/services/api';
 import type { Product } from '@/types';
 import { formatCurrency } from '@/utils/currency';
+import { fetchAllProducts } from '@/utils/fetchAllProducts';
 import { getErrorMessage } from '@/utils/errorMessage';
 
 type CartItem = {
@@ -439,7 +440,7 @@ export default function VendasScreen() {
     setError(null);
     setSearching(true);
     try {
-      const list = await api.products.list({ search: q, limit: 20 });
+      const list = await fetchAllProducts({ search: q });
       setSearchResults(list);
       if (list.length === 0) {
         setError('Nenhum produto encontrado para essa pesquisa.');
@@ -667,10 +668,9 @@ export default function VendasScreen() {
       setCategoryProductsLoading(true);
       setCategoryError(null);
       try {
-        const list = await api.products.list({
-          ...(activeCategory ? { category: activeCategory } : {}),
-          limit: 60,
-        });
+        const list = await fetchAllProducts(
+          activeCategory ? { category: activeCategory } : {},
+        );
         if (cancelled) return;
         setCategoryProducts(list);
       } catch (e) {
@@ -692,6 +692,12 @@ export default function VendasScreen() {
   const sessionBlocked = hasOpenSession === false;
   const showSearch = searchQuery.trim().length > 0 || searching;
   const productsToShow = showSearch ? searchResults : categoryProducts;
+
+  const productCountLine = useMemo(() => {
+    if (searching || categoryProductsLoading) return null;
+    const n = productsToShow.length;
+    return `${n} produto${n === 1 ? '' : 's'}`;
+  }, [productsToShow, searching, categoryProductsLoading]);
 
   const mobileProductPages = useMemo(() => {
     if (!isPhone) return [];
@@ -871,6 +877,9 @@ export default function VendasScreen() {
                           <Text style={styles.panelSubtitle}>
                             {showSearch ? 'Resultados da pesquisa' : activeCategory ? `Categoria: ${activeCategory}` : 'Todos os produtos'}
                           </Text>
+                          {productCountLine != null && (
+                            <Text style={styles.panelCountMeta}>{productCountLine}</Text>
+                          )}
                         </View>
                       </View>
 
@@ -1075,6 +1084,9 @@ export default function VendasScreen() {
                         <Text style={styles.panelSubtitle}>
                           {showSearch ? 'Resultados da pesquisa' : activeCategory ? `Categoria: ${activeCategory}` : 'Todos os produtos'}
                         </Text>
+                        {productCountLine != null && (
+                          <Text style={styles.panelCountMeta}>{productCountLine}</Text>
+                        )}
                       </View>
                     </View>
 
@@ -1828,6 +1840,12 @@ const styles = StyleSheet.create({
     fontSize: 11,
     color: '#64748b',
     fontWeight: '600',
+  },
+  panelCountMeta: {
+    marginTop: 2,
+    fontSize: 11,
+    fontWeight: '700',
+    color: '#475569',
   },
   productPanelHeader: {
     flexDirection: 'row',
