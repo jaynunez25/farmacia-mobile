@@ -13,6 +13,7 @@ import { useRouter } from 'expo-router';
 import { useAuth } from '@/contexts/AuthContext';
 import { api } from '@/services/api';
 import type { SaleHistoryRecord, SaleHistoryResponse } from '@/types';
+import { formatCurrency } from '@/utils/currency';
 import { getErrorMessage } from '@/utils/errorMessage';
 import { isAdminRole } from '@/utils/roles';
 
@@ -121,16 +122,16 @@ export default function HistoricoVendasScreen() {
             <Text style={styles.summaryTitle}>Resumo</Text>
             <Text style={styles.summaryLine}>
               <Text style={styles.summaryLabel}>Hoje: </Text>
-              {summary.daily_total} Kz
+              {formatCurrency(summary.daily_total)}
             </Text>
             <Text style={styles.summaryLine}>
               <Text style={styles.summaryLabel}>Este mês: </Text>
-              {summary.monthly_total} Kz
+              {formatCurrency(summary.monthly_total)}
             </Text>
             {summary.filtered_total != null && (
               <Text style={styles.summaryLine}>
                 <Text style={styles.summaryLabel}>Filtrado: </Text>
-                {summary.filtered_total} Kz
+                {formatCurrency(summary.filtered_total)}
               </Text>
             )}
           </View>
@@ -159,7 +160,7 @@ export default function HistoricoVendasScreen() {
                       <Text style={styles.rowTitle}>Venda #{row.sale_id}</Text>
                       <Text style={styles.rowSubtitle}>{dateStr}</Text>
                     </View>
-                    <Text style={styles.rowAmount}>{row.total.toFixed(2)} Kz</Text>
+                    <Text style={styles.rowAmount}>{formatCurrency(row.total)}</Text>
                   </View>
                 );
               })

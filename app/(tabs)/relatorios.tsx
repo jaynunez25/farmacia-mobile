@@ -16,6 +16,7 @@ import * as Sharing from 'expo-sharing';
 import { useAuth } from '@/contexts/AuthContext';
 import { api, type CashierDayActivityRow } from '@/services/api';
 import type { StockMovement } from '@/types';
+import { formatCurrency } from '@/utils/currency';
 import { getErrorMessage } from '@/utils/errorMessage';
 import { isAdminRole, isStockAuditorRole } from '@/utils/roles';
 
@@ -47,12 +48,6 @@ function shiftIsoDate(isoDay: string, delta: number): string {
   const d = new Date(isoDay + 'T12:00:00.000Z');
   d.setUTCDate(d.getUTCDate() + delta);
   return d.toISOString().slice(0, 10);
-}
-
-function formatReportMoney(value: number | string): string {
-  const x = typeof value === 'string' ? parseFloat(value) : value;
-  if (!Number.isFinite(x)) return String(value);
-  return `${x.toLocaleString('pt-PT', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} Kz`;
 }
 
 function formatReportDateTime(iso: string | null): string {
@@ -253,16 +248,16 @@ export default function RelatoriosScreen() {
             <Text style={styles.cardTitle}>Resumo de vendas</Text>
             <Text style={styles.cardLine}>
               <Text style={styles.cardLabel}>Hoje: </Text>
-              {salesSummary.daily_total} Kz
+              {formatCurrency(salesSummary.daily_total)}
             </Text>
             <Text style={styles.cardLine}>
               <Text style={styles.cardLabel}>Este mês: </Text>
-              {salesSummary.monthly_total} Kz
+              {formatCurrency(salesSummary.monthly_total)}
             </Text>
             {salesSummary.filtered_total != null && (
               <Text style={styles.cardLine}>
                 <Text style={styles.cardLabel}>Filtrado: </Text>
-                {salesSummary.filtered_total} Kz
+                {formatCurrency(salesSummary.filtered_total)}
               </Text>
             )}
             <Pressable
@@ -319,11 +314,11 @@ export default function RelatoriosScreen() {
                   </Text>
                   <Text style={styles.cardLine}>
                     <Text style={styles.cardLabel}>Vendas: </Text>
-                    {row.sale_count} · Total: {formatReportMoney(row.total_sales)}
+                    {row.sale_count} · Total: {formatCurrency(row.total_sales)}
                   </Text>
                   <Text style={styles.cardLine}>
                     <Text style={styles.cardLabel}>Dinheiro / Cartão: </Text>
-                    {formatReportMoney(row.cash_sales_total)} / {formatReportMoney(row.card_sales_total)}
+                    {formatCurrency(row.cash_sales_total)} / {formatCurrency(row.card_sales_total)}
                   </Text>
                   <Text style={styles.cardLine}>
                     <Text style={styles.cardLabel}>1.ª venda / última: </Text>
@@ -341,7 +336,7 @@ export default function RelatoriosScreen() {
                     <Text style={styles.cardLine}>
                       <Text style={styles.cardLabel}>Diferença caixa no fecho: </Text>
                       {row.cash_difference_at_close != null
-                        ? formatReportMoney(row.cash_difference_at_close)
+                        ? formatCurrency(row.cash_difference_at_close, { signed: true })
                         : '—'}
                       {row.closing_notes ? (
                         <>

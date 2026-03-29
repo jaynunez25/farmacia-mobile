@@ -19,6 +19,7 @@ import { useRouter } from 'expo-router';
 
 import { api } from '@/services/api';
 import type { Product } from '@/types';
+import { formatCurrency } from '@/utils/currency';
 import { getErrorMessage } from '@/utils/errorMessage';
 
 type CartItem = {
@@ -205,13 +206,13 @@ function PaymentCartLines({
 
                 <View style={[styles.colUnit, Platform.OS === 'web' && styles.colUnitWebCart]}>
                   <Text style={styles.summaryPriceText} numberOfLines={1} ellipsizeMode="tail">
-                    Kz {unitP.toFixed(2)}
+                    {formatCurrency(unitP)}
                   </Text>
                 </View>
 
                 <View style={[styles.colSubtotal, Platform.OS === 'web' && styles.colSubtotalWebCart]}>
                   <Text style={styles.summarySubtotalText} numberOfLines={1} ellipsizeMode="tail">
-                    Kz {lineTotal.toFixed(2)}
+                    {formatCurrency(lineTotal)}
                   </Text>
                 </View>
               </View>
@@ -511,7 +512,7 @@ export default function VendasScreen() {
           editable={isCash}
           style={[styles.posInput, !isCash && styles.posInputReadonly]}
           keyboardType="decimal-pad"
-          value={isCash ? cashReceived : total.toFixed(2)}
+          value={isCash ? cashReceived : String(Math.round(total))}
           placeholder={isCash ? '0' : undefined}
           placeholderTextColor="#6b7280"
           onChangeText={isCash ? setCashReceived : undefined}
@@ -519,7 +520,11 @@ export default function VendasScreen() {
         <View style={styles.amountRow}>
           <Text style={styles.amountLabel}>Troco</Text>
           <Text style={styles.amountValueSecondary}>
-            {isCash ? (trocoNumber != null ? `${Math.max(0, trocoNumber).toFixed(2)} Kz` : '—') : '0.00 Kz'}
+            {isCash
+              ? trocoNumber != null
+                ? formatCurrency(Math.max(0, trocoNumber))
+                : '—'
+              : formatCurrency(0)}
           </Text>
         </View>
       </>
@@ -575,7 +580,7 @@ export default function VendasScreen() {
       const sum = splitPayments.reduce((s, p) => s + (p.amount || 0), 0);
       if (Math.abs(sum - total) > 0.01) {
         setError(
-          `A soma dos pagamentos (${sum.toFixed(2)} Kz) deve ser igual ao total (${total.toFixed(2)} Kz).`,
+          `A soma dos pagamentos (${formatCurrency(sum)}) deve ser igual ao total (${formatCurrency(total)}).`,
         );
         return;
       }
@@ -611,7 +616,7 @@ export default function VendasScreen() {
         }
       }
       const sale = await api.sales.create(body);
-      setLastSaleMessage(`Venda #${sale.id} concluída — Kz ${Number(sale.total_amount).toFixed(2)}`);
+      setLastSaleMessage(`Venda #${sale.id} concluída — ${formatCurrency(sale.total_amount)}`);
       setCart([]);
       setSelectedProduct(null);
       setSelectedQty('1');
@@ -707,8 +712,6 @@ export default function VendasScreen() {
 
   const renderProductCard = ({ item }: { item: Product }) => {
     const badge = productCardBadge(item);
-    const displayPrice = Number(item.selling_price).toFixed(2);
-
     return (
       <Pressable
         style={({ pressed }) => [
@@ -728,7 +731,7 @@ export default function VendasScreen() {
           {item.name}
         </Text>
         <Text style={styles.productCardMeta} numberOfLines={1} ellipsizeMode="tail">
-          Kz {displayPrice}
+          {formatCurrency(Number(item.selling_price))}
         </Text>
       </Pressable>
     );
@@ -796,10 +799,10 @@ export default function VendasScreen() {
                     </Text>
                     <View style={styles.sellModePriceRow}>
                       <Text style={styles.sellModePriceText}>
-                        Caixa: Kz {sellModePrices.box != null ? sellModePrices.box.toFixed(2) : '0.00'}
+                        Caixa: {formatCurrency(sellModePrices.box ?? 0)}
                       </Text>
                       <Text style={styles.sellModePriceText}>
-                        Lâmina: Kz {sellModePrices.unit != null ? sellModePrices.unit.toFixed(2) : '0.00'}
+                        Lâmina: {formatCurrency(sellModePrices.unit ?? 0)}
                       </Text>
                     </View>
                     <View style={styles.sellModeActions}>
@@ -904,7 +907,7 @@ export default function VendasScreen() {
                             SKU: {selectedProduct.sku} · Stock: {selectedProduct.stock_quantity}
                           </Text>
                           <Text style={styles.manualProductMeta}>
-                            Preço base: {Number(selectedProduct.selling_price).toFixed(2)} Kz
+                            Preço base: {formatCurrency(selectedProduct.selling_price)}
                           </Text>
 
                           {isPackProduct(selectedProduct) && (
@@ -1016,7 +1019,7 @@ export default function VendasScreen() {
                       <Text style={styles.panelTitle}>Pagamento</Text>
                       <View style={styles.paymentTotalRow}>
                         <Text style={styles.paymentTotalLabel}>Total</Text>
-                        <Text style={styles.paymentTotalValue}>{total.toFixed(2)} Kz</Text>
+                        <Text style={styles.paymentTotalValue}>{formatCurrency(total)}</Text>
                       </View>
                     </View>
 
@@ -1108,7 +1111,7 @@ export default function VendasScreen() {
                           SKU: {selectedProduct.sku} · Stock: {selectedProduct.stock_quantity}
                         </Text>
                         <Text style={styles.manualProductMeta}>
-                          Preço base: {Number(selectedProduct.selling_price).toFixed(2)} Kz
+                          Preço base: {formatCurrency(selectedProduct.selling_price)}
                         </Text>
 
                         {isPackProduct(selectedProduct) && (
@@ -1204,7 +1207,7 @@ export default function VendasScreen() {
                       <Text style={styles.panelTitle}>Pagamento</Text>
                       <View style={styles.paymentTotalRow}>
                         <Text style={styles.paymentTotalLabel}>Total</Text>
-                        <Text style={styles.paymentTotalValue}>{total.toFixed(2)} Kz</Text>
+                        <Text style={styles.paymentTotalValue}>{formatCurrency(total)}</Text>
                       </View>
                     </View>
 
@@ -1354,7 +1357,7 @@ export default function VendasScreen() {
                         <Text style={styles.manualProductName}>{selectedProduct.name}</Text>
                         <Text style={styles.manualProductMeta}>SKU: {selectedProduct.sku} · Stock: {selectedProduct.stock_quantity}</Text>
                         <Text style={styles.manualProductMeta}>
-                          Preço base: {Number(selectedProduct.selling_price).toFixed(2)} Kz
+                          Preço base: {formatCurrency(selectedProduct.selling_price)}
                         </Text>
 
                         {isPackProduct(selectedProduct) && (
@@ -1441,7 +1444,7 @@ export default function VendasScreen() {
                       <Text style={styles.panelTitle}>Pagamento</Text>
                       <View style={styles.paymentTotalRow}>
                         <Text style={styles.paymentTotalLabel}>Total</Text>
-                        <Text style={styles.paymentTotalValue}>{total.toFixed(2)} Kz</Text>
+                        <Text style={styles.paymentTotalValue}>{formatCurrency(total)}</Text>
                       </View>
                     </View>
 

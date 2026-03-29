@@ -16,6 +16,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { useAuth } from '@/contexts/AuthContext';
 import { api, type CashSessionSummary } from '@/services/api';
+import { formatCurrency } from '@/utils/currency';
 import { getErrorMessage } from '@/utils/errorMessage';
 
 const DENOMINATIONS = [20000, 10000, 5000, 2000, 1000, 500, 200, 100, 50, 20, 10, 5, 1] as const;
@@ -30,11 +31,8 @@ const makeEmptyBreakdown = (): DenominationMap =>
 const totalFromBreakdown = (breakdown: DenominationMap): number =>
   DENOMINATIONS.reduce((sum, value) => sum + value * (breakdown[String(value)] ?? 0), 0);
 
-const toCurrency = (value: number) => `${value.toFixed(2)} Kz`;
-
-/** Apresentação: separador de milhares alinhado ao mock POS (ex.: 20,000). */
-const formatDenominationLabel = (value: number) =>
-  `${value.toLocaleString('en-US')} Kz`;
+/** Rótulo da denominação (ex.: 20.000 Kz). */
+const formatDenominationLabel = (value: number) => formatCurrency(value);
 
 /** Grelha 2 colunas: notas maiores à esquerda, menores à direita (todas as denominações, sem duplicar). */
 const OPENING_DENOM_LEFT = DENOMINATIONS.slice(0, 7);
@@ -151,10 +149,10 @@ export default function CaixaScreen() {
           'Discrepância no caixa',
           `Tens uma discrepância no caixa. O valor contado não corresponde ao valor esperado da sessão. ` +
             `Adiciona uma nota/incidente para justificar a diferença antes de fechar.\n\n` +
-            `Valor esperado: ${toCurrency(expected)}\n` +
-            `Valor contado: ${toCurrency(closingCountedTotal)}\n` +
-            `Diferença: ${toCurrency(diff)}\n` +
-            `${diffLabel}: ${toCurrency(absDiff)}\n\n` +
+            `Valor esperado: ${formatCurrency(expected)}\n` +
+            `Valor contado: ${formatCurrency(closingCountedTotal)}\n` +
+            `Diferença: ${formatCurrency(diff, { signed: true })}\n` +
+            `${diffLabel}: ${formatCurrency(absDiff)}\n\n` +
             `Isto pode acontecer por vendas em dinheiro não registadas, reforço de caixa, retirada de caixa, ` +
             `erro de contagem ou ajuste manual não registado.`,
         );
@@ -186,7 +184,7 @@ export default function CaixaScreen() {
 
       Alert.alert(
         'Sessão fechada',
-        `Fundo inicial: ${session.opening_float ?? '0'}\nEsperado em caixa: ${expected}\nContado: ${actual}\nDiferença: ${diff}`,
+        `Fundo inicial: ${formatCurrency(session.opening_float ?? '0')}\nEsperado em caixa: ${formatCurrency(expected)}\nContado: ${formatCurrency(actual)}\nDiferença: ${formatCurrency(diff, { signed: true })}`,
       );
       setSummary(null);
       setClosingBreakdown(makeEmptyBreakdown());
@@ -218,10 +216,8 @@ export default function CaixaScreen() {
 
   const differenceDisplay =
     Math.abs(differenceAmount) < 0.009
-      ? toCurrency(0)
-      : differenceAmount > 0
-        ? `+${toCurrency(differenceAmount)}`
-        : toCurrency(differenceAmount);
+      ? formatCurrency(0)
+      : formatCurrency(differenceAmount, { signed: true });
 
   const openedByLabel =
     summary?.opened_by_display_name?.trim() ||
@@ -290,7 +286,7 @@ export default function CaixaScreen() {
                             placeholder="0"
                             placeholderTextColor="#6b7280"
                           />
-                          <Text style={styles.openDenomLineTotal}>{toCurrency(lineTotal)}</Text>
+                          <Text style={styles.openDenomLineTotal}>{formatCurrency(lineTotal)}</Text>
                         </View>
                       );
                     })}
@@ -310,7 +306,7 @@ export default function CaixaScreen() {
                             placeholder="0"
                             placeholderTextColor="#6b7280"
                           />
-                          <Text style={styles.openDenomLineTotal}>{toCurrency(lineTotal)}</Text>
+                          <Text style={styles.openDenomLineTotal}>{formatCurrency(lineTotal)}</Text>
                         </View>
                       );
                     })}
@@ -319,7 +315,7 @@ export default function CaixaScreen() {
 
                 <View style={styles.openTotalBar}>
                   <Text style={styles.openTotalLabel}>Total abertura</Text>
-                  <Text style={styles.openTotalValue}>{toCurrency(openingTotal)}</Text>
+                  <Text style={styles.openTotalValue}>{formatCurrency(openingTotal)}</Text>
                 </View>
 
                 <View style={styles.openNotesBlock}>
@@ -369,14 +365,15 @@ export default function CaixaScreen() {
                   <View style={styles.closeStatCard}>
                     <Text style={styles.closeStatCardIcon}>💵</Text>
                     <Text style={styles.closeStatCardTitle}>Fundo inicial</Text>
-                    <Text style={styles.closeStatCardValue}>{session.opening_float} Kz</Text>
+                    <Text style={styles.closeStatCardValue}>{formatCurrency(session.opening_float)}</Text>
                   </View>
                   <View style={styles.closeStatCard}>
                     <Text style={styles.closeStatCardIcon}>🛒</Text>
                     <Text style={styles.closeStatCardTitle}>Total de vendas</Text>
-                    <Text style={styles.closeStatCardValue}>{summary.total_sales} Kz</Text>
+                    <Text style={styles.closeStatCardValue}>{formatCurrency(summary.total_sales)}</Text>
                     <Text style={styles.closeStatCardMeta}>
-                      Dinheiro: {summary.total_cash_sales} Kz · Cartão: {summary.total_card_sales} Kz
+                      Dinheiro: {formatCurrency(summary.total_cash_sales)} · Cartão:{' '}
+                      {formatCurrency(summary.total_card_sales)}
                     </Text>
                   </View>
                 </View>
@@ -401,7 +398,7 @@ export default function CaixaScreen() {
                                 placeholder="0"
                                 placeholderTextColor="#6b7280"
                               />
-                              <Text style={styles.openDenomLineTotal}>{toCurrency(lineTotal)}</Text>
+                              <Text style={styles.openDenomLineTotal}>{formatCurrency(lineTotal)}</Text>
                             </View>
                           );
                         })}
@@ -421,7 +418,7 @@ export default function CaixaScreen() {
                                 placeholder="0"
                                 placeholderTextColor="#6b7280"
                               />
-                              <Text style={styles.openDenomLineTotal}>{toCurrency(lineTotal)}</Text>
+                              <Text style={styles.openDenomLineTotal}>{formatCurrency(lineTotal)}</Text>
                             </View>
                           );
                         })}
@@ -438,11 +435,11 @@ export default function CaixaScreen() {
                     <Text style={styles.closePanelHeading}>Resumo</Text>
                     <View style={styles.closeResumoMetric}>
                       <Text style={styles.closeResumoLabel}>Total contado</Text>
-                      <Text style={styles.closeResumoValueHero}>{toCurrency(closingCountedTotal)}</Text>
+                      <Text style={styles.closeResumoValueHero}>{formatCurrency(closingCountedTotal)}</Text>
                     </View>
                     <View style={styles.closeResumoMetric}>
                       <Text style={styles.closeResumoLabel}>Esperado na gaveta</Text>
-                      <Text style={styles.closeResumoValueHero}>{toCurrency(expectedCash)}</Text>
+                      <Text style={styles.closeResumoValueHero}>{formatCurrency(expectedCash)}</Text>
                       <Text style={styles.closeEsperadoHint}>
                         Fundo inicial + vendas em dinheiro. Vendas em cartão não entram no dinheiro físico da gaveta.
                       </Text>

@@ -11,6 +11,7 @@ import { useLocalSearchParams } from 'expo-router';
 
 import { api } from '@/services/api';
 import type { Sale } from '@/types';
+import { formatCurrency } from '@/utils/currency';
 import { getErrorMessage } from '@/utils/errorMessage';
 
 export default function VendaDetailScreen() {
@@ -86,7 +87,7 @@ export default function VendaDetailScreen() {
               )}
               <Text style={styles.line}>
                 <Text style={styles.label}>Total: </Text>
-                {sale.total_amount} Kz
+                {formatCurrency(sale.total_amount)}
               </Text>
               <Text style={styles.line}>
                 <Text style={styles.label}>Método de pagamento: </Text>
@@ -116,8 +117,8 @@ export default function VendaDetailScreen() {
                         <Text style={styles.itemName}>{name}</Text>
                         <Text style={styles.itemMeta}>
                           {sku ? `SKU: ${sku} · ` : ''}
-                          {unitPrice.toFixed(2)} Kz × {item.quantity} ={' '}
-                          {lineTotal.toFixed(2)} Kz
+                          {formatCurrency(unitPrice)} × {item.quantity} ={' '}
+                          {formatCurrency(lineTotal)}
                         </Text>
                       </View>
                     </View>

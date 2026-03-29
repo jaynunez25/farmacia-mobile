@@ -37,17 +37,6 @@ export function getDaysUntilExpiry(expiryDate: string | null | undefined): numbe
   return Math.ceil((exp.getTime() - today.getTime()) / (24 * 60 * 60 * 1000));
 }
 
-export function formatCurrency(amount: string | number): string {
-  const n = typeof amount === 'string' ? Number(amount) : amount;
-  if (Number.isNaN(n)) return '0,00 Kz';
-  return new Intl.NumberFormat('pt-AO', {
-    style: 'currency',
-    currency: 'AOA',
-    minimumFractionDigits: 2,
-    maximumFractionDigits: 2,
-  }).format(n);
-}
-
 /** Priority order: expired > low stock > expiring soon > none */
 export type PriorityAlertType = 'expired' | 'low_stock' | 'expiring' | 'none';
 

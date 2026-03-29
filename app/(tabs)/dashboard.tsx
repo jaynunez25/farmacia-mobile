@@ -25,6 +25,7 @@ import {
   getPriorityAlertCopy,
   getPriorityAlertType,
 } from '@/utils/dashboardHelpers';
+import { formatCurrency } from '@/utils/currency';
 import { getErrorMessage } from '@/utils/errorMessage';
 import { isAdminRole, normalizeAppRole } from '@/utils/roles';
 
@@ -340,13 +341,6 @@ function AdminDashboardScreen() {
   );
 }
 
-function formatSessionMoney(amount: string | undefined): string {
-  if (amount == null || amount === '') return '0,00 Kz';
-  const n = parseFloat(String(amount));
-  if (!Number.isFinite(n)) return `${amount} Kz`;
-  return `${n.toLocaleString('pt-PT', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} Kz`;
-}
-
 function openingTimeDisplay(iso: string): string {
   try {
     const d = new Date(iso);
@@ -435,7 +429,7 @@ function CashierDashboardScreen({ onLogout }: { onLogout: () => void }) {
                   <Text style={cstyles.sessionLine}>
                     Fundo inicial:{' '}
                     <Text style={cstyles.sessionLineStrong}>
-                      {formatSessionMoney(summary!.session.opening_float)}
+                      {formatCurrency(summary!.session.opening_float)}
                     </Text>
                   </Text>
                 </>
@@ -512,21 +506,21 @@ function CashierDashboardScreen({ onLogout }: { onLogout: () => void }) {
               <MaterialIcons name="payments" size={20} color="#4ade80" />
               <Text style={cstyles.infoMiniLabel}>Vendas em Dinheiro</Text>
               <Text style={cstyles.infoMiniValue}>
-                {hasSession ? formatSessionMoney(summary!.total_cash_sales) : '—'}
+                {hasSession ? formatCurrency(summary!.total_cash_sales) : '—'}
               </Text>
             </View>
             <View style={cstyles.infoMini}>
               <MaterialIcons name="credit-card" size={20} color="#60a5fa" />
               <Text style={cstyles.infoMiniLabel}>Vendas em Cartão</Text>
               <Text style={cstyles.infoMiniValue}>
-                {hasSession ? formatSessionMoney(summary!.total_card_sales) : '—'}
+                {hasSession ? formatCurrency(summary!.total_card_sales) : '—'}
               </Text>
             </View>
             <View style={cstyles.infoMini}>
               <MaterialIcons name="shopping-cart" size={20} color="#e2e8f0" />
               <Text style={cstyles.infoMiniLabel}>Total de Vendas</Text>
               <Text style={cstyles.infoMiniValue}>
-                {hasSession ? formatSessionMoney(summary!.total_sales) : '—'}
+                {hasSession ? formatCurrency(summary!.total_sales) : '—'}
               </Text>
             </View>
           </View>
