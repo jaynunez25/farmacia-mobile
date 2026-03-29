@@ -34,7 +34,7 @@ const TEXT_ON_LIGHT_MUTED = { lightColor: '#6b7280', darkColor: '#6b7280' } as c
 
 function AdminDashboardScreen() {
   const router = useRouter();
-  const { user } = useAuth();
+  const { user, logout } = useAuth();
 
   const [stats, setStats] = useState<DashboardStats | null>(null);
   const [cashSession, setCashSession] = useState<CashSessionSummary | null>(null);
@@ -327,6 +327,14 @@ function AdminDashboardScreen() {
             Não há dados para apresentar ainda.
           </Text>
         )}
+
+        <Pressable
+          style={({ pressed }) => [styles.adminLogoutPressable, pressed && styles.adminLogoutPressed]}
+          onPress={() => void logout()}
+          accessibilityRole="button"
+          accessibilityLabel="Sair">
+          <Text style={styles.adminLogoutLabel}>Sair</Text>
+        </Pressable>
       </ScrollView>
     </SafeAreaView>
   );
@@ -787,6 +795,20 @@ const styles = StyleSheet.create({
   attentionReason: {
     fontSize: 13,
     color: '#6b7280',
+  },
+  adminLogoutPressable: {
+    alignSelf: 'center',
+    marginTop: 12,
+    paddingVertical: 12,
+    paddingHorizontal: 28,
+  },
+  adminLogoutPressed: {
+    opacity: 0.8,
+  },
+  adminLogoutLabel: {
+    fontSize: 16,
+    fontWeight: '500',
+    color: '#94a3b8',
   },
 });
 

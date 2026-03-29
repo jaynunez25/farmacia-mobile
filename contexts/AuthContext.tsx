@@ -20,8 +20,8 @@ export interface AuthContextValue {
   token: string | null;
   isLoading: boolean;
   isAuthenticated: boolean;
-  login: (username: string, password: string) => Promise<void>;
-  register: (data: { username: string; password: string; display_name?: string }) => Promise<void>;
+  login: (username: string, password: string) => Promise<LoginResponse>;
+  register: (data: { username: string; password: string; display_name?: string }) => Promise<LoginResponse>;
   /** After register, call this with the API response to log in without password again. */
   setAuthFromResponse: (res: LoginResponse) => void;
   logout: () => Promise<void>;
@@ -86,6 +86,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     const res = await api.auth.login(username, password);
     await setStoredToken(res.access_token);
     setState({ user: res.user, token: res.access_token, loading: false });
+    return res;
   }, []);
 
   const register = useCallback(
@@ -93,6 +94,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       const res = await api.auth.register(data);
       await setStoredToken(res.access_token);
       setState({ user: res.user, token: res.access_token, loading: false });
+      return res;
     },
     [],
   );

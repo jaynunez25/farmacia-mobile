@@ -1,3 +1,4 @@
+import { useRouter } from 'expo-router';
 import { useState } from 'react';
 import {
   ActivityIndicator,
@@ -16,6 +17,7 @@ import { StatusBar } from 'expo-status-bar';
 
 import { useAuth } from '@/contexts/AuthContext';
 import { getErrorMessage } from '@/utils/errorMessage';
+import { redirectAfterAuthentication } from '@/utils/postLoginRedirect';
 
 /** Pharmaos-aligned palette (health / SaaS, light surfaces). */
 const BG = '#F8FAFC';
@@ -38,6 +40,7 @@ const DISABLED_TEXT = '#94A3B8';
 const LOGO = require('@/assets/images/pharmaos-logo.png');
 
 export default function LoginScreen() {
+  const router = useRouter();
   const { login, isLoading, isAuthenticated } = useAuth();
 
   const [username, setUsername] = useState('');
@@ -53,7 +56,8 @@ export default function LoginScreen() {
     setError(null);
     setSubmitting(true);
     try {
-      await login(username.trim(), password);
+      const res = await login(username.trim(), password);
+      await redirectAfterAuthentication(router.replace, res.user.role);
     } catch (err) {
       console.error('Login failed', err);
       setError(getErrorMessage(err));
