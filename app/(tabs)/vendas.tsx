@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState, type Dispatch, type SetStateAction } from 'react';
 import {
   ActivityIndicator,
   FlatList,
@@ -17,6 +17,12 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { useFocusEffect } from '@react-navigation/native';
 import { useRouter } from 'expo-router';
 
+import {
+  applyNumericKeypadKey,
+  NumericKeypad,
+  ReadOnlyNumericReadout,
+  type NumericKeypadAction,
+} from '@/components/pos/NumericKeypad';
 import { api } from '@/services/api';
 import type { Product } from '@/types';
 import { formatCurrency } from '@/utils/currency';
@@ -566,9 +572,9 @@ export default function VendasScreen() {
   const canConfirm = cart.length > 0 && !hasInsufficientStock && !confirming && hasOpenSession;
 
   const cashReceivedNumber = useMemo(() => {
-    const txt = cashReceived.trim();
-    if (!txt) return null;
-    const v = parseFloat(txt.replace(',', '.'));
+    const digits = cashReceived.replace(/\D/g, '');
+    if (!digits) return null;
+    const v = parseInt(digits, 10);
     return Number.isNaN(v) ? null : v;
   }, [cashReceived]);
 
@@ -589,35 +595,35 @@ export default function VendasScreen() {
     }
   }, [paymentMode, paymentMethod]);
 
-  const renderSimplePaymentAmount = () => {
-    const isCash = paymentMethod === 'cash';
-    return (
-      <>
-        <View style={styles.amountRow}>
-          <Text style={styles.amountLabel}>Recebido</Text>
-        </View>
-        <TextInput
-          editable={isCash}
-          style={[styles.posInput, !isCash && styles.posInputReadonly]}
-          keyboardType="decimal-pad"
-          value={isCash ? cashReceived : String(Math.round(total))}
-          placeholder={isCash ? '0' : undefined}
-          placeholderTextColor="#6b7280"
-          onChangeText={isCash ? setCashReceived : undefined}
-        />
-        <View style={styles.amountRow}>
-          <Text style={styles.amountLabel}>Troco</Text>
-          <Text style={styles.amountValueSecondary}>
-            {isCash
-              ? trocoNumber != null
-                ? formatCurrency(Math.max(0, trocoNumber))
-                : '—'
-              : formatCurrency(0)}
-          </Text>
-        </View>
-      </>
-    );
-  };
+  const onCashKeypad = useCallback((key: NumericKeypadAction) => {
+    setCashReceived(prev => applyNumericKeypadKey(prev, key, 14));
+  }, []);
+
+  const onQtyKeypad = useCallback((setter: Dispatch<SetStateAction<string>>, key: NumericKeypadAction) => {
+    setter(prev => applyNumericKeypadKey(prev, key, 6));
+  }, []);
+
+  const renderCashPaymentAmount = () => (
+    <>
+      <View style={styles.amountRow}>
+        <Text style={styles.amountLabel}>Recebido</Text>
+      </View>
+      <ReadOnlyNumericReadout
+        value={cashReceived}
+        placeholder="0"
+        placeholderTextColor="#6b7280"
+        style={styles.posNumericReadout}
+        textStyle={styles.posNumericReadoutText}
+      />
+      <NumericKeypad onKeyPress={onCashKeypad} variant="default" />
+      <View style={styles.amountRow}>
+        <Text style={styles.amountLabel}>Troco</Text>
+        <Text style={styles.amountValueSecondary}>
+          {trocoNumber != null ? formatCurrency(Math.max(0, trocoNumber)) : '—'}
+        </Text>
+      </View>
+    </>
+  );
 
   useEffect(() => {
     if (hasInsufficientStock) {
@@ -1018,17 +1024,21 @@ export default function VendasScreen() {
                     <View style={styles.sellModeUnitRow}>
                       <View style={{ flex: 1 }}>
                         <Text style={styles.label}>Lâmina - quantidade</Text>
-                        <TextInput
-                          style={[
-                            styles.posInput,
-                            sellModeStockInfo?.unitButtonDisabled && styles.sellModeInputDisabled,
-                          ]}
-                          keyboardType="number-pad"
+                        <ReadOnlyNumericReadout
                           value={unitSellQty}
-                          onChangeText={setUnitSellQty}
                           placeholder="1"
                           placeholderTextColor="#6b7280"
                           editable={!sellModeStockInfo?.unitButtonDisabled}
+                          style={[
+                            styles.posNumericReadout,
+                            sellModeStockInfo?.unitButtonDisabled && styles.sellModeInputDisabled,
+                          ]}
+                          textStyle={styles.posNumericReadoutText}
+                        />
+                        <NumericKeypad
+                          variant="compact"
+                          disabled={!!sellModeStockInfo?.unitButtonDisabled}
+                          onKeyPress={k => onQtyKeypad(setUnitSellQty, k)}
                         />
                       </View>
                       <Pressable
@@ -1170,12 +1180,14 @@ export default function VendasScreen() {
 
                           <View style={styles.field}>
                             <Text style={styles.label}>Quantidade</Text>
-                            <TextInput
-                              style={styles.posInput}
-                              keyboardType="number-pad"
+                            <ReadOnlyNumericReadout
                               value={selectedQty}
-                              onChangeText={setSelectedQty}
+                              placeholder="1"
+                              placeholderTextColor="#6b7280"
+                              style={styles.posNumericReadout}
+                              textStyle={styles.posNumericReadoutText}
                             />
+                            <NumericKeypad variant="compact" onKeyPress={k => onQtyKeypad(setSelectedQty, k)} />
                           </View>
 
                           <Pressable
@@ -1269,9 +1281,11 @@ export default function VendasScreen() {
                       setShowStockWarning={setShowStockWarning}
                     />
 
-                    <View style={[styles.paymentAmountBlock, styles.paymentAmountTopSep]}>
-                      {renderSimplePaymentAmount()}
-                    </View>
+                    {paymentMethod === 'cash' ? (
+                      <View style={[styles.paymentAmountBlock, styles.paymentAmountTopSep]}>
+                        {renderCashPaymentAmount()}
+                      </View>
+                    ) : null}
 
                     <View style={styles.paymentFinalBlock}>
                       <Pressable
@@ -1386,12 +1400,14 @@ export default function VendasScreen() {
 
                         <View style={styles.field}>
                           <Text style={styles.label}>Quantidade</Text>
-                          <TextInput
-                            style={styles.posInput}
-                            keyboardType="number-pad"
+                          <ReadOnlyNumericReadout
                             value={selectedQty}
-                            onChangeText={setSelectedQty}
+                            placeholder="1"
+                            placeholderTextColor="#6b7280"
+                            style={styles.posNumericReadout}
+                            textStyle={styles.posNumericReadoutText}
                           />
+                          <NumericKeypad variant="compact" onKeyPress={k => onQtyKeypad(setSelectedQty, k)} />
                         </View>
 
                         <Pressable
@@ -1464,9 +1480,11 @@ export default function VendasScreen() {
                       setShowStockWarning={setShowStockWarning}
                     />
 
-                    <View style={[styles.paymentAmountBlock, styles.paymentAmountTopSep]}>
-                      {renderSimplePaymentAmount()}
-                    </View>
+                    {paymentMethod === 'cash' ? (
+                      <View style={[styles.paymentAmountBlock, styles.paymentAmountTopSep]}>
+                        {renderCashPaymentAmount()}
+                      </View>
+                    ) : null}
 
                     <View style={styles.paymentFinalBlock}>
                       <Pressable
@@ -1633,7 +1651,14 @@ export default function VendasScreen() {
 
                         <View style={styles.field}>
                           <Text style={styles.label}>Quantidade</Text>
-                          <TextInput style={styles.posInput} keyboardType="number-pad" value={selectedQty} onChangeText={setSelectedQty} />
+                          <ReadOnlyNumericReadout
+                            value={selectedQty}
+                            placeholder="1"
+                            placeholderTextColor="#6b7280"
+                            style={styles.posNumericReadout}
+                            textStyle={styles.posNumericReadoutText}
+                          />
+                          <NumericKeypad variant="compact" onKeyPress={k => onQtyKeypad(setSelectedQty, k)} />
                         </View>
 
                         <Pressable style={({ pressed }) => [styles.primaryButton, pressed && styles.primaryButtonPressed]} onPress={addSelectedToCart}>
@@ -1707,9 +1732,11 @@ export default function VendasScreen() {
                       setShowStockWarning={setShowStockWarning}
                     />
 
-                    <View style={[styles.paymentAmountBlock, styles.paymentAmountTopSep]}>
-                      {renderSimplePaymentAmount()}
-                    </View>
+                    {paymentMethod === 'cash' ? (
+                      <View style={[styles.paymentAmountBlock, styles.paymentAmountTopSep]}>
+                        {renderCashPaymentAmount()}
+                      </View>
+                    ) : null}
 
                     <View style={styles.paymentFinalBlock}>
                       <Pressable
@@ -2708,6 +2735,22 @@ const styles = StyleSheet.create({
     fontWeight: '700',
     width: '100%',
     maxWidth: '100%',
+  },
+  posNumericReadout: {
+    height: 40,
+    borderRadius: 4,
+    borderWidth: 1,
+    borderColor: '#e5e7eb',
+    backgroundColor: '#ffffff',
+    paddingHorizontal: 14,
+    justifyContent: 'center',
+    width: '100%',
+    maxWidth: '100%',
+  },
+  posNumericReadoutText: {
+    fontSize: 13,
+    fontWeight: '700',
+    color: '#111827',
   },
 
   categoryScroll: {

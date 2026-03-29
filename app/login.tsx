@@ -15,6 +15,12 @@ import {
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { StatusBar } from 'expo-status-bar';
 
+import {
+  applyNumericKeypadKey,
+  NumericKeypad,
+  ReadOnlyNumericReadout,
+  type NumericKeypadAction,
+} from '@/components/pos/NumericKeypad';
 import { useAuth } from '@/contexts/AuthContext';
 import { getErrorMessage } from '@/utils/errorMessage';
 import { redirectAfterAuthentication } from '@/utils/postLoginRedirect';
@@ -113,21 +119,18 @@ export default function LoginScreen() {
 
             <View style={styles.field}>
               <Text style={styles.label}>Palavra-passe</Text>
-              <TextInput
+              <ReadOnlyNumericReadout
                 value={password}
-                onChangeText={setPassword}
-                secureTextEntry
-                textContentType="password"
+                masked
                 placeholder="••••••••"
                 placeholderTextColor={TEXT_SUBTLE}
-                style={[
-                  styles.input,
-                  focusedField === 'pass' && styles.inputFocused,
-                ]}
-                onFocus={() => setFocusedField('pass')}
-                onBlur={() => setFocusedField((f) => (f === 'pass' ? null : f))}
-                returnKeyType="done"
-                onSubmitEditing={handleSubmit}
+                style={styles.pinReadout}
+                textStyle={styles.pinReadoutText}
+              />
+              <NumericKeypad
+                onKeyPress={(k: NumericKeypadAction) =>
+                  setPassword(prev => applyNumericKeypadKey(prev, k, 32))
+                }
               />
             </View>
 
@@ -251,6 +254,22 @@ const styles = StyleSheet.create({
     backgroundColor: SURFACE,
     color: TEXT_PRIMARY,
     fontSize: 16,
+  },
+  pinReadout: {
+    height: 52,
+    minHeight: 52,
+    borderRadius: 12,
+    borderWidth: 2,
+    borderColor: BORDER,
+    paddingHorizontal: 15,
+    backgroundColor: SURFACE,
+    justifyContent: 'center',
+  },
+  pinReadoutText: {
+    fontSize: 18,
+    fontWeight: '600',
+    color: TEXT_PRIMARY,
+    letterSpacing: 3,
   },
   inputFocused: {
     borderColor: BORDER_FOCUS,
