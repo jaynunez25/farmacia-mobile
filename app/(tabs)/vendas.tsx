@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import {
   ActivityIndicator,
   FlatList,
@@ -45,8 +45,7 @@ function cartLineSellHint(displayName: string, sell_as: CartItem['sell_as'], pro
   return '';
 }
 
-/** Pack detection aligned with POS `isPackProduct` (display-only breakdown for sell modal). */
-/** Same truthiness as `isPackProduct` inside the screen (pack / lâmina flows). */
+/** Same truthiness as `isPackProduct` (pack / lâmina no modal). */
 function isPackProductForSellModal(p: Product): boolean {
   const raw = (p.can_sell_by_box || p.can_sell_by_unit) && (p.units_per_pack ?? 0) > 0;
   return Boolean(raw);
@@ -101,6 +100,44 @@ function computePosSellModalStock(p: Product): {
     boxButtonDisabled,
     unitButtonDisabled,
   };
+}
+
+function formatStockCountLabel(n: number | null | undefined): string {
+  if (n == null || Number.isNaN(Number(n))) return '—';
+  return String(Math.trunc(Number(n)));
+}
+
+/** Stock loja: API `front_stock_quantity` ou último inventário frente. */
+function getProductFrontStockDisplay(p: Product): number | null {
+  const raw = p.front_stock_quantity ?? p.initial_front_count;
+  if (raw == null) return null;
+  const n = Number(raw);
+  return Number.isFinite(n) ? Math.trunc(n) : null;
+}
+
+/** Stock armazém: API `back_stock_quantity` ou último inventário trás. */
+function getProductBackStockDisplay(p: Product): number | null {
+  const raw = p.back_stock_quantity ?? p.initial_back_count;
+  if (raw == null) return null;
+  const n = Number(raw);
+  return Number.isFinite(n) ? Math.trunc(n) : null;
+}
+
+function getDisplayBoxPriceAmount(p: Product): number {
+  const raw = p.price_box ?? p.box_selling_price ?? p.selling_price;
+  const n = Number(raw);
+  return Number.isFinite(n) ? n : 0;
+}
+
+function getDisplayUnitPriceAmount(p: Product): number {
+  const rawUnit = p.price_unit ?? p.unit_selling_price;
+  if (rawUnit != null && String(rawUnit).trim() !== '') {
+    const n = Number(rawUnit);
+    if (Number.isFinite(n)) return n;
+  }
+  const upp = p.units_per_pack ?? 0;
+  const box = getDisplayBoxPriceAmount(p);
+  return upp > 0 ? box / upp : Number(p.selling_price ?? 0);
 }
 
 /** react-native-web: flex + minWidth:0 on <Text> table headers collapses width and stacks letters vertically; use Views as cells. */
@@ -369,6 +406,8 @@ export default function VendasScreen() {
   const [showStockWarning, setShowStockWarning] = useState(true);
   const [sellModeModalVisible, setSellModeModalVisible] = useState(false);
   const [sellModeProduct, setSellModeProduct] = useState<Product | null>(null);
+  const [sellModeProductLoading, setSellModeProductLoading] = useState(false);
+  const sellModeDetailFetchGen = useRef(0);
   const [unitSellQty, setUnitSellQty] = useState('1');
 
   const [confirming, setConfirming] = useState(false);
@@ -389,29 +428,19 @@ export default function VendasScreen() {
   const isPackProduct = (p: Product) =>
     (p.can_sell_by_box || p.can_sell_by_unit) && (p.units_per_pack ?? 0) > 0;
 
-  const getBoxPrice = (p: Product) =>
-    Number(p.box_selling_price ?? p.selling_price ?? 0);
+  const getBoxPrice = (p: Product) => getDisplayBoxPriceAmount(p);
 
-  const getUnitPrice = (p: Product) => {
-    if (p.unit_selling_price != null) return Number(p.unit_selling_price);
-    const upp = p.units_per_pack ?? 0;
-    const box = getBoxPrice(p);
-    if (upp > 0) return box / upp;
-    return Number(p.selling_price ?? 0);
-  };
+  const getUnitPrice = (p: Product) => getDisplayUnitPriceAmount(p);
 
   const baseUnitsRequired = (item: CartItem) =>
     item.sell_as === 'box' ? item.quantity * (item.product.units_per_pack ?? 1) : item.quantity;
 
   const lineUnitPrice = useCallback((item: CartItem) => {
     if (item.sell_as === 'box') {
-      return Number(item.product.box_selling_price ?? item.product.selling_price ?? 0);
+      return getDisplayBoxPriceAmount(item.product);
     }
     if (item.sell_as === 'unit') {
-      if (item.product.unit_selling_price != null) return Number(item.product.unit_selling_price);
-      const upp = item.product.units_per_pack ?? 0;
-      const box = Number(item.product.box_selling_price ?? item.product.selling_price ?? 0);
-      return upp > 0 ? box / upp : Number(item.product.selling_price ?? 0);
+      return getDisplayUnitPriceAmount(item.product);
     }
     return Number(item.product.selling_price);
   }, []);
@@ -608,10 +637,34 @@ export default function VendasScreen() {
   };
 
   const closeSellModeModal = () => {
+    sellModeDetailFetchGen.current += 1;
     setSellModeModalVisible(false);
     setSellModeProduct(null);
+    setSellModeProductLoading(false);
     setUnitSellQty('1');
   };
+
+  useEffect(() => {
+    if (!sellModeModalVisible || !sellModeProduct) {
+      return;
+    }
+    const productId = sellModeProduct.id;
+    const gen = ++sellModeDetailFetchGen.current;
+    setSellModeProductLoading(true);
+    void (async () => {
+      try {
+        const full = await api.products.get(productId);
+        if (sellModeDetailFetchGen.current !== gen) return;
+        setSellModeProduct(prev => (prev?.id === productId ? { ...prev, ...full } : prev));
+      } catch {
+        /* manter dados da lista se o GET falhar */
+      } finally {
+        if (sellModeDetailFetchGen.current === gen) {
+          setSellModeProductLoading(false);
+        }
+      }
+    })();
+  }, [sellModeModalVisible, sellModeProduct?.id]);
 
   const getSellModePrices = () => {
     if (!sellModeProduct) return { box: null as number | null, unit: null as number | null };
@@ -866,38 +919,134 @@ export default function VendasScreen() {
                         <Text style={styles.inlineCloseButtonText}>X</Text>
                       </Pressable>
                     </View>
-                    <Text style={styles.sellModeSubtitle} numberOfLines={1} ellipsizeMode="tail">
+                    <Text style={styles.sellModeSubtitle} numberOfLines={2} ellipsizeMode="tail">
                       {sellModeProduct?.name ?? ''}
                     </Text>
+                    {sellModeProductLoading && (
+                      <View style={styles.sellModeFetchRow}>
+                        <ActivityIndicator size="small" color="#2563eb" />
+                        <Text style={styles.sellModeFetchText}>A actualizar dados do produto…</Text>
+                      </View>
+                    )}
+                    {sellModeProduct && (
+                      <View style={styles.sellModeLocationStockCard}>
+                        <Text style={styles.sellModeLocationStockTitle}>Stock</Text>
+                        <Text style={styles.sellModeLocationStockLine}>
+                          Stock loja:{' '}
+                          <Text style={styles.sellModeLocationStockEm}>
+                            {formatStockCountLabel(getProductFrontStockDisplay(sellModeProduct))}
+                          </Text>
+                        </Text>
+                        <Text style={styles.sellModeLocationStockLine}>
+                          Stock armazém:{' '}
+                          <Text style={styles.sellModeLocationStockEm}>
+                            {formatStockCountLabel(getProductBackStockDisplay(sellModeProduct))}
+                          </Text>
+                        </Text>
+                        {(() => {
+                          const x = getProductFrontStockDisplay(sellModeProduct);
+                          const y = getProductBackStockDisplay(sellModeProduct);
+                          const t = Math.max(0, Math.floor(Number(sellModeProduct.stock_quantity) || 0));
+                          if (x != null && y != null) {
+                            return (
+                              <>
+                                <Text style={styles.sellModeLocationStockTotal}>
+                                  Total: {x} + {y}
+                                </Text>
+                                <Text style={styles.sellModeLocationStockHint}>
+                                  Stock total (sistema): {t}
+                                </Text>
+                              </>
+                            );
+                          }
+                          return <Text style={styles.sellModeLocationStockTotal}>Total: {t}</Text>;
+                        })()}
+                      </View>
+                    )}
+                    {sellModeProduct && sellModeStockInfo && (
+                      <View style={styles.sellModeStockCard}>
+                        <Text style={styles.sellModeStockHeading}>Stock disponível (venda)</Text>
+                        {sellModeStockInfo.showBoxLine && (
+                          <Text style={styles.sellModeStockRow}>
+                            Caixa(s) restantes: {sellModeStockInfo.boxes}
+                          </Text>
+                        )}
+                        {sellModeStockInfo.showLaminaLine && (
+                          <Text style={styles.sellModeStockRow}>
+                            Lâmina(s) restantes: {sellModeStockInfo.laminae}
+                          </Text>
+                        )}
+                        <Text style={styles.sellModeStockRowTotal}>
+                          Stock total (unidades): {sellModeStockInfo.total}
+                        </Text>
+                        {sellModeStockInfo.isOutOfStock && (
+                          <Text style={styles.sellModeStockOutLabel}>Sem stock</Text>
+                        )}
+                        {sellModeStockInfo.isLowStock && !sellModeStockInfo.isOutOfStock && (
+                          <View style={styles.sellModeStockLowBadge}>
+                            <Text style={styles.sellModeStockLowBadgeText}>Stock baixo</Text>
+                          </View>
+                        )}
+                      </View>
+                    )}
                     <View style={styles.sellModePriceRow}>
                       <Text style={styles.sellModePriceText}>
-                        Caixa: {formatCurrency(sellModePrices.box ?? 0)}
+                        Preço caixa: {formatCurrency(sellModePrices.box ?? 0)}
                       </Text>
                       <Text style={styles.sellModePriceText}>
-                        Lâmina: {formatCurrency(sellModePrices.unit ?? 0)}
+                        Preço unidade: {formatCurrency(sellModePrices.unit ?? 0)}
                       </Text>
                     </View>
                     <View style={styles.sellModeActions}>
-                      <Pressable style={({ pressed }) => [styles.secondaryButton, pressed && styles.secondaryButtonPressed]} onPress={confirmSellAsBox}>
-                        <Text style={styles.secondaryButtonText}>Caixa</Text>
+                      <Pressable
+                        style={({ pressed }) => [
+                          styles.secondaryButton,
+                          sellModeStockInfo?.boxButtonDisabled && styles.sellModeActionDisabled,
+                          pressed && !sellModeStockInfo?.boxButtonDisabled && styles.secondaryButtonPressed,
+                        ]}
+                        disabled={!!sellModeStockInfo?.boxButtonDisabled}
+                        onPress={confirmSellAsBox}>
+                        <Text
+                          style={[
+                            styles.secondaryButtonText,
+                            sellModeStockInfo?.boxButtonDisabled && styles.sellModeActionDisabledText,
+                          ]}>
+                          Caixa
+                        </Text>
                       </Pressable>
                     </View>
                     <View style={styles.sellModeUnitRow}>
                       <View style={{ flex: 1 }}>
                         <Text style={styles.label}>Lâmina - quantidade</Text>
                         <TextInput
-                          style={styles.posInput}
+                          style={[
+                            styles.posInput,
+                            sellModeStockInfo?.unitButtonDisabled && styles.sellModeInputDisabled,
+                          ]}
                           keyboardType="number-pad"
                           value={unitSellQty}
                           onChangeText={setUnitSellQty}
                           placeholder="1"
                           placeholderTextColor="#6b7280"
+                          editable={!sellModeStockInfo?.unitButtonDisabled}
                         />
                       </View>
                       <Pressable
-                        style={({ pressed }) => [styles.primaryButton, styles.sellModePrimary, pressed && styles.primaryButtonPressed]}
+                        style={({ pressed }) => [
+                          styles.primaryButton,
+                          styles.sellModePrimary,
+                          sellModeStockInfo?.unitButtonDisabled && styles.sellModePrimaryDisabled,
+                          pressed && !sellModeStockInfo?.unitButtonDisabled && styles.primaryButtonPressed,
+                        ]}
+                        disabled={!!sellModeStockInfo?.unitButtonDisabled}
                         onPress={confirmSellAsUnit}>
-                        <Text style={styles.primaryButtonText}>Adicionar</Text>
+                        <Text
+                          style={[
+                            styles.primaryButtonText,
+                            sellModeStockInfo?.unitButtonDisabled && styles.sellModePrimaryDisabledText,
+                          ]}>
+                          Adicionar
+                        </Text>
                       </Pressable>
                     </View>
                   </View>
@@ -978,11 +1127,15 @@ export default function VendasScreen() {
                         <View style={styles.manualCard}>
                           <Text style={styles.manualTitle}>Produto seleccionado</Text>
                           <Text style={styles.manualProductName}>{selectedProduct.name}</Text>
+                          <Text style={styles.manualProductMeta}>SKU: {selectedProduct.sku}</Text>
                           <Text style={styles.manualProductMeta}>
-                            SKU: {selectedProduct.sku} · Stock: {selectedProduct.stock_quantity}
+                            Stock loja: {formatStockCountLabel(getProductFrontStockDisplay(selectedProduct))} ·
+                            Armazém: {formatStockCountLabel(getProductBackStockDisplay(selectedProduct))} · Total:{' '}
+                            {Math.max(0, Math.floor(Number(selectedProduct.stock_quantity) || 0))}
                           </Text>
                           <Text style={styles.manualProductMeta}>
-                            Preço base: {formatCurrency(selectedProduct.selling_price)}
+                            Preço caixa: {formatCurrency(getDisplayBoxPriceAmount(selectedProduct))} · Preço unidade:{' '}
+                            {formatCurrency(getDisplayUnitPriceAmount(selectedProduct))}
                           </Text>
 
                           {isPackProduct(selectedProduct) && (
@@ -1185,11 +1338,15 @@ export default function VendasScreen() {
                       <View style={styles.manualCard}>
                         <Text style={styles.manualTitle}>Produto seleccionado</Text>
                         <Text style={styles.manualProductName}>{selectedProduct.name}</Text>
+                        <Text style={styles.manualProductMeta}>SKU: {selectedProduct.sku}</Text>
                         <Text style={styles.manualProductMeta}>
-                          SKU: {selectedProduct.sku} · Stock: {selectedProduct.stock_quantity}
+                          Stock loja: {formatStockCountLabel(getProductFrontStockDisplay(selectedProduct))} ·
+                          Armazém: {formatStockCountLabel(getProductBackStockDisplay(selectedProduct))} · Total:{' '}
+                          {Math.max(0, Math.floor(Number(selectedProduct.stock_quantity) || 0))}
                         </Text>
                         <Text style={styles.manualProductMeta}>
-                          Preço base: {formatCurrency(selectedProduct.selling_price)}
+                          Preço caixa: {formatCurrency(getDisplayBoxPriceAmount(selectedProduct))} · Preço unidade:{' '}
+                          {formatCurrency(getDisplayUnitPriceAmount(selectedProduct))}
                         </Text>
 
                         {isPackProduct(selectedProduct) && (
@@ -1433,9 +1590,15 @@ export default function VendasScreen() {
                       <View style={styles.manualCard}>
                         <Text style={styles.manualTitle}>Produto seleccionado</Text>
                         <Text style={styles.manualProductName}>{selectedProduct.name}</Text>
-                        <Text style={styles.manualProductMeta}>SKU: {selectedProduct.sku} · Stock: {selectedProduct.stock_quantity}</Text>
+                        <Text style={styles.manualProductMeta}>SKU: {selectedProduct.sku}</Text>
                         <Text style={styles.manualProductMeta}>
-                          Preço base: {formatCurrency(selectedProduct.selling_price)}
+                          Stock loja: {formatStockCountLabel(getProductFrontStockDisplay(selectedProduct))} ·
+                          Armazém: {formatStockCountLabel(getProductBackStockDisplay(selectedProduct))} · Total:{' '}
+                          {Math.max(0, Math.floor(Number(selectedProduct.stock_quantity) || 0))}
+                        </Text>
+                        <Text style={styles.manualProductMeta}>
+                          Preço caixa: {formatCurrency(getDisplayBoxPriceAmount(selectedProduct))} · Preço unidade:{' '}
+                          {formatCurrency(getDisplayUnitPriceAmount(selectedProduct))}
                         </Text>
 
                         {isPackProduct(selectedProduct) && (
@@ -1711,9 +1874,132 @@ const styles = StyleSheet.create({
     color: '#111827',
   },
   sellModeSubtitle: {
-    fontSize: 13,
+    fontSize: 15,
+    color: '#111827',
+    fontWeight: '800',
+    lineHeight: 20,
+  },
+  sellModeFetchRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 10,
+    paddingVertical: 4,
+  },
+  sellModeFetchText: {
+    fontSize: 12,
+    color: '#4b5563',
+    fontWeight: '600',
+  },
+  sellModeLocationStockCard: {
+    borderWidth: 1,
+    borderColor: '#d1d5db',
+    borderRadius: 4,
+    backgroundColor: '#f9fafb',
+    paddingHorizontal: 12,
+    paddingVertical: 10,
+    gap: 4,
+  },
+  sellModeLocationStockTitle: {
+    fontSize: 11,
+    fontWeight: '800',
+    color: '#374151',
+    textTransform: 'uppercase',
+    letterSpacing: 0.5,
+    marginBottom: 2,
+  },
+  sellModeLocationStockLine: {
+    fontSize: 14,
+    color: '#1f2937',
+    fontWeight: '600',
+  },
+  sellModeLocationStockEm: {
+    fontWeight: '800',
+    color: '#111827',
+  },
+  sellModeLocationStockTotal: {
+    fontSize: 14,
+    fontWeight: '800',
+    color: '#111827',
+    marginTop: 4,
+    paddingTop: 6,
+    borderTopWidth: 1,
+    borderTopColor: '#e5e7eb',
+  },
+  sellModeLocationStockHint: {
+    fontSize: 11,
     color: '#6b7280',
-    fontWeight: '700',
+    fontWeight: '600',
+    marginTop: 2,
+  },
+  sellModeStockCard: {
+    borderWidth: 1,
+    borderColor: '#d1d5db',
+    borderRadius: 4,
+    backgroundColor: '#f3f4f6',
+    paddingHorizontal: 12,
+    paddingVertical: 10,
+    gap: 6,
+  },
+  sellModeStockHeading: {
+    fontSize: 11,
+    fontWeight: '800',
+    color: '#374151',
+    textTransform: 'uppercase',
+    letterSpacing: 0.5,
+  },
+  sellModeStockRow: {
+    fontSize: 13,
+    color: '#1f2937',
+    fontWeight: '600',
+  },
+  sellModeStockRowTotal: {
+    fontSize: 13,
+    fontWeight: '800',
+    color: '#111827',
+    marginTop: 2,
+    paddingTop: 6,
+    borderTopWidth: 1,
+    borderTopColor: '#e5e7eb',
+  },
+  sellModeStockOutLabel: {
+    marginTop: 4,
+    fontSize: 13,
+    fontWeight: '800',
+    color: '#b91c1c',
+  },
+  sellModeStockLowBadge: {
+    alignSelf: 'flex-start',
+    marginTop: 4,
+    paddingVertical: 4,
+    paddingHorizontal: 8,
+    borderRadius: 4,
+    borderWidth: 1,
+    borderColor: '#fcd34d',
+    backgroundColor: '#fffbeb',
+  },
+  sellModeStockLowBadgeText: {
+    fontSize: 11,
+    fontWeight: '800',
+    color: '#b45309',
+    textTransform: 'uppercase',
+    letterSpacing: 0.3,
+  },
+  sellModeActionDisabled: {
+    opacity: 0.42,
+  },
+  sellModeActionDisabledText: {
+    color: '#9ca3af',
+  },
+  sellModeInputDisabled: {
+    opacity: 0.5,
+    backgroundColor: '#f3f4f6',
+  },
+  sellModePrimaryDisabled: {
+    opacity: 0.45,
+    backgroundColor: '#9ca3af',
+  },
+  sellModePrimaryDisabledText: {
+    color: '#f3f4f6',
   },
   sellModePriceRow: {
     flexDirection: 'row',

@@ -28,6 +28,14 @@ export interface StockDisplayPack {
     unit_selling_price?: string | null;
     stock_quantity: number;
     minimum_stock: number;
+    /** Stock na loja (exposição); fallback UI: initial_front_count se a API não enviar. */
+    front_stock_quantity?: number | null;
+    /** Stock no armazém; fallback UI: initial_back_count. */
+    back_stock_quantity?: number | null;
+    /** Preço por caixa (alias opcional da API); fallback: box_selling_price / selling_price. */
+    price_box?: string | number | null;
+    /** Preço por unidade/lâmina (alias opcional); fallback: unit_selling_price. */
+    price_unit?: string | number | null;
     initial_back_count?: number | null;
     initial_front_count?: number | null;
     initial_total_count?: number | null;
