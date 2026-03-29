@@ -423,6 +423,7 @@ export const api = {
       const q = sp.toString();
       return request<StockAuditIssue[]>(`/stock-audit-issues${q ? `?${q}` : ''}`);
     },
+    get: (issueId: number) => request<StockAuditIssue>(`/stock-audit-issues/${issueId}`),
     resolve: (issueId: number) =>
       request<StockAuditIssue>(`/stock-audit-issues/${issueId}/resolve`, { method: 'PATCH' }),
   },

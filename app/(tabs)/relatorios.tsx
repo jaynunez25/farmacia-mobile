@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useState } from 'react';
+import { useEffect, useState } from 'react';
 import {
   ActivityIndicator,
   Alert,
@@ -15,7 +15,8 @@ import * as Sharing from 'expo-sharing';
 
 import { useAuth } from '@/contexts/AuthContext';
 import { api, type CashierDayActivityRow } from '@/services/api';
-import type { Product, StockAuditIssue, StockMovement } from '@/types';
+import type { StockMovement } from '@/types';
+import { AuditIssuesPanel } from '@/components/audit/AuditIssuesPanel';
 import { formatCurrency } from '@/utils/currency';
 import { getErrorMessage } from '@/utils/errorMessage';
 import { isAdminRole, isStockAuditorRole } from '@/utils/roles';
@@ -63,21 +64,6 @@ function formatReportDateTime(iso: string | null): string {
   } catch {
     return '—';
   }
-}
-
-function formatIssueReason(issue: StockAuditIssue): string {
-  const typeLabel = issue.issue_type.replace(/_/g, ' ');
-  if (issue.issue_note?.trim()) {
-    return `${typeLabel} — ${issue.issue_note.trim()}`;
-  }
-  return typeLabel;
-}
-
-function formatLocationLabel(location: string | null | undefined): string {
-  if (!location?.trim()) return '—';
-  const u = location.trim().toUpperCase();
-  if (u === 'FRONT' || u === 'BACK') return u;
-  return location.trim();
 }
 
 function buildAuditHtml(movements: StockMovement[], generatedAt: string): string {
@@ -148,11 +134,6 @@ export default function RelatoriosScreen() {
   const [exportingPdf, setExportingPdf] = useState(false);
 
   const [auditSubTab, setAuditSubTab] = useState<'movements' | 'issues'>('movements');
-  const [auditIssues, setAuditIssues] = useState<StockAuditIssue[]>([]);
-  const [issuesLoading, setIssuesLoading] = useState(false);
-  const [issuesError, setIssuesError] = useState<string | null>(null);
-  const [productById, setProductById] = useState<Record<number, Product>>({});
-  const [resolvingId, setResolvingId] = useState<number | null>(null);
 
   const [reportDate, setReportDate] = useState(() => new Date().toISOString().slice(0, 10));
   const [cashierDaily, setCashierDaily] = useState<CashierDayActivityRow[]>([]);
@@ -184,48 +165,6 @@ export default function RelatoriosScreen() {
     };
     void load();
   }, [isAdmin, isStockAuditor]);
-
-  const loadAuditIssues = useCallback(async () => {
-    if (!canSeeAuditSection) return;
-    setIssuesLoading(true);
-    setIssuesError(null);
-    try {
-      const [issues, products] = await Promise.all([
-        api.stockAuditIssues.list({ status: 'pending', limit: 500 }),
-        api.products.list({ limit: 500 }),
-      ]);
-      const map: Record<number, Product> = {};
-      for (const p of products) {
-        map[p.id] = p;
-      }
-      setAuditIssues(issues);
-      setProductById(map);
-    } catch (e) {
-      setIssuesError(getErrorMessage(e));
-      setAuditIssues([]);
-    } finally {
-      setIssuesLoading(false);
-    }
-  }, [canSeeAuditSection]);
-
-  useEffect(() => {
-    if (auditSubTab !== 'issues' || !canSeeAuditSection) return;
-    void loadAuditIssues();
-  }, [auditSubTab, canSeeAuditSection, loadAuditIssues]);
-
-  const handleResolveIssue = async (issueId: number) => {
-    setResolvingId(issueId);
-    setIssuesError(null);
-    try {
-      await api.stockAuditIssues.resolve(issueId);
-      await loadAuditIssues();
-    } catch (e) {
-      setIssuesError(getErrorMessage(e));
-      Alert.alert('Erro', getErrorMessage(e));
-    } finally {
-      setResolvingId(null);
-    }
-  };
 
   useEffect(() => {
     if (!isAdmin) return;
@@ -454,7 +393,7 @@ export default function RelatoriosScreen() {
                     styles.auditTabText,
                     auditSubTab === 'movements' && styles.auditTabTextActive,
                   ]}>
-                  Stock Movements
+                  Movimentos de stock
                 </Text>
               </Pressable>
               <Pressable
@@ -469,7 +408,7 @@ export default function RelatoriosScreen() {
                     styles.auditTabText,
                     auditSubTab === 'issues' && styles.auditTabTextActive,
                   ]}>
-                  Audit Issues
+                  Issues de auditoria
                 </Text>
               </Pressable>
             </View>
@@ -500,90 +439,7 @@ export default function RelatoriosScreen() {
                 </Pressable>
               </>
             ) : (
-              <>
-                <Text style={styles.cardMeta}>
-                  Issues pendentes de revisão (nome do produto, motivo, stock e localização).
-                </Text>
-                {issuesLoading && (
-                  <ActivityIndicator style={{ marginVertical: 12 }} color="#16a34a" />
-                )}
-                {issuesError && !issuesLoading && (
-                  <Text style={styles.errorInline}>{issuesError}</Text>
-                )}
-                {!issuesLoading && !issuesError && auditIssues.length === 0 && (
-                  <Text style={styles.cardLine}>Sem issues pendentes.</Text>
-                )}
-                {!issuesLoading && auditIssues.length > 0 && (
-                  <ScrollView horizontal showsHorizontalScrollIndicator>
-                    <View style={styles.issuesTable}>
-                      <View style={[styles.issuesRow, styles.issuesHeaderRow]}>
-                        <Text style={[styles.issuesCell, styles.issuesColProduct]}>Produto</Text>
-                        <Text style={[styles.issuesCell, styles.issuesColReason]}>Motivo</Text>
-                        <Text style={[styles.issuesCell, styles.issuesColStock]}>Stock</Text>
-                        <Text style={[styles.issuesCell, styles.issuesColLoc]}>Local</Text>
-                        <Text style={[styles.issuesCell, styles.issuesColDate]}>Criado</Text>
-                        <Text style={[styles.issuesCell, styles.issuesColActions]}>Acções</Text>
-                      </View>
-                      {auditIssues.map((issue) => {
-                        const prod = productById[issue.product_id];
-                        const name = prod?.name ?? `#${issue.product_id}`;
-                        const stock = prod?.stock_quantity ?? '—';
-                        const loc = formatLocationLabel(prod?.location ?? null);
-                        return (
-                          <View key={issue.id} style={styles.issuesRow}>
-                            <Text
-                              style={[styles.issuesCell, styles.issuesColProduct]}
-                              numberOfLines={2}>
-                              {name}
-                            </Text>
-                            <Text
-                              style={[styles.issuesCell, styles.issuesColReason]}
-                              numberOfLines={3}>
-                              {formatIssueReason(issue)}
-                            </Text>
-                            <Text style={[styles.issuesCell, styles.issuesColStock]}>{stock}</Text>
-                            <Text style={[styles.issuesCell, styles.issuesColLoc]}>{loc}</Text>
-                            <Text style={[styles.issuesCell, styles.issuesColDate]}>
-                              {formatMovementDate(issue.created_at)}
-                            </Text>
-                            <View style={[styles.issuesCell, styles.issuesColActions]}>
-                              <Pressable
-                                style={({ pressed }) => [
-                                  styles.issueActionBtn,
-                                  pressed && styles.issueActionBtnPressed,
-                                ]}
-                                onPress={() =>
-                                  router.push({
-                                    pathname: '/produto',
-                                    params: { id: String(issue.product_id) },
-                                  })
-                                }>
-                                <Text style={styles.issueActionBtnText}>Ver produto</Text>
-                              </Pressable>
-                              {issue.status === 'pending' && (
-                                <Pressable
-                                  style={({ pressed }) => [
-                                    styles.issueResolveBtn,
-                                    resolvingId === issue.id && styles.issueResolveBtnDisabled,
-                                    pressed &&
-                                      resolvingId !== issue.id &&
-                                      styles.issueResolveBtnPressed,
-                                  ]}
-                                  disabled={resolvingId === issue.id}
-                                  onPress={() => handleResolveIssue(issue.id)}>
-                                  <Text style={styles.issueResolveBtnText}>
-                                    {resolvingId === issue.id ? '…' : 'Resolver'}
-                                  </Text>
-                                </Pressable>
-                              )}
-                            </View>
-                          </View>
-                        );
-                      })}
-                    </View>
-                  </ScrollView>
-                )}
-              </>
+              <AuditIssuesPanel />
             )}
           </View>
         ) : null}
@@ -773,76 +629,6 @@ const styles = StyleSheet.create({
   },
   auditTabTextActive: {
     color: '#e5e7eb',
-  },
-  issuesTable: {
-    minWidth: 720,
-    borderWidth: 1,
-    borderColor: '#1f2937',
-    borderRadius: 8,
-    overflow: 'hidden',
-  },
-  issuesRow: {
-    flexDirection: 'row',
-    borderBottomWidth: 1,
-    borderBottomColor: '#1f2937',
-    backgroundColor: '#020617',
-    alignItems: 'stretch',
-  },
-  issuesHeaderRow: {
-    backgroundColor: '#0f172a',
-    borderBottomColor: '#334155',
-  },
-  issuesCell: {
-    paddingVertical: 10,
-    paddingHorizontal: 8,
-    justifyContent: 'center',
-    borderRightWidth: 1,
-    borderRightColor: '#1f2937',
-  },
-  issuesColProduct: { width: 140, flexShrink: 0 },
-  issuesColReason: { width: 200, flexShrink: 0 },
-  issuesColStock: { width: 48, flexShrink: 0, textAlign: 'center' as const },
-  issuesColLoc: { width: 64, flexShrink: 0, textAlign: 'center' as const },
-  issuesColDate: { width: 118, flexShrink: 0 },
-  issuesColActions: {
-    width: 112,
-    flexShrink: 0,
-    borderRightWidth: 0,
-    gap: 6,
-    paddingVertical: 8,
-  },
-  issueActionBtn: {
-    paddingVertical: 6,
-    paddingHorizontal: 8,
-    borderRadius: 6,
-    backgroundColor: '#1e293b',
-    alignItems: 'center',
-  },
-  issueActionBtnPressed: {
-    backgroundColor: '#334155',
-  },
-  issueActionBtnText: {
-    fontSize: 11,
-    fontWeight: '600',
-    color: '#e2e8f0',
-  },
-  issueResolveBtn: {
-    paddingVertical: 6,
-    paddingHorizontal: 8,
-    borderRadius: 6,
-    backgroundColor: '#14532d',
-    alignItems: 'center',
-  },
-  issueResolveBtnPressed: {
-    backgroundColor: '#166534',
-  },
-  issueResolveBtnDisabled: {
-    opacity: 0.6,
-  },
-  issueResolveBtnText: {
-    fontSize: 11,
-    fontWeight: '600',
-    color: '#dcfce7',
   },
 });
 
