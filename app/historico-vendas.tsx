@@ -10,9 +10,11 @@ import {
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useRouter } from 'expo-router';
 
+import { useAuth } from '@/contexts/AuthContext';
 import { api } from '@/services/api';
 import type { SaleHistoryRecord, SaleHistoryResponse } from '@/types';
 import { getErrorMessage } from '@/utils/errorMessage';
+import { isAdminRole } from '@/utils/roles';
 
 type SaleHistoryRow = {
   sale_id: number;
@@ -22,6 +24,7 @@ type SaleHistoryRow = {
 
 export default function HistoricoVendasScreen() {
   const router = useRouter();
+  const { user } = useAuth();
 
   const [history, setHistory] = useState<SaleHistoryResponse | null>(null);
   const [loading, setLoading] = useState(true);
@@ -51,8 +54,13 @@ export default function HistoricoVendasScreen() {
   };
 
   useEffect(() => {
+    if (!user) return;
+    if (!isAdminRole(user.role)) {
+      router.replace('/(tabs)/dashboard');
+      return;
+    }
     void load();
-  }, []);
+  }, [user, router]);
 
   const onRefresh = async () => {
     setRefreshing(true);

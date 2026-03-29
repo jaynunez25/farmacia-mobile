@@ -14,15 +14,24 @@ import {
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
+import { useAuth } from '@/contexts/AuthContext';
 import type { Product } from '@/types';
 import { api } from '@/services/api';
 import { getErrorMessage } from '@/utils/errorMessage';
+import { isAdminRole } from '@/utils/roles';
 
 type EditableProduct = Product;
 
 export default function ProdutoEditarScreen() {
   const router = useRouter();
   const { id } = useLocalSearchParams<{ id?: string }>();
+  const { user } = useAuth();
+
+  useEffect(() => {
+    if (user && !isAdminRole(user.role)) {
+      router.replace('/(tabs)/stock');
+    }
+  }, [user, router]);
 
   const [product, setProduct] = useState<EditableProduct | null>(null);
   const [loading, setLoading] = useState(true);

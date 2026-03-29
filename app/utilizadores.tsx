@@ -18,13 +18,15 @@ import { getErrorMessage } from '@/utils/errorMessage';
 
 const ROLE_LABELS: Record<string, string> = {
   admin: 'Administrador',
-  auditor: 'Auditor',
+  stock_auditor: 'Auditor de stock',
+  auditor: 'Auditor (legado)',
   cashier: 'Caixa',
   worker: 'Operador',
 };
 
 const ROLE_BG: Record<string, string> = {
   admin: '#1e3a5f',
+  stock_auditor: '#78350f',
   auditor: '#78350f',
   cashier: '#334155',
   worker: '#334155',

@@ -3,12 +3,16 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { ActivityIndicator, Alert, Pressable, StyleSheet, Text, View } from 'react-native';
 import { useEffect, useState } from 'react';
 
+import { useAuth } from '@/contexts/AuthContext';
 import type { Product } from '@/types';
 import { api } from '@/services/api';
 import { getErrorMessage } from '@/utils/errorMessage';
+import { isAdminRole } from '@/utils/roles';
 
 export default function ProdutoDetailScreen() {
   const router = useRouter();
+  const { user } = useAuth();
+  const canManageProducts = isAdminRole(user?.role);
   const { id } = useLocalSearchParams<{ id?: string }>();
 
   const [product, setProduct] = useState<Product | null>(null);
@@ -106,33 +110,35 @@ export default function ProdutoDetailScreen() {
             <Text style={styles.meta}>Stock mínimo: {product.minimum_stock}</Text>
           </View>
 
-          <View style={styles.actionsRow}>
-            <Pressable
-              style={({ pressed }) => [
-                styles.button,
-                pressed && styles.buttonPressed,
-              ]}
-              onPress={() =>
-                router.push({
-                  pathname: '/produto-editar',
-                  params: { id: String(product.id) },
-                })
-              }>
-              <Text style={styles.buttonText}>Editar</Text>
-            </Pressable>
+          {canManageProducts ? (
+            <View style={styles.actionsRow}>
+              <Pressable
+                style={({ pressed }) => [
+                  styles.button,
+                  pressed && styles.buttonPressed,
+                ]}
+                onPress={() =>
+                  router.push({
+                    pathname: '/produto-editar',
+                    params: { id: String(product.id) },
+                  })
+                }>
+                <Text style={styles.buttonText}>Editar</Text>
+              </Pressable>
 
-            <Pressable
-              style={({ pressed }) => [
-                styles.buttonDelete,
-                (pressed || deleting) && styles.buttonDeletePressed,
-              ]}
-              disabled={deleting}
-              onPress={confirmDelete}>
-              <Text style={styles.buttonDeleteText}>
-                {deleting ? 'A apagar...' : 'Apagar produto'}
-              </Text>
-            </Pressable>
-          </View>
+              <Pressable
+                style={({ pressed }) => [
+                  styles.buttonDelete,
+                  (pressed || deleting) && styles.buttonDeletePressed,
+                ]}
+                disabled={deleting}
+                onPress={confirmDelete}>
+                <Text style={styles.buttonDeleteText}>
+                  {deleting ? 'A apagar...' : 'Apagar produto'}
+                </Text>
+              </Pressable>
+            </View>
+          ) : null}
         </>
       )}
     </SafeAreaView>

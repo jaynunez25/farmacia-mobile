@@ -12,12 +12,16 @@ import {
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useRouter } from 'expo-router';
 
+import { useAuth } from '@/contexts/AuthContext';
 import { api } from '@/services/api';
 import type { Product } from '@/types';
 import { getErrorMessage } from '@/utils/errorMessage';
+import { isAdminRole } from '@/utils/roles';
 
 export default function StockScreen() {
   const router = useRouter();
+  const { user } = useAuth();
+  const canManageProducts = isAdminRole(user?.role);
 
   const [products, setProducts] = useState<Product[]>([]);
   const [categories, setCategories] = useState<string[]>([]);
@@ -267,15 +271,17 @@ export default function StockScreen() {
           <Text style={styles.title}>Stock</Text>
           <Text style={styles.subtitle}>Gestão do inventário e reposição.</Text>
         </View>
-        <Pressable
-          style={({ pressed }) => [
-            styles.addButton,
-            pressed && styles.addButtonPressed,
-          ]}
-          android_ripple={{ color: '#166534' }}
-          onPress={() => router.push('/produto-criar')}>
-          <Text style={styles.addButtonText}>Adicionar produto</Text>
-        </Pressable>
+        {canManageProducts ? (
+          <Pressable
+            style={({ pressed }) => [
+              styles.addButton,
+              pressed && styles.addButtonPressed,
+            ]}
+            android_ripple={{ color: '#166534' }}
+            onPress={() => router.push('/produto-criar')}>
+            <Text style={styles.addButtonText}>Adicionar produto</Text>
+          </Pressable>
+        ) : null}
       </View>
 
       <View style={styles.searchRow}>

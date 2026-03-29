@@ -13,9 +13,11 @@ import { useRouter } from 'expo-router';
 import * as Print from 'expo-print';
 import * as Sharing from 'expo-sharing';
 
+import { useAuth } from '@/contexts/AuthContext';
 import { api } from '@/services/api';
 import type { StockMovement } from '@/types';
 import { getErrorMessage } from '@/utils/errorMessage';
+import { isAdminRole, isStockAuditorRole } from '@/utils/roles';
 
 const MOVEMENT_TYPE_LABELS: Record<string, string> = {
   purchase: 'Entrada',
@@ -93,6 +95,9 @@ function buildAuditHtml(movements: StockMovement[], generatedAt: string): string
 
 export default function RelatoriosScreen() {
   const router = useRouter();
+  const { user } = useAuth();
+  const isAdmin = isAdminRole(user?.role);
+  const isStockAuditor = isStockAuditorRole(user?.role);
 
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -114,14 +119,21 @@ export default function RelatoriosScreen() {
       setLoading(true);
       setError(null);
       try {
-        const [summary, movements, attendance] = await Promise.all([
-          api.sales.getHistorySummary({}),
-          api.stockMovements.list({ limit: 500 }),
-          api.attendance.getStatus(),
-        ]);
-        setSalesSummary(summary);
-        setAuditMovements(movements);
-        setAttendanceStatus(attendance);
+        if (isAdmin) {
+          const [summary, movements, attendance] = await Promise.all([
+            api.sales.getHistorySummary({}),
+            api.stockMovements.list({ limit: 500 }),
+            api.attendance.getStatus(),
+          ]);
+          setSalesSummary(summary);
+          setAuditMovements(movements);
+          setAttendanceStatus(attendance);
+        } else if (isStockAuditor) {
+          const movements = await api.stockMovements.list({ limit: 500 });
+          setSalesSummary(null);
+          setAttendanceStatus(null);
+          setAuditMovements(movements);
+        }
       } catch (e) {
         setError(getErrorMessage(e));
       } finally {
@@ -129,7 +141,7 @@ export default function RelatoriosScreen() {
       }
     };
     void load();
-  }, []);
+  }, [isAdmin, isStockAuditor]);
 
   const handleExportAuditPdf = async () => {
     if (auditMovements.length === 0) {
@@ -217,7 +229,7 @@ export default function RelatoriosScreen() {
           </View>
         )}
 
-        {attendanceStatus && !loading && (
+        {isAdmin && attendanceStatus && !loading && (
           <View style={styles.card}>
             <Text style={styles.cardTitle}>Relatório de ponto (Clock in / Clock out)</Text>
             <Text style={styles.cardLine}>
@@ -253,21 +265,23 @@ export default function RelatoriosScreen() {
           </View>
         )}
 
-        <View style={styles.card}>
-          <Text style={styles.cardTitle}>Sessões de caixa</Text>
-          <Text style={styles.cardLine}>
-            Consulta e fecha sessões de caixa na secção Caixa. Em versões futuras poderás gerar
-            relatórios completos de fecho de dia.
-          </Text>
-          <Pressable
-            style={({ pressed }) => [
-              styles.linkButton,
-              pressed && styles.linkButtonPressed,
-            ]}
-            onPress={() => router.push('/(tabs)/caixa')}>
-            <Text style={styles.linkButtonText}>Ir para Caixa</Text>
-          </Pressable>
-        </View>
+        {isAdmin ? (
+          <View style={styles.card}>
+            <Text style={styles.cardTitle}>Sessões de caixa</Text>
+            <Text style={styles.cardLine}>
+              Consulta e fecha sessões de caixa na secção Caixa. Em versões futuras poderás gerar
+              relatórios completos de fecho de dia.
+            </Text>
+            <Pressable
+              style={({ pressed }) => [
+                styles.linkButton,
+                pressed && styles.linkButtonPressed,
+              ]}
+              onPress={() => router.push('/(tabs)/caixa')}>
+              <Text style={styles.linkButtonText}>Ir para Caixa</Text>
+            </Pressable>
+          </View>
+        ) : null}
 
         <View style={styles.card}>
           <Text style={styles.cardTitle}>Auditoria de stock</Text>

@@ -1,4 +1,6 @@
-import { useEffect, useState } from 'react';
+import MaterialIcons from '@expo/vector-icons/MaterialIcons';
+import { useFocusEffect } from '@react-navigation/native';
+import { useCallback, useEffect, useState } from 'react';
 import {
   ActivityIndicator,
   Pressable,
@@ -24,12 +26,13 @@ import {
   getPriorityAlertType,
 } from '@/utils/dashboardHelpers';
 import { getErrorMessage } from '@/utils/errorMessage';
+import { isAdminRole, normalizeAppRole } from '@/utils/roles';
 
 /** Cards use fixed light backgrounds; theme text stays dark so contrast is correct in system dark mode. */
 const TEXT_ON_LIGHT = { lightColor: '#111827', darkColor: '#111827' } as const;
 const TEXT_ON_LIGHT_MUTED = { lightColor: '#6b7280', darkColor: '#6b7280' } as const;
 
-export default function DashboardScreen() {
+function AdminDashboardScreen() {
   const router = useRouter();
   const { user } = useAuth();
 
@@ -273,7 +276,7 @@ export default function DashboardScreen() {
                   </ThemedText>
                 </Pressable>
               </View>
-              {user?.role === 'admin' && (
+              {isAdminRole(user?.role) && (
                 <View style={styles.actionRow}>
                   <Pressable
                     style={({ pressed }) => [
@@ -327,6 +330,240 @@ export default function DashboardScreen() {
       </ScrollView>
     </SafeAreaView>
   );
+}
+
+function formatSessionMoney(amount: string | undefined): string {
+  if (amount == null || amount === '') return '0,00 Kz';
+  const n = parseFloat(String(amount));
+  if (!Number.isFinite(n)) return `${amount} Kz`;
+  return `${n.toLocaleString('pt-PT', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} Kz`;
+}
+
+function openingTimeDisplay(iso: string): string {
+  try {
+    const d = new Date(iso);
+    const today = new Date();
+    const sameDay =
+      d.getFullYear() === today.getFullYear() &&
+      d.getMonth() === today.getMonth() &&
+      d.getDate() === today.getDate();
+    const time = d.toLocaleTimeString('pt-PT', { hour: '2-digit', minute: '2-digit' });
+    if (sameDay) return `Hoje às ${time}`;
+    return d.toLocaleString('pt-PT', {
+      day: '2-digit',
+      month: '2-digit',
+      year: 'numeric',
+      hour: '2-digit',
+      minute: '2-digit',
+    });
+  } catch {
+    return '—';
+  }
+}
+
+function CashierDashboardScreen({ onLogout }: { onLogout: () => void }) {
+  const router = useRouter();
+  const [summary, setSummary] = useState<CashSessionSummary | null>(null);
+  const [sessionLoading, setSessionLoading] = useState(true);
+
+  const loadSession = useCallback(async () => {
+    setSessionLoading(true);
+    try {
+      const s = await api.cashSessions.getCurrent();
+      setSummary(s);
+    } catch {
+      setSummary(null);
+    } finally {
+      setSessionLoading(false);
+    }
+  }, []);
+
+  useFocusEffect(
+    useCallback(() => {
+      void loadSession();
+    }, [loadSession]),
+  );
+
+  const hasSession = Boolean(summary);
+
+  return (
+    <SafeAreaView style={styles.safeArea}>
+      <ScrollView
+        contentContainerStyle={cstyles.cashierScroll}
+        showsVerticalScrollIndicator={false}>
+        <Text style={cstyles.pageTitle}>Dashboard</Text>
+
+        <View style={cstyles.sessionCard}>
+          <View style={cstyles.sessionCardHeaderRow}>
+            <MaterialIcons name="point-of-sale" size={18} color="#94a3b8" />
+            <Text style={cstyles.sessionCardTitle}>Sessão de Caixa</Text>
+          </View>
+          <View style={cstyles.sessionTopRow}>
+            <View style={cstyles.sessionLeftCol}>
+              <View style={[cstyles.checkCircle, hasSession ? cstyles.checkCircleActive : undefined]}>
+                <MaterialIcons name="check" size={26} color={hasSession ? '#fff' : '#64748b'} />
+              </View>
+            </View>
+            <View style={cstyles.sessionTextBlock}>
+              {sessionLoading ? (
+                <ActivityIndicator color="#22c55e" />
+              ) : hasSession ? (
+                <>
+                  <View style={cstyles.badgeAtiva}>
+                    <Text style={cstyles.badgeAtivaText}>Ativa</Text>
+                  </View>
+                  <Text style={cstyles.sessionLine}>
+                    Aberta por:{' '}
+                    <Text style={cstyles.sessionLineStrong}>
+                      {summary?.opened_by_display_name?.trim() || '—'}
+                    </Text>
+                  </Text>
+                  <Text style={cstyles.sessionLine}>
+                    Hora de abertura:{' '}
+                    <Text style={cstyles.sessionLineStrong}>
+                      {openingTimeDisplay(summary!.session.opened_at)}
+                    </Text>
+                  </Text>
+                  <Text style={cstyles.sessionLine}>
+                    Fundo inicial:{' '}
+                    <Text style={cstyles.sessionLineStrong}>
+                      {formatSessionMoney(summary!.session.opening_float)}
+                    </Text>
+                  </Text>
+                </>
+              ) : (
+                <Text style={cstyles.sessionInactive}>Nenhuma sessão de caixa aberta.</Text>
+              )}
+            </View>
+          </View>
+        </View>
+
+        <View style={cstyles.actionsRow}>
+          {hasSession ? (
+            <Pressable
+              style={({ pressed }) => [
+                cstyles.actionCard,
+                cstyles.actionCardNovaVenda,
+                pressed && cstyles.actionCardPressed,
+              ]}
+              onPress={() => router.push('/(tabs)/vendas')}>
+              <MaterialIcons name="shopping-cart" size={34} color="#60a5fa" />
+              <Text style={cstyles.actionCardLabelLight}>Nova Venda</Text>
+            </Pressable>
+          ) : (
+            <Pressable
+              style={({ pressed }) => [
+                cstyles.actionCard,
+                cstyles.actionCardFecharCaixa,
+                pressed && cstyles.actionCardPressed,
+              ]}
+              onPress={() => router.push('/(tabs)/caixa')}>
+              <MaterialIcons name="lock-open" size={30} color="#4ade80" />
+              <Text style={cstyles.actionCardLabelLight}>Abrir Caixa</Text>
+            </Pressable>
+          )}
+          <Pressable
+            style={({ pressed }) => [
+              cstyles.actionCard,
+              cstyles.actionCardVerProdutos,
+              pressed && cstyles.actionCardPressed,
+            ]}
+            onPress={() => router.push('/(tabs)/stock')}>
+            <MaterialIcons name="manage-search" size={32} color="#94a3b8" />
+            <Text style={cstyles.actionCardLabelLight}>Ver Produtos</Text>
+          </Pressable>
+          {hasSession ? (
+            <Pressable
+              style={({ pressed }) => [
+                cstyles.actionCard,
+                cstyles.actionCardFecharCaixa,
+                pressed && cstyles.actionCardPressed,
+              ]}
+              onPress={() => router.push('/(tabs)/caixa')}>
+              <MaterialIcons name="point-of-sale" size={30} color="#4ade80" />
+              <Text style={cstyles.actionCardLabelLight}>Fechar Caixa</Text>
+            </Pressable>
+          ) : (
+            <Pressable
+              disabled
+              style={[cstyles.actionCard, cstyles.actionCardNovaVendaDisabled]}
+              accessibilityState={{ disabled: true }}>
+              <MaterialIcons name="shopping-cart" size={34} color="#475569" />
+              <Text style={cstyles.actionCardLabelDisabled}>Nova Venda</Text>
+            </Pressable>
+          )}
+        </View>
+
+        <View style={cstyles.infoOuter}>
+          <View style={cstyles.infoOuterHeaderRow}>
+            <MaterialIcons name="description" size={17} color="#94a3b8" />
+            <Text style={cstyles.infoOuterTitle}>Informações da Sessão</Text>
+          </View>
+          <View style={cstyles.infoInnerRow}>
+            <View style={cstyles.infoMini}>
+              <MaterialIcons name="payments" size={20} color="#4ade80" />
+              <Text style={cstyles.infoMiniLabel}>Vendas em Dinheiro</Text>
+              <Text style={cstyles.infoMiniValue}>
+                {hasSession ? formatSessionMoney(summary!.total_cash_sales) : '—'}
+              </Text>
+            </View>
+            <View style={cstyles.infoMini}>
+              <MaterialIcons name="credit-card" size={20} color="#60a5fa" />
+              <Text style={cstyles.infoMiniLabel}>Vendas em Cartão</Text>
+              <Text style={cstyles.infoMiniValue}>
+                {hasSession ? formatSessionMoney(summary!.total_card_sales) : '—'}
+              </Text>
+            </View>
+            <View style={cstyles.infoMini}>
+              <MaterialIcons name="shopping-cart" size={20} color="#e2e8f0" />
+              <Text style={cstyles.infoMiniLabel}>Total de Vendas</Text>
+              <Text style={cstyles.infoMiniValue}>
+                {hasSession ? formatSessionMoney(summary!.total_sales) : '—'}
+              </Text>
+            </View>
+          </View>
+        </View>
+
+        <Pressable
+          style={({ pressed }) => [cstyles.logoutBtn, pressed && cstyles.logoutBtnPressed]}
+          onPress={onLogout}>
+          <Text style={cstyles.logoutBtnText}>Sair</Text>
+        </Pressable>
+      </ScrollView>
+    </SafeAreaView>
+  );
+}
+
+function StockAuditorDashboardScreen({ onLogout }: { onLogout: () => void }) {
+  return (
+    <SafeAreaView style={styles.safeArea}>
+      <ScrollView contentContainerStyle={styles.container} showsVerticalScrollIndicator={false}>
+        <Text style={cstyles.pageTitle}>Dashboard</Text>
+        <View style={cstyles.sessionCard}>
+          <Text style={cstyles.sessionInactive}>
+            Perfil de auditoria de stock. Utiliza Stock e Alertas. Não tens acesso a vendas nem a caixa.
+          </Text>
+        </View>
+        <Pressable
+          style={({ pressed }) => [cstyles.logoutBtn, pressed && cstyles.logoutBtnPressed]}
+          onPress={onLogout}>
+          <Text style={cstyles.logoutBtnText}>Sair</Text>
+        </Pressable>
+      </ScrollView>
+    </SafeAreaView>
+  );
+}
+
+export default function DashboardScreen() {
+  const { user, logout } = useAuth();
+  const r = normalizeAppRole(user?.role);
+  if (r === 'cashier') {
+    return <CashierDashboardScreen onLogout={() => void logout()} />;
+  }
+  if (r === 'stock_auditor') {
+    return <StockAuditorDashboardScreen onLogout={() => void logout()} />;
+  }
+  return <AdminDashboardScreen />;
 }
 
 const styles = StyleSheet.create({
@@ -550,6 +787,222 @@ const styles = StyleSheet.create({
   attentionReason: {
     fontSize: 13,
     color: '#6b7280',
+  },
+});
+
+const cstyles = StyleSheet.create({
+  cashierScroll: {
+    paddingHorizontal: 16,
+    paddingTop: 12,
+    paddingBottom: 28,
+    gap: 18,
+  },
+  pageTitle: {
+    fontSize: 24,
+    fontWeight: '700',
+    color: '#f8fafc',
+    letterSpacing: 0.2,
+  },
+  sessionCard: {
+    borderRadius: 14,
+    paddingVertical: 16,
+    paddingHorizontal: 16,
+    backgroundColor: '#1e293b',
+    borderWidth: 1,
+    borderColor: '#334155',
+    width: '100%',
+  },
+  sessionCardHeaderRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+    marginBottom: 14,
+  },
+  sessionCardTitle: {
+    fontSize: 16,
+    fontWeight: '600',
+    color: '#f1f5f9',
+  },
+  sessionTopRow: {
+    flexDirection: 'row',
+    gap: 16,
+    alignItems: 'flex-start',
+  },
+  sessionLeftCol: {
+    justifyContent: 'flex-start',
+    paddingTop: 2,
+  },
+  checkCircle: {
+    width: 56,
+    height: 56,
+    borderRadius: 28,
+    backgroundColor: '#334155',
+    alignItems: 'center',
+    justifyContent: 'center',
+    borderWidth: 1,
+    borderColor: '#475569',
+  },
+  checkCircleActive: {
+    backgroundColor: '#15803d',
+    borderColor: '#22c55e',
+  },
+  badgeAtiva: {
+    alignSelf: 'flex-start',
+    paddingHorizontal: 12,
+    paddingVertical: 5,
+    borderRadius: 999,
+    backgroundColor: '#15803d',
+    borderWidth: 1,
+    borderColor: '#22c55e',
+    marginBottom: 2,
+  },
+  badgeAtivaText: {
+    fontSize: 12,
+    fontWeight: '700',
+    color: '#ffffff',
+    letterSpacing: 0.3,
+  },
+  sessionTextBlock: {
+    flex: 1,
+    gap: 8,
+    justifyContent: 'flex-start',
+  },
+  sessionLine: {
+    fontSize: 14,
+    color: '#94a3b8',
+    lineHeight: 20,
+  },
+  sessionLineStrong: {
+    fontWeight: '600',
+    color: '#f1f5f9',
+  },
+  sessionInactive: {
+    fontSize: 14,
+    color: '#94a3b8',
+    lineHeight: 20,
+  },
+  actionsRow: {
+    flexDirection: 'row',
+    gap: 10,
+    alignItems: 'stretch',
+  },
+  actionCard: {
+    flex: 1,
+    minHeight: 128,
+    borderRadius: 14,
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingVertical: 16,
+    paddingHorizontal: 6,
+    gap: 12,
+  },
+  actionCardNovaVenda: {
+    backgroundColor: '#172554',
+    borderWidth: 1,
+    borderColor: '#2563eb',
+    shadowColor: '#2563eb',
+    shadowOffset: { width: 0, height: 0 },
+    shadowOpacity: 0.35,
+    shadowRadius: 8,
+    elevation: 6,
+  },
+  actionCardVerProdutos: {
+    backgroundColor: '#1e293b',
+    borderWidth: 1,
+    borderColor: '#475569',
+  },
+  actionCardFecharCaixa: {
+    backgroundColor: '#14532d',
+    borderWidth: 1,
+    borderColor: '#22c55e',
+    shadowColor: '#22c55e',
+    shadowOffset: { width: 0, height: 0 },
+    shadowOpacity: 0.3,
+    shadowRadius: 8,
+    elevation: 5,
+  },
+  actionCardNovaVendaDisabled: {
+    backgroundColor: '#1e293b',
+    borderWidth: 1,
+    borderColor: '#334155',
+    opacity: 0.55,
+  },
+  actionCardPressed: {
+    opacity: 0.88,
+  },
+  actionCardLabelDisabled: {
+    fontSize: 13,
+    fontWeight: '700',
+    color: '#64748b',
+    textAlign: 'center',
+  },
+  actionCardLabelLight: {
+    fontSize: 13,
+    fontWeight: '700',
+    color: '#f8fafc',
+    textAlign: 'center',
+  },
+  infoOuter: {
+    borderRadius: 14,
+    paddingVertical: 12,
+    paddingHorizontal: 12,
+    backgroundColor: '#1e293b',
+    borderWidth: 1,
+    borderColor: '#334155',
+    gap: 10,
+  },
+  infoOuterHeaderRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+    paddingLeft: 2,
+  },
+  infoOuterTitle: {
+    fontSize: 15,
+    fontWeight: '600',
+    color: '#e2e8f0',
+  },
+  infoInnerRow: {
+    flexDirection: 'row',
+    gap: 8,
+  },
+  infoMini: {
+    flex: 1,
+    borderRadius: 10,
+    borderWidth: 1,
+    borderColor: '#334155',
+    backgroundColor: '#0f172a',
+    paddingVertical: 8,
+    paddingHorizontal: 6,
+    alignItems: 'center',
+    gap: 4,
+    minHeight: 0,
+  },
+  infoMiniLabel: {
+    fontSize: 10,
+    fontWeight: '600',
+    color: '#94a3b8',
+    textAlign: 'center',
+  },
+  infoMiniValue: {
+    fontSize: 17,
+    fontWeight: '700',
+    color: '#f8fafc',
+    textAlign: 'center',
+  },
+  logoutBtn: {
+    alignSelf: 'center',
+    marginTop: 4,
+    paddingVertical: 10,
+    paddingHorizontal: 24,
+  },
+  logoutBtnPressed: {
+    opacity: 0.75,
+  },
+  logoutBtnText: {
+    fontSize: 16,
+    fontWeight: '500',
+    color: '#94a3b8',
   },
 });
 

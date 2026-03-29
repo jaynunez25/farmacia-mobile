@@ -15,9 +15,11 @@ import {
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
+import { useAuth } from '@/contexts/AuthContext';
 import type { Product } from '@/types';
 import { api } from '@/services/api';
 import { getErrorMessage } from '@/utils/errorMessage';
+import { isAdminRole } from '@/utils/roles';
 
 type DuplicateReason = 'sku' | 'barcode' | 'similar';
 
@@ -50,6 +52,14 @@ const defaultForm = {
 
 export default function ProdutoCriarScreen() {
   const router = useRouter();
+  const { user } = useAuth();
+
+  useEffect(() => {
+    if (user && !isAdminRole(user.role)) {
+      router.replace('/(tabs)/stock');
+    }
+  }, [user, router]);
+
   const [form, setForm] = useState(defaultForm);
   const [saving, setSaving] = useState(false);
   const [checkingDuplicates, setCheckingDuplicates] = useState(false);

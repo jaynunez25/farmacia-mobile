@@ -18,7 +18,7 @@ import { getErrorMessage } from '@/utils/errorMessage';
 
 const ROLES = [
   { value: 'admin', label: 'Administrador' },
-  { value: 'auditor', label: 'Auditor' },
+  { value: 'stock_auditor', label: 'Auditor de stock' },
   { value: 'cashier', label: 'Caixa' },
   { value: 'worker', label: 'Operador' },
 ];
