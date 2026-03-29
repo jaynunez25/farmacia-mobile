@@ -12,13 +12,16 @@ import {
   useWindowDimensions,
   View,
 } from 'react-native';
+import Constants from 'expo-constants';
 import { useRouter } from 'expo-router';
-import * as Print from 'expo-print';
-import * as Sharing from 'expo-sharing';
 
 import { api } from '@/services/api';
 import type { Product, StockAuditIssue, StockMovement } from '@/types';
 import { fetchAllProducts } from '@/utils/fetchAllProducts';
+import {
+  AUDIT_ISSUES_PDF_REPORT_TITLE,
+  saveAndShareAuditIssuesPdf,
+} from '@/utils/auditIssuesPdfReport';
 import { fetchAllStockAuditIssues } from '@/utils/fetchAllStockAuditIssues';
 import { getErrorMessage } from '@/utils/errorMessage';
 
@@ -82,14 +85,6 @@ function formatLocationLabel(location: string | null | undefined): string {
   return location.trim();
 }
 
-function escapeHtml(s: string): string {
-  return s
-    .replace(/&/g, '&amp;')
-    .replace(/</g, '&lt;')
-    .replace(/>/g, '&gt;')
-    .replace(/"/g, '&quot;');
-}
-
 type StatusFilter = 'all' | 'open' | 'resolved';
 type LocationFilter = 'all' | 'FRONT' | 'BACK';
 type StockFilter = 'all' | 'zero' | 'positive';
@@ -104,79 +99,6 @@ type ReportPreset =
   | 'zero_stock'
   | 'duplicate_ambiguous'
   | 'photo';
-
-function buildIssuesPdfHtml(opts: {
-  title: string;
-  generatedAt: string;
-  filterDescription: string;
-  summaryLines: string[];
-  rows: {
-    product: string;
-    motivo: string;
-    tipo: string;
-    stock: string;
-    local: string;
-    criado: string;
-    estado: string;
-  }[];
-}): string {
-  const summaryBlock =
-    opts.summaryLines.length > 0
-      ? `<ul class="summary">${opts.summaryLines.map((l) => `<li>${escapeHtml(l)}</li>`).join('')}</ul>`
-      : '';
-  const rowHtml = opts.rows
-    .map(
-      (r) =>
-        `<tr>
-          <td>${escapeHtml(r.product)}</td>
-          <td>${escapeHtml(r.motivo)}</td>
-          <td>${escapeHtml(r.tipo)}</td>
-          <td class="num">${escapeHtml(r.stock)}</td>
-          <td>${escapeHtml(r.local)}</td>
-          <td>${escapeHtml(r.criado)}</td>
-          <td>${escapeHtml(r.estado)}</td>
-        </tr>`,
-    )
-    .join('');
-  return `<!DOCTYPE html>
-<html>
-<head>
-  <meta charset="utf-8">
-  <title>${escapeHtml(opts.title)}</title>
-  <style>
-    body { font-family: 'Segoe UI', system-ui, sans-serif; font-size: 11px; color: #0f172a; padding: 20px; max-width: 1000px; margin: 0 auto; }
-    h1 { font-size: 18px; margin: 0 0 6px 0; font-weight: 700; }
-    .meta { color: #475569; font-size: 10px; margin-bottom: 14px; line-height: 1.4; }
-    .summary { margin: 10px 0 16px; padding-left: 18px; }
-    .summary li { margin-bottom: 4px; }
-    table { width: 100%; border-collapse: collapse; table-layout: fixed; }
-    th, td { border: 1px solid #cbd5e1; padding: 8px 6px; text-align: left; vertical-align: top; word-wrap: break-word; }
-    th { background: #e2e8f0; font-weight: 700; font-size: 10px; text-transform: uppercase; letter-spacing: 0.03em; }
-    tr:nth-child(even) td { background: #f8fafc; }
-    .num { font-weight: 700; text-align: center; }
-  </style>
-</head>
-<body>
-  <h1>${escapeHtml(opts.title)}</h1>
-  <p class="meta">Gerado em ${escapeHtml(opts.generatedAt)}<br/>Filtros: ${escapeHtml(opts.filterDescription)}</p>
-  ${summaryBlock}
-  <table>
-    <thead>
-      <tr>
-        <th style="width:22%">Produto</th>
-        <th style="width:24%">Motivo</th>
-        <th style="width:14%">Tipo</th>
-        <th style="width:8%">Stock</th>
-        <th style="width:8%">Local</th>
-        <th style="width:14%">Criado</th>
-        <th style="width:10%">Estado</th>
-      </tr>
-    </thead>
-    <tbody>${rowHtml}</tbody>
-  </table>
-</body>
-</html>`;
-}
 
 export function AuditIssuesPanel() {
   const router = useRouter();
@@ -316,17 +238,6 @@ export function AuditIssuesPanel() {
     return parts.join(' · ');
   }, [searchName, statusFilter, typeFilter, locationFilter, stockFilter, sortOrder]);
 
-  const summaryLinesForPdf = useMemo(
-    () => [
-      `Total de issues (catálogo): ${stats.total}`,
-      `Abertos: ${stats.open} · Resolvidos: ${stats.resolved}`,
-      `FRONT: ${stats.front} · BACK: ${stats.back}`,
-      `Abertos com stock zero: ${stats.zeroSuspicious}`,
-      `Linhas neste PDF (filtro): ${filteredIssues.length}`,
-    ],
-    [stats, filteredIssues.length],
-  );
-
   const handleResolveIssue = async (issueId: number) => {
     setResolvingId(issueId);
     setError(null);
@@ -382,11 +293,7 @@ export function AuditIssuesPanel() {
       .sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime());
   }, [allIssues, detailIssue]);
 
-  const runPdfExport = async (rows: StockAuditIssue[], title: string, extraSummary?: string[]) => {
-    if (rows.length === 0) {
-      Alert.alert('Sem dados', 'Não há linhas para exportar com os filtros actuais.');
-      return;
-    }
+  const runPdfExport = async (rows: StockAuditIssue[], extraNotes?: string[]) => {
     setExportingPdf(true);
     try {
       const generatedAt = new Date().toLocaleString('pt-PT', {
@@ -396,41 +303,51 @@ export function AuditIssuesPanel() {
         hour: '2-digit',
         minute: '2-digit',
       });
-      const pdfRows = rows.map((issue) => {
+      const tableBody = rows.map((issue) => {
         const prod = productById[issue.product_id];
-        const name = prod?.name ?? `#${issue.product_id}`;
-        const note = issue.issue_note?.trim() || '—';
-        return {
-          product: name,
-          motivo: note,
-          tipo: labelIssueType(issue.issue_type),
-          stock: prod?.stock_quantity != null ? String(prod.stock_quantity) : '—',
-          local: formatLocationLabel(prod?.location ?? null),
-          criado: formatDateTime(issue.created_at),
-          estado: labelStatus(issue.status),
-        };
+        return [
+          prod?.name ?? `#${issue.product_id}`,
+          prod?.sku ?? '—',
+          issue.issue_note?.trim() || '—',
+          labelIssueType(issue.issue_type),
+          prod?.stock_quantity != null ? String(prod.stock_quantity) : '—',
+          formatLocationLabel(prod?.location ?? null),
+          formatDateTime(issue.created_at),
+          labelStatus(issue.status),
+        ];
       });
-      const html = buildIssuesPdfHtml({
-        title,
-        generatedAt,
-        filterDescription,
-        summaryLines: [...(extraSummary ?? summaryLinesForPdf)],
-        rows: pdfRows,
-      });
-      const { uri } = await Print.printToFileAsync({ html, base64: false });
-      setExportingPdf(false);
-      const canShare = await Sharing.isAvailableAsync();
-      if (canShare) {
-        Sharing.shareAsync(uri, {
-          mimeType: 'application/pdf',
-          dialogTitle: title,
-        }).catch((shareErr) => Alert.alert('Partilha', getErrorMessage(shareErr)));
-      } else {
-        Alert.alert('PDF gerado', 'Ficheiro criado. Partilha não disponível neste dispositivo.');
+      const systemName =
+        (Constants.expoConfig?.name && String(Constants.expoConfig.name).trim()) || 'PharmaOS';
+      const { shared } = await saveAndShareAuditIssuesPdf(
+        {
+          systemName,
+          reportTitle: AUDIT_ISSUES_PDF_REPORT_TITLE,
+          generatedAt,
+          filterDescription,
+          extraNotes,
+          stats: {
+            totalCatalog: stats.total,
+            open: stats.open,
+            resolved: stats.resolved,
+            front: stats.front,
+            back: stats.back,
+            zeroOpen: stats.zeroSuspicious,
+            rowsInReport: rows.length,
+          },
+          tableBody,
+        },
+        AUDIT_ISSUES_PDF_REPORT_TITLE,
+      );
+      if (!shared) {
+        Alert.alert(
+          'PDF gerado',
+          'O relatório foi guardado em cache. A partilha não está disponível neste dispositivo.',
+        );
       }
     } catch (e) {
-      setExportingPdf(false);
       Alert.alert('Erro', getErrorMessage(e));
+    } finally {
+      setExportingPdf(false);
     }
   };
 
@@ -493,10 +410,7 @@ export function AuditIssuesPanel() {
       if (na !== 0) return na;
       return new Date(b.created_at).getTime() - new Date(a.created_at).getTime();
     });
-    await runPdfExport(rows, 'Issues por produto', [
-      ...summaryLinesForPdf,
-      'Ordenação do PDF: por nome de produto',
-    ]);
+    await runPdfExport(rows, ['Ordenação do relatório: por nome de produto (A-Z).']);
   };
 
   const toggleReasonExpanded = (id: number) => {
@@ -672,7 +586,7 @@ export function AuditIssuesPanel() {
         )}
         <View style={styles.toolbarButtons}>
           <Pressable
-            onPress={() => void runPdfExport(filteredIssues, 'Issues de auditoria')}
+            onPress={() => void runPdfExport(filteredIssues)}
             disabled={exportingPdf || loading}
             style={({ pressed }) => [
               styles.toolBtn,
@@ -836,7 +750,9 @@ export function AuditIssuesPanel() {
                 style={styles.reportRow}
                 onPress={() => {
                   setReportsVisible(false);
-                  void runPdfExport(allIssues, 'Resumo global de issues', summaryLinesForPdf);
+                  void runPdfExport(allIssues, [
+                    'Nota: conjunto exportado = todos os issues carregados (independente dos filtros da grelha).',
+                  ]);
                 }}>
                 <Text style={styles.reportRowTitle}>Resumo global (PDF)</Text>
                 <Text style={styles.reportRowDesc}>Todos os issues + totais no cabeçalho</Text>
