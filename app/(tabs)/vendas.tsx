@@ -19,10 +19,9 @@ import { useRouter } from 'expo-router';
 
 import {
   applyNumericKeypadKey,
-  NumericKeypad,
-  ReadOnlyNumericReadout,
   type NumericKeypadAction,
 } from '@/components/pos/NumericKeypad';
+import { PosVirtualKeyboard, type PosKeyboardAction, type PosKeyboardMode } from '@/components/pos/PosVirtualKeyboard';
 import { api } from '@/services/api';
 import type { Product } from '@/types';
 import { formatCurrency } from '@/utils/currency';
@@ -415,6 +414,9 @@ export default function VendasScreen() {
   const [sellModeProductLoading, setSellModeProductLoading] = useState(false);
   const sellModeDetailFetchGen = useRef(0);
   const [unitSellQty, setUnitSellQty] = useState('1');
+  const [keyboardVisible, setKeyboardVisible] = useState(false);
+  const [keyboardMode, setKeyboardMode] = useState<PosKeyboardMode>('text');
+  const [activeInput, setActiveInput] = useState<'search' | 'selectedQty' | 'unitSellQty' | 'cashReceived' | null>(null);
 
   const [confirming, setConfirming] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -603,19 +605,71 @@ export default function VendasScreen() {
     setter(prev => applyNumericKeypadKey(prev, key, 6));
   }, []);
 
+  const openVirtualKeyboard = useCallback(
+    (input: 'search' | 'selectedQty' | 'unitSellQty' | 'cashReceived', mode: PosKeyboardMode) => {
+      setActiveInput(input);
+      setKeyboardMode(mode);
+      setKeyboardVisible(true);
+    },
+    [],
+  );
+
+  const closeVirtualKeyboard = useCallback(() => {
+    setKeyboardVisible(false);
+  }, []);
+
+  const applyTextKey = useCallback((current: string, key: string | PosKeyboardAction, maxLength: number) => {
+    if (key === 'clear') return '';
+    if (key === 'backspace') return current.slice(0, -1);
+    if (key === 'space') return current.length >= maxLength ? current : `${current} `;
+    if (key === 'close') return current;
+    return current.length >= maxLength ? current : `${current}${key}`;
+  }, []);
+
+  const onVirtualKeyboardKeyPress = useCallback(
+    (key: string | PosKeyboardAction) => {
+      if (key === 'close') {
+        closeVirtualKeyboard();
+        return;
+      }
+      if (!activeInput) return;
+      if (activeInput === 'search') {
+        setSearchQuery(prev => applyTextKey(prev, key, 120));
+        return;
+      }
+      if (typeof key === 'string' && !/^\d$/.test(key)) return;
+      const actionKey = key as NumericKeypadAction;
+      if (activeInput === 'selectedQty') {
+        onQtyKeypad(setSelectedQty, actionKey);
+        return;
+      }
+      if (activeInput === 'unitSellQty') {
+        onQtyKeypad(setUnitSellQty, actionKey);
+        return;
+      }
+      onCashKeypad(actionKey);
+    },
+    [activeInput, applyTextKey, closeVirtualKeyboard, onCashKeypad, onQtyKeypad],
+  );
+
+  const sanitizeNumericInput = useCallback((text: string, maxLength: number) => text.replace(/\D/g, '').slice(0, maxLength), []);
+
   const renderCashPaymentAmount = () => (
     <>
       <View style={styles.amountRow}>
         <Text style={styles.amountLabel}>Recebido</Text>
       </View>
-      <ReadOnlyNumericReadout
+      <TextInput
+        style={styles.posInput}
         value={cashReceived}
         placeholder="0"
         placeholderTextColor="#6b7280"
-        style={styles.posNumericReadout}
-        textStyle={styles.posNumericReadoutText}
+        keyboardType="number-pad"
+        showSoftInputOnFocus={false}
+        onFocus={() => openVirtualKeyboard('cashReceived', 'numeric')}
+        onPressIn={() => openVirtualKeyboard('cashReceived', 'numeric')}
+        onChangeText={v => setCashReceived(sanitizeNumericInput(v, 14))}
       />
-      <NumericKeypad onKeyPress={onCashKeypad} variant="default" />
       <View style={styles.amountRow}>
         <Text style={styles.amountLabel}>Troco</Text>
         <Text style={styles.amountValueSecondary}>
@@ -888,7 +942,7 @@ export default function VendasScreen() {
         style={styles.keyboardAvoid}
         behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
         keyboardVerticalOffset={0}>
-        <View style={[styles.screen, isPhone && styles.screenMobile]}>
+        <View style={[styles.screen, isPhone && styles.screenMobile, keyboardVisible && styles.screenWithVirtualKeyboard]}>
           {(checkingSession || hasOpenSession === null) && (
             <View style={styles.sessionCard}>
               <ActivityIndicator size="small" color="#16a34a" />
@@ -1024,21 +1078,20 @@ export default function VendasScreen() {
                     <View style={styles.sellModeUnitRow}>
                       <View style={{ flex: 1 }}>
                         <Text style={styles.label}>Lâmina - quantidade</Text>
-                        <ReadOnlyNumericReadout
+                        <TextInput
+                          style={[
+                            styles.posInput,
+                            sellModeStockInfo?.unitButtonDisabled && styles.sellModeInputDisabled,
+                          ]}
                           value={unitSellQty}
                           placeholder="1"
                           placeholderTextColor="#6b7280"
                           editable={!sellModeStockInfo?.unitButtonDisabled}
-                          style={[
-                            styles.posNumericReadout,
-                            sellModeStockInfo?.unitButtonDisabled && styles.sellModeInputDisabled,
-                          ]}
-                          textStyle={styles.posNumericReadoutText}
-                        />
-                        <NumericKeypad
-                          variant="compact"
-                          disabled={!!sellModeStockInfo?.unitButtonDisabled}
-                          onKeyPress={k => onQtyKeypad(setUnitSellQty, k)}
+                          keyboardType="number-pad"
+                          showSoftInputOnFocus={false}
+                          onFocus={() => openVirtualKeyboard('unitSellQty', 'numeric')}
+                          onPressIn={() => openVirtualKeyboard('unitSellQty', 'numeric')}
+                          onChangeText={v => setUnitSellQty(sanitizeNumericInput(v, 6))}
                         />
                       </View>
                       <Pressable
@@ -1121,6 +1174,9 @@ export default function VendasScreen() {
                           placeholderTextColor="#6b7280"
                           value={searchQuery}
                           onChangeText={setSearchQuery}
+                          showSoftInputOnFocus={false}
+                          onFocus={() => openVirtualKeyboard('search', 'text')}
+                          onPressIn={() => openVirtualKeyboard('search', 'text')}
                           onSubmitEditing={doSearch}
                           returnKeyType="search"
                         />
@@ -1180,14 +1236,17 @@ export default function VendasScreen() {
 
                           <View style={styles.field}>
                             <Text style={styles.label}>Quantidade</Text>
-                            <ReadOnlyNumericReadout
+                            <TextInput
+                              style={styles.posInput}
                               value={selectedQty}
                               placeholder="1"
                               placeholderTextColor="#6b7280"
-                              style={styles.posNumericReadout}
-                              textStyle={styles.posNumericReadoutText}
+                              keyboardType="number-pad"
+                              showSoftInputOnFocus={false}
+                              onFocus={() => openVirtualKeyboard('selectedQty', 'numeric')}
+                              onPressIn={() => openVirtualKeyboard('selectedQty', 'numeric')}
+                              onChangeText={v => setSelectedQty(sanitizeNumericInput(v, 6))}
                             />
-                            <NumericKeypad variant="compact" onKeyPress={k => onQtyKeypad(setSelectedQty, k)} />
                           </View>
 
                           <Pressable
@@ -1336,6 +1395,9 @@ export default function VendasScreen() {
                         placeholderTextColor="#6b7280"
                         value={searchQuery}
                         onChangeText={setSearchQuery}
+                        showSoftInputOnFocus={false}
+                        onFocus={() => openVirtualKeyboard('search', 'text')}
+                        onPressIn={() => openVirtualKeyboard('search', 'text')}
                         onSubmitEditing={doSearch}
                         returnKeyType="search"
                       />
@@ -1400,14 +1462,17 @@ export default function VendasScreen() {
 
                         <View style={styles.field}>
                           <Text style={styles.label}>Quantidade</Text>
-                          <ReadOnlyNumericReadout
+                          <TextInput
+                            style={styles.posInput}
                             value={selectedQty}
                             placeholder="1"
                             placeholderTextColor="#6b7280"
-                            style={styles.posNumericReadout}
-                            textStyle={styles.posNumericReadoutText}
+                            keyboardType="number-pad"
+                            showSoftInputOnFocus={false}
+                            onFocus={() => openVirtualKeyboard('selectedQty', 'numeric')}
+                            onPressIn={() => openVirtualKeyboard('selectedQty', 'numeric')}
+                            onChangeText={v => setSelectedQty(sanitizeNumericInput(v, 6))}
                           />
-                          <NumericKeypad variant="compact" onKeyPress={k => onQtyKeypad(setSelectedQty, k)} />
                         </View>
 
                         <Pressable
@@ -1560,6 +1625,9 @@ export default function VendasScreen() {
                         placeholderTextColor="#6b7280"
                         value={searchQuery}
                         onChangeText={setSearchQuery}
+                        showSoftInputOnFocus={false}
+                        onFocus={() => openVirtualKeyboard('search', 'text')}
+                        onPressIn={() => openVirtualKeyboard('search', 'text')}
                         onSubmitEditing={doSearch}
                         returnKeyType="search"
                       />
@@ -1651,14 +1719,17 @@ export default function VendasScreen() {
 
                         <View style={styles.field}>
                           <Text style={styles.label}>Quantidade</Text>
-                          <ReadOnlyNumericReadout
+                          <TextInput
+                            style={styles.posInput}
                             value={selectedQty}
                             placeholder="1"
                             placeholderTextColor="#6b7280"
-                            style={styles.posNumericReadout}
-                            textStyle={styles.posNumericReadoutText}
+                            keyboardType="number-pad"
+                            showSoftInputOnFocus={false}
+                            onFocus={() => openVirtualKeyboard('selectedQty', 'numeric')}
+                            onPressIn={() => openVirtualKeyboard('selectedQty', 'numeric')}
+                            onChangeText={v => setSelectedQty(sanitizeNumericInput(v, 6))}
                           />
-                          <NumericKeypad variant="compact" onKeyPress={k => onQtyKeypad(setSelectedQty, k)} />
                         </View>
 
                         <Pressable style={({ pressed }) => [styles.primaryButton, pressed && styles.primaryButtonPressed]} onPress={addSelectedToCart}>
@@ -1758,6 +1829,34 @@ export default function VendasScreen() {
               )}
             </>
           )}
+          <Pressable
+            style={({ pressed }) => [
+              styles.virtualKeyboardToggle,
+              keyboardVisible && styles.virtualKeyboardToggleActive,
+              pressed && styles.virtualKeyboardTogglePressed,
+            ]}
+            onPress={() => {
+              if (keyboardVisible) {
+                closeVirtualKeyboard();
+              } else {
+                if (!activeInput) {
+                  setActiveInput('search');
+                  setKeyboardMode('text');
+                }
+                setKeyboardVisible(true);
+              }
+            }}>
+            <Text style={styles.virtualKeyboardToggleText}>
+              {keyboardVisible ? 'Ocultar teclado' : 'Mostrar teclado'}
+            </Text>
+          </Pressable>
+
+          <PosVirtualKeyboard
+            visible={keyboardVisible}
+            mode={keyboardMode}
+            onClose={closeVirtualKeyboard}
+            onKeyPress={onVirtualKeyboardKeyPress}
+          />
         </View>
       </KeyboardAvoidingView>
     </SafeAreaView>
@@ -1778,6 +1877,9 @@ const styles = StyleSheet.create({
     gap: 8,
     width: '100%',
     flexDirection: 'column',
+  },
+  screenWithVirtualKeyboard: {
+    paddingBottom: 330,
   },
   screenMobile: {
     paddingHorizontal: 8,
@@ -2736,23 +2838,6 @@ const styles = StyleSheet.create({
     width: '100%',
     maxWidth: '100%',
   },
-  posNumericReadout: {
-    height: 40,
-    borderRadius: 4,
-    borderWidth: 1,
-    borderColor: '#e5e7eb',
-    backgroundColor: '#ffffff',
-    paddingHorizontal: 14,
-    justifyContent: 'center',
-    width: '100%',
-    maxWidth: '100%',
-  },
-  posNumericReadoutText: {
-    fontSize: 13,
-    fontWeight: '700',
-    color: '#111827',
-  },
-
   categoryScroll: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -3164,6 +3249,29 @@ const styles = StyleSheet.create({
     maxHeight: 66,
     paddingVertical: 6,
     paddingHorizontal: 10,
+  },
+  virtualKeyboardToggle: {
+    position: 'absolute',
+    right: 16,
+    bottom: 16,
+    minHeight: 44,
+    borderWidth: 1,
+    borderColor: '#64748b',
+    backgroundColor: '#e2e8f0',
+    paddingHorizontal: 14,
+    justifyContent: 'center',
+    zIndex: 1100,
+  },
+  virtualKeyboardToggleActive: {
+    backgroundColor: '#cbd5e1',
+  },
+  virtualKeyboardTogglePressed: {
+    opacity: 0.9,
+  },
+  virtualKeyboardToggleText: {
+    fontSize: 13,
+    fontWeight: '900',
+    color: '#0f172a',
   },
 });
 
