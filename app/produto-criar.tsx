@@ -204,8 +204,8 @@ export default function ProdutoCriarScreen() {
         return;
       }
     } catch (e) {
-      setError(getErrorMessage(e));
-      return;
+      // Duplicate checks are helpful, but should never block product creation if they fail.
+      console.warn('[produto-criar] duplicate-check failed; continuing create flow', e);
     } finally {
       setCheckingDuplicates(false);
     }
@@ -289,7 +289,19 @@ export default function ProdutoCriarScreen() {
       );
     } catch (e) {
       console.error('[produto-criar] create failed', e);
-      setError(getErrorMessage(e));
+      let message = getErrorMessage(e);
+      if (message === 'Something went wrong.' || message === 'Something went wrong. Please try again.') {
+        if (e instanceof Error && e.message?.trim()) {
+          message = e.message.trim();
+        } else {
+          try {
+            message = JSON.stringify(e);
+          } catch {
+            message = 'Falha ao criar produto. Verifica conexão/API e tenta novamente.';
+          }
+        }
+      }
+      setError(message);
     } finally {
       setSaving(false);
     }
