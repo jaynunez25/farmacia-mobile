@@ -320,6 +320,28 @@ export default function ProdutoCriarScreen() {
         }
       }
       if (!created) {
+        // Common backend behavior: duplicate SKU can surface as 500.
+        // Ask API for a unique SKU and retry once with minimal payload.
+        try {
+          const suggested = await api.products.suggestSku({
+            category: category || undefined,
+            name: name || undefined,
+          });
+          const nextSku = String(suggested?.sku ?? '').trim();
+          if (nextSku && nextSku !== sku) {
+            const retryPayload = {
+              ...ultraMinimalPayload,
+              sku: nextSku,
+            } as Omit<Product, 'id' | 'created_at' | 'updated_at'>;
+            created = await api.products.create(retryPayload);
+            // Keep form consistent with created SKU for immediate user feedback.
+            update('sku', nextSku);
+          }
+        } catch (suggestErr) {
+          console.warn('[produto-criar] suggest-sku retry failed after create failure', suggestErr);
+        }
+      }
+      if (!created) {
         throw lastCreateErr ?? new Error('Falha ao criar produto.');
       }
 
