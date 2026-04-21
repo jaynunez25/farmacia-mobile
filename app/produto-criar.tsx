@@ -224,31 +224,38 @@ export default function ProdutoCriarScreen() {
         ? null
         : Number.parseFloat(String(form.unit_selling_price).replace(',', '.'));
 
+    // Send a conservative payload: required fields always, optional fields only when provided.
     const payload: Record<string, unknown> = {
       sku,
-      barcode: barcode || null,
       name,
-      category: category || null,
-      brand: form.brand?.trim() || null,
+      category,
       selling_price: String(sellingPrice),
-      cost_price:
-        form.cost_price === ''
-          ? null
-          : String(Number.parseFloat(String(form.cost_price).replace(',', '.')) || 0),
-      can_sell_by_box: !!form.can_sell_by_box,
-      can_sell_by_unit: !!form.can_sell_by_unit,
-      pack_name: form.pack_name?.trim() || null,
-      unit_name: form.unit_name?.trim() || null,
-      units_per_pack: unitsPerPack,
-      box_selling_price: boxPrice != null && !Number.isNaN(boxPrice) ? String(boxPrice) : null,
-      unit_selling_price: unitPrice != null && !Number.isNaN(unitPrice) ? String(unitPrice) : null,
       minimum_stock: Number(form.minimum_stock) || 0,
-      batch_number: form.batch_number?.trim() || null,
-      expiry_date: form.expiry_date?.trim() || null,
-      location: form.location?.trim() || null,
-      // Keep explicit zero for compatibility with backend product-create schema.
       stock_quantity: 0,
     };
+    if (barcode) payload.barcode = barcode;
+    const brand = form.brand?.trim();
+    if (brand) payload.brand = brand;
+    if (form.cost_price !== '') {
+      payload.cost_price = String(Number.parseFloat(String(form.cost_price).replace(',', '.')) || 0);
+    }
+    if (form.can_sell_by_box) payload.can_sell_by_box = true;
+    if (form.can_sell_by_unit) {
+      payload.can_sell_by_unit = true;
+      if (unitsPerPack != null) payload.units_per_pack = unitsPerPack;
+    }
+    const packName = form.pack_name?.trim();
+    if (packName) payload.pack_name = packName;
+    const unitName = form.unit_name?.trim();
+    if (unitName) payload.unit_name = unitName;
+    if (boxPrice != null && !Number.isNaN(boxPrice)) payload.box_selling_price = String(boxPrice);
+    if (unitPrice != null && !Number.isNaN(unitPrice)) payload.unit_selling_price = String(unitPrice);
+    const batch = form.batch_number?.trim();
+    if (batch) payload.batch_number = batch;
+    const expiry = form.expiry_date?.trim();
+    if (expiry) payload.expiry_date = expiry;
+    const location = form.location?.trim();
+    if (location) payload.location = location;
 
     setSaving(true);
     setError(null);
@@ -288,17 +295,15 @@ export default function ProdutoCriarScreen() {
         ],
       );
     } catch (e) {
-      console.error('[produto-criar] create failed', e);
+      console.error('[produto-criar] create failed', e, {
+        payload,
+      });
       let message = getErrorMessage(e);
       if (message === 'Something went wrong.' || message === 'Something went wrong. Please try again.') {
         if (e instanceof Error && e.message?.trim()) {
           message = e.message.trim();
         } else {
-          try {
-            message = JSON.stringify(e);
-          } catch {
-            message = 'Falha ao criar produto. Verifica conexão/API e tenta novamente.';
-          }
+          message = 'Falha ao criar produto (500). O backend recusou os dados enviados.';
         }
       }
       setError(message);
