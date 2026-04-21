@@ -232,6 +232,8 @@ export default function ProdutoCriarScreen() {
       selling_price: String(sellingPrice),
       minimum_stock: Number(form.minimum_stock) || 0,
       stock_quantity: 0,
+      can_sell_by_box: !!form.can_sell_by_box,
+      can_sell_by_unit: !!form.can_sell_by_unit,
     };
     if (barcode) payload.barcode = barcode;
     const brand = form.brand?.trim();
@@ -256,11 +258,39 @@ export default function ProdutoCriarScreen() {
     if (expiry) payload.expiry_date = expiry;
     const location = form.location?.trim();
     if (location) payload.location = location;
+    const fallbackPayload: Record<string, unknown> = {
+      sku,
+      name,
+      category,
+      selling_price: String(sellingPrice),
+      minimum_stock: Number(form.minimum_stock) || 0,
+      stock_quantity: 0,
+      can_sell_by_box: !!form.can_sell_by_box,
+      can_sell_by_unit: !!form.can_sell_by_unit,
+    };
 
     setSaving(true);
     setError(null);
     try {
-      const created = await api.products.create(payload as Omit<Product, 'id' | 'created_at' | 'updated_at'>);
+      let created: Product;
+      try {
+        created = await api.products.create(payload as Omit<Product, 'id' | 'created_at' | 'updated_at'>);
+      } catch (firstErr) {
+        const firstMsg = getErrorMessage(firstErr);
+        const shouldRetryMinimal =
+          firstMsg.includes('500') ||
+          firstMsg.toLowerCase().includes('server error') ||
+          firstMsg.toLowerCase().includes('internal server error');
+        if (!shouldRetryMinimal) throw firstErr;
+        console.warn('[produto-criar] retrying with minimal payload after create failure', {
+          firstMsg,
+          payload,
+          fallbackPayload,
+        });
+        created = await api.products.create(
+          fallbackPayload as Omit<Product, 'id' | 'created_at' | 'updated_at'>,
+        );
+      }
 
       if (initialStock > 0) {
         const today = new Date();
