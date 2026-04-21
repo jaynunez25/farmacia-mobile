@@ -234,30 +234,25 @@ export default function ProdutoCriarScreen() {
       stock_quantity: 0,
       can_sell_by_box: !!form.can_sell_by_box,
       can_sell_by_unit: !!form.can_sell_by_unit,
+      barcode: barcode || '',
+      brand: form.brand?.trim() || '',
+      cost_price:
+        form.cost_price === ''
+          ? '0'
+          : String(Number.parseFloat(String(form.cost_price).replace(',', '.')) || 0),
+      pack_name: form.pack_name?.trim() || '',
+      unit_name: form.unit_name?.trim() || '',
+      batch_number: form.batch_number?.trim() || '',
+      expiry_date: form.expiry_date?.trim() || '',
+      location: form.location?.trim() || '',
     };
-    if (barcode) payload.barcode = barcode;
-    const brand = form.brand?.trim();
-    if (brand) payload.brand = brand;
-    if (form.cost_price !== '') {
-      payload.cost_price = String(Number.parseFloat(String(form.cost_price).replace(',', '.')) || 0);
-    }
     if (form.can_sell_by_box) payload.can_sell_by_box = true;
     if (form.can_sell_by_unit) {
       payload.can_sell_by_unit = true;
       if (unitsPerPack != null) payload.units_per_pack = unitsPerPack;
     }
-    const packName = form.pack_name?.trim();
-    if (packName) payload.pack_name = packName;
-    const unitName = form.unit_name?.trim();
-    if (unitName) payload.unit_name = unitName;
     if (boxPrice != null && !Number.isNaN(boxPrice)) payload.box_selling_price = String(boxPrice);
     if (unitPrice != null && !Number.isNaN(unitPrice)) payload.unit_selling_price = String(unitPrice);
-    const batch = form.batch_number?.trim();
-    if (batch) payload.batch_number = batch;
-    const expiry = form.expiry_date?.trim();
-    if (expiry) payload.expiry_date = expiry;
-    const location = form.location?.trim();
-    if (location) payload.location = location;
     const fallbackPayload: Record<string, unknown> = {
       sku,
       name,
@@ -267,6 +262,17 @@ export default function ProdutoCriarScreen() {
       stock_quantity: 0,
       can_sell_by_box: !!form.can_sell_by_box,
       can_sell_by_unit: !!form.can_sell_by_unit,
+      barcode: barcode || '',
+      brand: form.brand?.trim() || '',
+      cost_price:
+        form.cost_price === ''
+          ? '0'
+          : String(Number.parseFloat(String(form.cost_price).replace(',', '.')) || 0),
+      pack_name: form.pack_name?.trim() || '',
+      unit_name: form.unit_name?.trim() || '',
+      batch_number: form.batch_number?.trim() || '',
+      expiry_date: form.expiry_date?.trim() || '',
+      location: form.location?.trim() || '',
     };
 
     setSaving(true);
