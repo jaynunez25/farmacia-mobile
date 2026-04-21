@@ -246,8 +246,8 @@ export default function ProdutoCriarScreen() {
       batch_number: form.batch_number?.trim() || null,
       expiry_date: form.expiry_date?.trim() || null,
       location: form.location?.trim() || null,
-      // Backend controls stock through stock-movement endpoints.
-      // Do not send stock_quantity directly on create.
+      // Keep explicit zero for compatibility with backend product-create schema.
+      stock_quantity: 0,
     };
 
     setSaving(true);
