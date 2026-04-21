@@ -28,6 +28,14 @@ type DuplicateResult = {
   product: Product;
 };
 
+function normalizeProductListResponse(data: unknown): Product[] {
+  if (Array.isArray(data)) return data as Product[];
+  if (data && typeof data === 'object' && Array.isArray((data as { items?: unknown[] }).items)) {
+    return (data as { items: Product[] }).items;
+  }
+  return [];
+}
+
 const defaultForm = {
   sku: '',
   barcode: '',
@@ -97,7 +105,8 @@ export default function ProdutoCriarScreen() {
 
     // 1) By SKU (exact)
     if (sku) {
-      const bySku = await api.products.list({ search: sku, limit: 10 });
+      const bySkuRaw = await api.products.list({ search: sku, limit: 10 });
+      const bySku = normalizeProductListResponse(bySkuRaw);
       const exact = bySku.find((p) => (p.sku || '').trim() === sku);
       if (exact) return { reason: 'sku', product: exact };
     }
@@ -114,7 +123,8 @@ export default function ProdutoCriarScreen() {
 
     // 3) Strong similarity: same name, and brand/category when provided
     if (name) {
-      const byName = await api.products.list({ search: name, limit: 30 });
+      const byNameRaw = await api.products.list({ search: name, limit: 30 });
+      const byName = normalizeProductListResponse(byNameRaw);
       const norm = (s: string) => (s || '').trim().toLowerCase();
       const similar = byName.find((p) => {
         if (norm(p.name) !== norm(name)) return false;
@@ -236,7 +246,8 @@ export default function ProdutoCriarScreen() {
       batch_number: form.batch_number?.trim() || null,
       expiry_date: form.expiry_date?.trim() || null,
       location: form.location?.trim() || null,
-      stock_quantity: 0, // always create with 0; add initial stock via movement below
+      // Backend controls stock through stock-movement endpoints.
+      // Do not send stock_quantity directly on create.
     };
 
     setSaving(true);
@@ -277,6 +288,7 @@ export default function ProdutoCriarScreen() {
         ],
       );
     } catch (e) {
+      console.error('[produto-criar] create failed', e);
       setError(getErrorMessage(e));
     } finally {
       setSaving(false);
