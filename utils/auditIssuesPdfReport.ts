@@ -10,8 +10,6 @@ import {
   writeAsStringAsync,
 } from 'expo-file-system/legacy';
 import * as Sharing from 'expo-sharing';
-import { jsPDF } from 'jspdf';
-import autoTable from 'jspdf-autotable';
 
 export const AUDIT_ISSUES_PDF_REPORT_TITLE = 'Relatório de Issues Pendentes de Revisão';
 
@@ -53,8 +51,29 @@ export type BuildAuditIssuesPdfInput = {
   tableBody: string[][];
 };
 
+type PdfDeps = {
+  jsPDF: any;
+  autoTable: any;
+};
+
+let cachedPdfDeps: PdfDeps | null = null;
+
+async function loadPdfDeps(): Promise<PdfDeps> {
+  if (cachedPdfDeps) return cachedPdfDeps;
+  const [jspdfModule, autoTableModule] = await Promise.all([
+    import('jspdf/dist/jspdf.es.min.js'),
+    import('jspdf-autotable'),
+  ]);
+  cachedPdfDeps = {
+    jsPDF: (jspdfModule as any).jsPDF,
+    autoTable: autoTableModule.default,
+  };
+  return cachedPdfDeps;
+}
+
 /** Monta o jsPDF (A4 paisagem, cabeçalho, resumo, tabela ou mensagem vazia, rodapés com página). */
-export function buildAuditIssuesPdfDocument(input: BuildAuditIssuesPdfInput): jsPDF {
+export async function buildAuditIssuesPdfDocument(input: BuildAuditIssuesPdfInput): Promise<any> {
+  const { jsPDF, autoTable } = await loadPdfDeps();
   const doc = new jsPDF({ orientation: 'landscape', unit: 'mm', format: 'a4' });
   const pageW = doc.internal.pageSize.getWidth();
   const pageH = doc.internal.pageSize.getHeight();
@@ -165,7 +184,7 @@ export async function saveAndShareAuditIssuesPdf(
   input: BuildAuditIssuesPdfInput,
   shareDialogTitle: string,
 ): Promise<{ filename: string; shared: boolean }> {
-  const doc = buildAuditIssuesPdfDocument(input);
+  const doc = await buildAuditIssuesPdfDocument(input);
   const filename = buildAuditIssuesPdfFilename();
 
   if (Platform.OS === 'web') {

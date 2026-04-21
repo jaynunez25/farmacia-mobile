@@ -51,7 +51,22 @@ export default function ProdutoEditarScreen() {
       try {
         const data = await api.products.get(Number(id));
         if (!mounted) return;
-        setProduct(data);
+        const normalized: EditableProduct = {
+          ...data,
+          box_selling_price:
+            data.box_selling_price != null
+              ? String(data.box_selling_price)
+              : data.price_box != null
+                ? String(data.price_box)
+                : null,
+          unit_selling_price:
+            data.unit_selling_price != null
+              ? String(data.unit_selling_price)
+              : data.price_unit != null
+                ? String(data.price_unit)
+                : null,
+        };
+        setProduct(normalized);
       } catch (err) {
         if (!mounted) return;
         setError(getErrorMessage(err));
@@ -80,12 +95,11 @@ export default function ProdutoEditarScreen() {
       return;
     }
 
-    const stock = Number.parseInt(String(product.stock_quantity ?? 0), 10);
     const minStock = Number.parseInt(String(product.minimum_stock ?? 0), 10);
-    if (Number.isNaN(stock) || stock < 0 || Number.isNaN(minStock) || minStock < 0) {
+    if (Number.isNaN(minStock) || minStock < 0) {
       Alert.alert(
         'Valores inválidos',
-        'Stock actual e stock mínimo devem ser números maiores ou iguais a 0.',
+        'Stock mínimo deve ser um número maior ou igual a 0.',
       );
       return;
     }
@@ -101,90 +115,46 @@ export default function ProdutoEditarScreen() {
     setSaving(true);
     setError(null);
     try {
-      const raw = product as unknown as Record<string, unknown>;
-      const payload: Record<string, unknown> = {};
-      const allowed = [
-        'name',
-        'category',
-        'brand',
-        'selling_price',
-        'cost_price',
-        'stock_quantity',
-        'minimum_stock',
-        'batch_number',
-        'expiry_date',
-        'location',
-        'is_verified',
-        'can_sell_by_box',
-        'can_sell_by_unit',
-        'pack_name',
-        'unit_name',
-        'units_per_pack',
-        'box_selling_price',
-        'unit_selling_price',
-      ] as const;
+      const toNullableTrimmed = (v: unknown) => {
+        const s = String(v ?? '').trim();
+        return s === '' ? null : s;
+      };
+      const toPrice = (v: unknown) => {
+        const s = String(v ?? '').trim();
+        if (s === '') return null;
+        const n = Number.parseFloat(s.replace(',', '.'));
+        return Number.isNaN(n) ? null : String(n);
+      };
+      const unitsPerPack =
+        product.units_per_pack == null || String(product.units_per_pack).trim() === ''
+          ? null
+          : Math.max(1, Number.parseInt(String(product.units_per_pack), 10) || 1);
 
-      for (const key of allowed) {
-        let v = raw[key];
-        if (v === undefined) continue;
+      // IMPORTANT: never send stock fields on product PATCH.
+      const payload: Partial<Product> = {
+        name: String(product.name ?? '').trim(),
+        category: toNullableTrimmed(product.category),
+        brand: toNullableTrimmed(product.brand),
+        selling_price: String(Number.parseFloat(String(product.selling_price ?? '0').replace(',', '.')) || 0),
+        cost_price: toPrice(product.cost_price),
+        batch_number: toNullableTrimmed(product.batch_number),
+        expiry_date: toNullableTrimmed(product.expiry_date),
+        location: toNullableTrimmed(product.location),
+        is_verified: Boolean(product.is_verified),
+        can_sell_by_box: Boolean(product.can_sell_by_box),
+        can_sell_by_unit: Boolean(product.can_sell_by_unit),
+        pack_name: toNullableTrimmed(product.pack_name),
+        unit_name: toNullableTrimmed(product.unit_name),
+        units_per_pack: unitsPerPack,
+        box_selling_price: toPrice(product.box_selling_price),
+        unit_selling_price: toPrice(product.unit_selling_price),
+      };
 
-        if (key === 'selling_price') {
-          const s = String(v ?? '').trim();
-          payload[key] = s === '' ? '0' : s;
-          continue;
-        }
-
-        if (key === 'cost_price' || key === 'box_selling_price' || key === 'unit_selling_price') {
-          const s = String(v ?? '').trim();
-          payload[key] = s === '' ? null : s;
-          continue;
-        }
-
-        if (key === 'can_sell_by_box' || key === 'can_sell_by_unit' || key === 'is_verified') {
-          payload[key] = Boolean(v);
-          continue;
-        }
-
-        if (key === 'units_per_pack') {
-          const n = Number.parseInt(String(v ?? ''), 10);
-          payload[key] = Number.isNaN(n) || n < 1 ? null : n;
-          continue;
-        }
-
-        if (key === 'stock_quantity' || key === 'minimum_stock') {
-          const n = Number.parseInt(String(v ?? ''), 10);
-          payload[key] = Number.isNaN(n) || n < 0 ? 0 : n;
-          continue;
-        }
-
-        if (key === 'expiry_date') {
-          const s = String(v ?? '').trim();
-          payload[key] = s === '' ? null : s;
-          continue;
-        }
-
-        if (
-          key === 'name' ||
-          key === 'category' ||
-          key === 'brand' ||
-          key === 'batch_number' ||
-          key === 'location' ||
-          key === 'pack_name' ||
-          key === 'unit_name'
-        ) {
-          if (typeof v === 'string') {
-            const s = v.trim();
-            payload[key] = s === '' ? null : s;
-          } else {
-            payload[key] = v ?? null;
-          }
-          continue;
-        }
-
-        payload[key] = v ?? null;
-      }
-
-      await api.products.update(Number(id), payload as Partial<Product>);
+      console.log('[produto-editar] PATCH /products payload', {
+        productId: Number(id),
+        payload,
+      });
+      await api.products.update(Number(id), payload);
 
       Alert.alert('Produto actualizado', 'As alterações foram guardadas.', [
         {
@@ -202,6 +172,10 @@ export default function ProdutoEditarScreen() {
         params: { id: String(id) },
       });
     } catch (err) {
+      console.error('[produto-editar] PATCH /products failed', {
+        productId: Number(id),
+        error: err instanceof Error ? err.message : String(err),
+      });
       setError(getErrorMessage(err));
     } finally {
       setSaving(false);
@@ -312,33 +286,24 @@ export default function ProdutoEditarScreen() {
             {/* Stock */}
             <View style={styles.section}>
               <Text style={styles.sectionTitle}>Stock</Text>
+              <Text style={styles.stockHint}>
+                Alterações de stock são feitas apenas por movimentos (entrada/saída/ajuste/auditoria).
+              </Text>
               <View style={styles.row}>
                 <View style={[styles.field, { flex: 1 }]}>
                   <Text style={styles.label}>Stock actual</Text>
                   <TextInput
-                    style={styles.input}
-                    keyboardType="number-pad"
+                    style={[styles.input, styles.inputReadonly]}
                     value={String(product.stock_quantity)}
-                    onChangeText={(t) =>
-                      update(
-                        'stock_quantity',
-                        Number.parseInt(t.replace(/[^0-9]/g, ''), 10) || 0,
-                      )
-                    }
+                    editable={false}
                   />
                 </View>
                 <View style={[styles.field, { flex: 1 }]}>
                   <Text style={styles.label}>Stock mínimo</Text>
                   <TextInput
-                    style={styles.input}
-                    keyboardType="number-pad"
+                    style={[styles.input, styles.inputReadonly]}
                     value={String(product.minimum_stock)}
-                    onChangeText={(t) =>
-                      update(
-                        'minimum_stock',
-                        Number.parseInt(t.replace(/[^0-9]/g, ''), 10) || 0,
-                      )
-                    }
+                    editable={false}
                   />
                 </View>
               </View>
@@ -416,12 +381,14 @@ export default function ProdutoEditarScreen() {
                         keyboardType="decimal-pad"
                         value={product.box_selling_price ? String(product.box_selling_price) : ''}
                         onChangeText={(t) => {
-                          update('box_selling_price', (t === '' ? null : t) as any);
+                          const value = (t === '' ? null : t) as any;
+                          update('box_selling_price', value);
                           if (product.can_sell_by_unit && product.units_per_pack) {
                             const box = Number.parseFloat(t.replace(',', '.'));
                             if (!Number.isNaN(box) && product.units_per_pack) {
                               const unit = box / product.units_per_pack;
-                              update('unit_selling_price', unit.toFixed(2) as any);
+                              const unitValue = unit.toFixed(2) as any;
+                              update('unit_selling_price', unitValue);
                             }
                           }
                         }}
@@ -436,7 +403,10 @@ export default function ProdutoEditarScreen() {
                         keyboardType="decimal-pad"
                         value={product.unit_selling_price ? String(product.unit_selling_price) : ''}
                         onChangeText={(t) =>
-                          update('unit_selling_price', (t === '' ? null : t) as any)
+                          {
+                            const value = (t === '' ? null : t) as any;
+                            update('unit_selling_price', value);
+                          }
                         }
                         placeholder="Auto se vazio"
                         placeholderTextColor="#6b7280"
@@ -549,6 +519,16 @@ const styles = StyleSheet.create({
     paddingHorizontal: 12,
     backgroundColor: '#020617',
     color: '#f9fafb',
+  },
+  inputReadonly: {
+    color: '#9ca3af',
+    backgroundColor: '#0b1220',
+    borderColor: '#111827',
+  },
+  stockHint: {
+    fontSize: 12,
+    color: '#6b7280',
+    marginBottom: 4,
   },
   valueStatic: {
     fontSize: 14,
