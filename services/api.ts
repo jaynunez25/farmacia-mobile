@@ -14,7 +14,18 @@ import type {
 
 // API URL: em produção deve apontar para Railway (nunca localhost/127/lan fixa).
 const API_BASE_URL_RAW = (process.env.EXPO_PUBLIC_API_URL ?? '').trim();
-const API_BASE_URL: string = API_BASE_URL_RAW.replace(/\/+$/, '');
+function resolveApiBaseUrl(): string {
+  const envBase = API_BASE_URL_RAW.replace(/\/+$/, '');
+  if (typeof window !== 'undefined') {
+    const host = window.location.hostname.toLowerCase();
+    // On Vercel web deployments, use same-origin /api proxy to avoid cross-origin failures.
+    if (host.endsWith('.vercel.app')) {
+      return `${window.location.origin}/api`;
+    }
+  }
+  return envBase;
+}
+const API_BASE_URL: string = resolveApiBaseUrl();
 const IS_PRODUCTION = process.env.NODE_ENV === 'production';
 const REQUEST_TIMEOUT_MS = 15000;
 
