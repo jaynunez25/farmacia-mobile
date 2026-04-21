@@ -328,6 +328,24 @@ export default function ProdutoCriarScreen() {
       console.error('[produto-criar] create failed', e, {
         payload,
       });
+      // Backend may return 500 for DB unique violations. Re-check duplicates and show a precise message.
+      try {
+        const dupAfterFailure = await checkDuplicates();
+        if (dupAfterFailure) {
+          if (dupAfterFailure.reason === 'sku') {
+            setError(`SKU já existe: "${dupAfterFailure.product.sku}". Usa "Sugerir SKU" ou outro SKU.`);
+            return;
+          }
+          if (dupAfterFailure.reason === 'barcode') {
+            setError('Código de barras já existe noutro produto.');
+            return;
+          }
+          setError(`Produto semelhante já existe: "${dupAfterFailure.product.name}".`);
+          return;
+        }
+      } catch (dupErr) {
+        console.warn('[produto-criar] duplicate re-check after create failure also failed', dupErr);
+      }
       let message = getErrorMessage(e);
       if (message === 'Something went wrong.' || message === 'Something went wrong. Please try again.') {
         if (e instanceof Error && e.message?.trim()) {
