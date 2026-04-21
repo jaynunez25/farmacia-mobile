@@ -274,28 +274,53 @@ export default function ProdutoCriarScreen() {
       expiry_date: form.expiry_date?.trim() || '',
       location: form.location?.trim() || '',
     };
+    const minimalPayload: Record<string, unknown> = {
+      sku,
+      name,
+      category,
+      selling_price: String(sellingPrice),
+      stock_quantity: 0,
+    };
+    const ultraMinimalPayload: Record<string, unknown> = {
+      sku,
+      name,
+      category,
+      selling_price: String(sellingPrice),
+    };
 
     setSaving(true);
     setError(null);
     try {
-      let created: Product;
-      try {
-        created = await api.products.create(payload as Omit<Product, 'id' | 'created_at' | 'updated_at'>);
-      } catch (firstErr) {
-        const firstMsg = getErrorMessage(firstErr);
-        const shouldRetryMinimal =
-          firstMsg.includes('500') ||
-          firstMsg.toLowerCase().includes('server error') ||
-          firstMsg.toLowerCase().includes('internal server error');
-        if (!shouldRetryMinimal) throw firstErr;
-        console.warn('[produto-criar] retrying with minimal payload after create failure', {
-          firstMsg,
-          payload,
-          fallbackPayload,
-        });
-        created = await api.products.create(
-          fallbackPayload as Omit<Product, 'id' | 'created_at' | 'updated_at'>,
-        );
+      let created: Product | null = null;
+      const attempts: Record<string, unknown>[] = [payload, fallbackPayload, minimalPayload, ultraMinimalPayload];
+      let lastCreateErr: unknown = null;
+      for (let i = 0; i < attempts.length; i += 1) {
+        const attemptPayload = attempts[i];
+        try {
+          created = await api.products.create(
+            attemptPayload as Omit<Product, 'id' | 'created_at' | 'updated_at'>,
+          );
+          break;
+        } catch (attemptErr) {
+          lastCreateErr = attemptErr;
+          const attemptMsg = getErrorMessage(attemptErr);
+          const isServerFailure =
+            attemptMsg.includes('500') ||
+            attemptMsg.toLowerCase().includes('server error') ||
+            attemptMsg.toLowerCase().includes('internal server error');
+          const isLastAttempt = i === attempts.length - 1;
+          if (!isServerFailure || isLastAttempt) {
+            throw attemptErr;
+          }
+          console.warn('[produto-criar] create attempt failed; retrying with stricter payload', {
+            attempt: i + 1,
+            attemptMsg,
+            attemptPayload,
+          });
+        }
+      }
+      if (!created) {
+        throw lastCreateErr ?? new Error('Falha ao criar produto.');
       }
 
       if (initialStock > 0) {
@@ -333,6 +358,9 @@ export default function ProdutoCriarScreen() {
     } catch (e) {
       console.error('[produto-criar] create failed', e, {
         payload,
+        fallbackPayload,
+        minimalPayload,
+        ultraMinimalPayload,
       });
       // Backend may return 500 for DB unique violations. Re-check duplicates and show a precise message.
       try {
