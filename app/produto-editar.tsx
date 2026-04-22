@@ -34,6 +34,7 @@ export default function ProdutoEditarScreen() {
   }, [user, router]);
 
   const [product, setProduct] = useState<EditableProduct | null>(null);
+  const [originalStockQuantity, setOriginalStockQuantity] = useState(0);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -67,6 +68,7 @@ export default function ProdutoEditarScreen() {
                 : null,
         };
         setProduct(normalized);
+        setOriginalStockQuantity(Math.max(0, Number.parseInt(String(normalized.stock_quantity ?? 0), 10) || 0));
       } catch (err) {
         if (!mounted) return;
         setError(getErrorMessage(err));
@@ -95,11 +97,12 @@ export default function ProdutoEditarScreen() {
       return;
     }
 
+    const stock = Number.parseInt(String(product.stock_quantity ?? 0), 10);
     const minStock = Number.parseInt(String(product.minimum_stock ?? 0), 10);
-    if (Number.isNaN(minStock) || minStock < 0) {
+    if (Number.isNaN(stock) || stock < 0 || Number.isNaN(minStock) || minStock < 0) {
       Alert.alert(
         'Valores inválidos',
-        'Stock mínimo deve ser um número maior ou igual a 0.',
+        'Stock actual e stock mínimo devem ser números maiores ou iguais a 0.',
       );
       return;
     }
@@ -130,7 +133,7 @@ export default function ProdutoEditarScreen() {
           ? null
           : Math.max(1, Number.parseInt(String(product.units_per_pack), 10) || 1);
 
-      // IMPORTANT: never send stock fields on product PATCH.
+      // Stock actual is handled through stock movement adjustment below.
       const payload: Partial<Product> = {
         name: String(product.name ?? '').trim(),
         category: toNullableTrimmed(product.category),
@@ -148,6 +151,7 @@ export default function ProdutoEditarScreen() {
         units_per_pack: unitsPerPack,
         box_selling_price: toPrice(product.box_selling_price),
         unit_selling_price: toPrice(product.unit_selling_price),
+        minimum_stock: minStock,
       };
 
       console.log('[produto-editar] PATCH /products payload', {
@@ -155,6 +159,16 @@ export default function ProdutoEditarScreen() {
         payload,
       });
       await api.products.update(Number(id), payload);
+      const stockDelta = stock - originalStockQuantity;
+      if (stockDelta !== 0) {
+        await api.stockMovements.adjustStock({
+          product_id: Number(id),
+          quantity: stockDelta,
+          reason: 'Ajuste de stock via edição de produto',
+          performed_by: user?.id,
+          admin_override: stockDelta < 0,
+        });
+      }
 
       Alert.alert('Produto actualizado', 'As alterações foram guardadas.', [
         {
@@ -287,23 +301,35 @@ export default function ProdutoEditarScreen() {
             <View style={styles.section}>
               <Text style={styles.sectionTitle}>Stock</Text>
               <Text style={styles.stockHint}>
-                Alterações de stock são feitas apenas por movimentos (entrada/saída/ajuste/auditoria).
+                Ao guardar, o stock actual é ajustado por movimento para manter o histórico.
               </Text>
               <View style={styles.row}>
                 <View style={[styles.field, { flex: 1 }]}>
                   <Text style={styles.label}>Stock actual</Text>
                   <TextInput
-                    style={[styles.input, styles.inputReadonly]}
+                    style={styles.input}
                     value={String(product.stock_quantity)}
-                    editable={false}
+                    keyboardType="number-pad"
+                    onChangeText={(t) =>
+                      update(
+                        'stock_quantity',
+                        Number.parseInt(t.replace(/[^0-9]/g, ''), 10) || 0,
+                      )
+                    }
                   />
                 </View>
                 <View style={[styles.field, { flex: 1 }]}>
                   <Text style={styles.label}>Stock mínimo</Text>
                   <TextInput
-                    style={[styles.input, styles.inputReadonly]}
+                    style={styles.input}
                     value={String(product.minimum_stock)}
-                    editable={false}
+                    keyboardType="number-pad"
+                    onChangeText={(t) =>
+                      update(
+                        'minimum_stock',
+                        Number.parseInt(t.replace(/[^0-9]/g, ''), 10) || 0,
+                      )
+                    }
                   />
                 </View>
               </View>
