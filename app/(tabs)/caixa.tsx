@@ -15,6 +15,7 @@ import {
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { useAuth } from '@/contexts/AuthContext';
+import { applyNumericKeypadKey, NumericKeypad, type NumericKeypadAction } from '@/components/pos/NumericKeypad';
 import { api, type CashSessionSummary } from '@/services/api';
 import { formatCurrency } from '@/utils/currency';
 import { getErrorMessage } from '@/utils/errorMessage';
@@ -52,6 +53,7 @@ export default function CaixaScreen() {
 
   const [openingSaving, setOpeningSaving] = useState(false);
   const [closingSaving, setClosingSaving] = useState(false);
+  const [activeCountField, setActiveCountField] = useState<{ side: 'opening' | 'closing'; denom: number } | null>(null);
 
   const loadCurrent = async () => {
     setLoading(true);
@@ -101,6 +103,17 @@ export default function CaixaScreen() {
     } else {
       setClosingBreakdown(prev => ({ ...prev, [String(denom)]: value }));
     }
+  };
+
+  const handleCountKeypad = (key: NumericKeypadAction) => {
+    if (!activeCountField) return;
+    const { side, denom } = activeCountField;
+    const currentQty =
+      side === 'opening'
+        ? openingBreakdown[String(denom)] ?? 0
+        : closingBreakdown[String(denom)] ?? 0;
+    const nextRaw = applyNumericKeypadKey(String(currentQty), key, 6);
+    setDenominationQty(side, denom, nextRaw);
   };
 
   const handleOpen = async () => {
@@ -279,12 +292,20 @@ export default function CaixaScreen() {
                         <View style={styles.openDenomCell} key={`open-${denom}`}>
                           <Text style={styles.openDenomValueLabel}>{formatDenominationLabel(denom)}</Text>
                           <TextInput
-                            style={styles.openDenomQtyInput}
-                            keyboardType="number-pad"
+                            style={[
+                              styles.openDenomQtyInput,
+                              activeCountField?.side === 'opening' &&
+                                activeCountField?.denom === denom &&
+                                styles.openDenomQtyInputActive,
+                            ]}
+                            keyboardType="numeric"
                             value={String(qty)}
                             onChangeText={value => setDenominationQty('opening', denom, value)}
                             placeholder="0"
                             placeholderTextColor="#6b7280"
+                            showSoftInputOnFocus={false}
+                            onFocus={() => setActiveCountField({ side: 'opening', denom })}
+                            onPressIn={() => setActiveCountField({ side: 'opening', denom })}
                           />
                           <Text style={styles.openDenomLineTotal}>{formatCurrency(lineTotal)}</Text>
                         </View>
@@ -299,12 +320,20 @@ export default function CaixaScreen() {
                         <View style={styles.openDenomCell} key={`open-${denom}`}>
                           <Text style={styles.openDenomValueLabel}>{formatDenominationLabel(denom)}</Text>
                           <TextInput
-                            style={styles.openDenomQtyInput}
-                            keyboardType="number-pad"
+                            style={[
+                              styles.openDenomQtyInput,
+                              activeCountField?.side === 'opening' &&
+                                activeCountField?.denom === denom &&
+                                styles.openDenomQtyInputActive,
+                            ]}
+                            keyboardType="numeric"
                             value={String(qty)}
                             onChangeText={value => setDenominationQty('opening', denom, value)}
                             placeholder="0"
                             placeholderTextColor="#6b7280"
+                            showSoftInputOnFocus={false}
+                            onFocus={() => setActiveCountField({ side: 'opening', denom })}
+                            onPressIn={() => setActiveCountField({ side: 'opening', denom })}
                           />
                           <Text style={styles.openDenomLineTotal}>{formatCurrency(lineTotal)}</Text>
                         </View>
@@ -338,6 +367,11 @@ export default function CaixaScreen() {
                     {openingSaving ? 'A abrir...' : 'Abrir sessão de caixa'}
                   </Text>
                 </Pressable>
+                {activeCountField?.side === 'opening' ? (
+                  <View style={styles.countKeypadWrap}>
+                    <NumericKeypad onKeyPress={handleCountKeypad} />
+                  </View>
+                ) : null}
               </View>
             )}
 
@@ -391,12 +425,20 @@ export default function CaixaScreen() {
                             <View style={styles.openDenomCell} key={`close-${denom}`}>
                               <Text style={styles.openDenomValueLabel}>{formatDenominationLabel(denom)}</Text>
                               <TextInput
-                                style={styles.openDenomQtyInput}
-                                keyboardType="number-pad"
+                                style={[
+                                  styles.openDenomQtyInput,
+                                  activeCountField?.side === 'closing' &&
+                                    activeCountField?.denom === denom &&
+                                    styles.openDenomQtyInputActive,
+                                ]}
+                                keyboardType="numeric"
                                 value={String(qty)}
                                 onChangeText={value => setDenominationQty('closing', denom, value)}
                                 placeholder="0"
                                 placeholderTextColor="#6b7280"
+                                showSoftInputOnFocus={false}
+                                onFocus={() => setActiveCountField({ side: 'closing', denom })}
+                                onPressIn={() => setActiveCountField({ side: 'closing', denom })}
                               />
                               <Text style={styles.openDenomLineTotal}>{formatCurrency(lineTotal)}</Text>
                             </View>
@@ -411,12 +453,20 @@ export default function CaixaScreen() {
                             <View style={styles.openDenomCell} key={`close-${denom}`}>
                               <Text style={styles.openDenomValueLabel}>{formatDenominationLabel(denom)}</Text>
                               <TextInput
-                                style={styles.openDenomQtyInput}
-                                keyboardType="number-pad"
+                                style={[
+                                  styles.openDenomQtyInput,
+                                  activeCountField?.side === 'closing' &&
+                                    activeCountField?.denom === denom &&
+                                    styles.openDenomQtyInputActive,
+                                ]}
+                                keyboardType="numeric"
                                 value={String(qty)}
                                 onChangeText={value => setDenominationQty('closing', denom, value)}
                                 placeholder="0"
                                 placeholderTextColor="#6b7280"
+                                showSoftInputOnFocus={false}
+                                onFocus={() => setActiveCountField({ side: 'closing', denom })}
+                                onPressIn={() => setActiveCountField({ side: 'closing', denom })}
                               />
                               <Text style={styles.openDenomLineTotal}>{formatCurrency(lineTotal)}</Text>
                             </View>
@@ -487,6 +537,11 @@ export default function CaixaScreen() {
                     {closingSaving ? 'A fechar...' : 'Fechar sessão de caixa'}
                   </Text>
                 </Pressable>
+                {activeCountField?.side === 'closing' ? (
+                  <View style={styles.countKeypadWrap}>
+                    <NumericKeypad onKeyPress={handleCountKeypad} />
+                  </View>
+                ) : null}
               </View>
             )}
           </ScrollView>
@@ -593,6 +648,10 @@ const styles = StyleSheet.create({
     color: '#f9fafb',
     fontSize: 15,
     fontWeight: '600',
+  },
+  openDenomQtyInputActive: {
+    borderColor: '#60a5fa',
+    backgroundColor: '#0b1325',
   },
   openDenomLineTotal: {
     fontSize: 12,
@@ -888,6 +947,12 @@ const styles = StyleSheet.create({
     fontSize: 15,
     fontWeight: '800',
     letterSpacing: 0.3,
+  },
+  countKeypadWrap: {
+    marginTop: 12,
+    borderTopWidth: 1,
+    borderTopColor: '#1e293b',
+    paddingTop: 10,
   },
   errorBox: {
     padding: 12,
