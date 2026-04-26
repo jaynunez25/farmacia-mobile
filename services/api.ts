@@ -151,6 +151,55 @@ async function request<T>(path: string, options?: RequestInit): Promise<T> {
   return (await res.json()) as T;
 }
 
+async function requestBlob(path: string, options?: RequestInit): Promise<Blob> {
+  if (!API_BASE_URL) {
+    throw new Error(
+      'API base URL is not configured. Set EXPO_PUBLIC_API_URL in your .env to the Railway URL.',
+    );
+  }
+
+  const token = await getStoredToken();
+  const headers: Record<string, string> = {
+    ...(options?.headers as Record<string, string>),
+  };
+
+  if (token) {
+    headers.Authorization = `Bearer ${token}`;
+  }
+
+  const ctrl = new AbortController();
+  const timeout = setTimeout(() => ctrl.abort(), REQUEST_TIMEOUT_MS);
+  let res: Response;
+  try {
+    res = await fetch(`${API_BASE_URL}${path}`, {
+      ...options,
+      headers,
+      signal: ctrl.signal,
+    });
+  } catch (error) {
+    if (error instanceof Error && error.name === 'AbortError') {
+      throw new Error('Request timed out. Please check your connection and try again.');
+    }
+    throw error;
+  } finally {
+    clearTimeout(timeout);
+  }
+
+  if (res.status === 401) {
+    await setStoredToken(null);
+    onUnauthorized?.();
+  }
+
+  if (!res.ok) {
+    const err = await res.json().catch(() => ({ detail: res.statusText }));
+    const detail = (err as { detail?: unknown }).detail;
+    const message = typeof detail === 'string' ? detail : 'Request failed.';
+    throw new Error(message);
+  }
+
+  return await res.blob();
+}
+
 export interface AuthUser {
   id: number;
   username: string;
@@ -325,6 +374,24 @@ export const api = {
         body: JSON.stringify(data),
       }),
     delete: (id: number) => request<void>(`/products/${id}`, { method: 'DELETE' }),
+    exportXlsx: (params?: {
+      search?: string;
+      category?: string;
+      brand?: string;
+      low_stock?: boolean;
+      expiring_soon_days?: number;
+    }) => {
+      const sp = new URLSearchParams();
+      if (params?.search) sp.set('search', params.search);
+      if (params?.category) sp.set('category', params.category);
+      if (params?.brand) sp.set('brand', params.brand);
+      if (params?.low_stock === true) sp.set('low_stock', 'true');
+      if (params?.expiring_soon_days != null) {
+        sp.set('expiring_soon_days', String(params.expiring_soon_days));
+      }
+      const q = sp.toString();
+      return requestBlob(`/products/export/xlsx${q ? `?${q}` : ''}`);
+    },
     initialCounts: {
       setBack: (productId: number, backCount: number) =>
         request<void>('/inventory-initial/back', {

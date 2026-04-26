@@ -29,6 +29,7 @@ export default function StockScreen() {
   const [selectedCategory, setSelectedCategory] = useState<string>('Todos');
   const [search, setSearch] = useState('');
   const [loading, setLoading] = useState(true);
+  const [exporting, setExporting] = useState(false);
   const [refreshing, setRefreshing] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [initialSaveError, setInitialSaveError] = useState<string | null>(null);
@@ -270,6 +271,33 @@ export default function StockScreen() {
     );
   };
 
+  const exportProducts = async () => {
+    if (typeof document === 'undefined') {
+      setError('Exportação Excel disponível na versão web.');
+      return;
+    }
+    try {
+      setExporting(true);
+      setError(null);
+      const blob = await api.products.exportXlsx({
+        search: search.trim() || undefined,
+        category: selectedCategory === 'Todos' ? undefined : selectedCategory,
+      });
+      const url = window.URL.createObjectURL(blob);
+      const link = document.createElement('a');
+      link.href = url;
+      link.download = `products_export_${new Date().toISOString().slice(0, 10)}.xlsx`;
+      document.body.appendChild(link);
+      link.click();
+      link.remove();
+      window.URL.revokeObjectURL(url);
+    } catch (err) {
+      setError(getErrorMessage(err));
+    } finally {
+      setExporting(false);
+    }
+  };
+
   return (
     <SafeAreaView style={styles.safeArea}>
       <View style={styles.headerRow}>
@@ -282,17 +310,29 @@ export default function StockScreen() {
             </Text>
           )}
         </View>
-        {canManageProducts ? (
+        <View style={styles.headerButtons}>
           <Pressable
             style={({ pressed }) => [
-              styles.addButton,
-              pressed && styles.addButtonPressed,
+              styles.exportButton,
+              pressed && styles.exportButtonPressed,
+              exporting && styles.exportButtonDisabled,
             ]}
-            android_ripple={{ color: '#166534' }}
-            onPress={() => router.push('/produto-criar')}>
-            <Text style={styles.addButtonText}>Adicionar produto</Text>
+            disabled={exporting}
+            onPress={() => void exportProducts()}>
+            <Text style={styles.exportButtonText}>{exporting ? 'A exportar...' : 'Exportar Excel'}</Text>
           </Pressable>
-        ) : null}
+          {canManageProducts ? (
+            <Pressable
+              style={({ pressed }) => [
+                styles.addButton,
+                pressed && styles.addButtonPressed,
+              ]}
+              android_ripple={{ color: '#166534' }}
+              onPress={() => router.push('/produto-criar')}>
+              <Text style={styles.addButtonText}>Adicionar produto</Text>
+            </Pressable>
+          ) : null}
+        </View>
       </View>
 
       <View style={styles.searchRow}>
@@ -415,6 +455,10 @@ const styles = StyleSheet.create({
     flex: 1,
     paddingRight: 8,
   },
+  headerButtons: {
+    flexDirection: 'row',
+    gap: 8,
+  },
   title: {
     fontSize: 22,
     fontWeight: '700',
@@ -444,6 +488,23 @@ const styles = StyleSheet.create({
     backgroundColor: '#15803d',
   },
   addButtonText: {
+    color: '#f9fafb',
+    fontSize: 13,
+    fontWeight: '600',
+  },
+  exportButton: {
+    paddingHorizontal: 12,
+    paddingVertical: 8,
+    borderRadius: 999,
+    backgroundColor: '#1d4ed8',
+  },
+  exportButtonPressed: {
+    backgroundColor: '#1e40af',
+  },
+  exportButtonDisabled: {
+    opacity: 0.65,
+  },
+  exportButtonText: {
     color: '#f9fafb',
     fontSize: 13,
     fontWeight: '600',
