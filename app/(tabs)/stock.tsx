@@ -59,7 +59,12 @@ export default function StockScreen() {
       });
       setProducts(data);
     } catch (err) {
-      setError(getErrorMessage(err));
+      const msg = getErrorMessage(err);
+      setError(
+        msg === 'Something went wrong.' || msg === 'Something went wrong. Please try again.'
+          ? 'Não foi possível carregar o stock. Atualiza a página e faz login novamente.'
+          : msg
+      );
     } finally {
       if (opts?.refresh) {
         setRefreshing(false);
@@ -391,6 +396,14 @@ export default function StockScreen() {
         <View style={styles.errorBox}>
           <Text style={styles.errorTitle}>Não foi possível carregar o stock</Text>
           <Text style={styles.errorText}>{error}</Text>
+          <Pressable
+            style={({ pressed }) => [
+              styles.retryButton,
+              pressed && styles.retryButtonPressed,
+            ]}
+            onPress={() => void loadProducts()}>
+            <Text style={styles.retryButtonText}>Tentar novamente</Text>
+          </Pressable>
         </View>
       )}
 
@@ -573,6 +586,24 @@ const styles = StyleSheet.create({
   errorText: {
     color: '#fee2e2',
     fontSize: 13,
+  },
+  retryButton: {
+    alignSelf: 'flex-start',
+    marginTop: 10,
+    paddingHorizontal: 10,
+    paddingVertical: 6,
+    borderRadius: 999,
+    backgroundColor: '#991b1b',
+    borderWidth: 1,
+    borderColor: '#fecaca',
+  },
+  retryButtonPressed: {
+    opacity: 0.85,
+  },
+  retryButtonText: {
+    color: '#fee2e2',
+    fontSize: 12,
+    fontWeight: '600',
   },
   initialErrorBox: {
     marginTop: 8,
