@@ -28,15 +28,36 @@ function resolveApiBaseUrl(): string {
 const API_BASE_URL: string = resolveApiBaseUrl();
 const IS_PRODUCTION = process.env.NODE_ENV === 'production';
 
-/** Absolute URL for product images (e.g. `/products/thumbnails/...` served by the API host). */
+/** Base URL of the web app (Vercel) where `public/products/**` static files are deployed — not the Railway API. */
+const MEDIA_BASE_URL_RAW = (process.env.EXPO_PUBLIC_MEDIA_BASE_URL ?? '').trim();
+
+function normalizeMediaPath(s: string): string {
+  return s.startsWith('/') ? s : `/${s}`;
+}
+
+/** Paths stored in DB that map to Vite `public/products/` (served by the frontend host, not FastAPI). */
+function isPublicProductStaticPath(path: string): boolean {
+  return path.startsWith('/products/thumbnails/') || path.startsWith('/products/images/');
+}
+
+/**
+ * Absolute URL for product media.
+ * - Full `http(s)://…` is returned as-is.
+ * - `/products/thumbnails/…` and `/products/images/…` use `EXPO_PUBLIC_MEDIA_BASE_URL` when set (the inventory web origin);
+ *   otherwise they fall back to the API base (legacy; Railway usually does not serve these files).
+ */
 export function resolveApiMediaUrl(pathOrUrl: string | null | undefined): string | null {
   if (pathOrUrl == null || typeof pathOrUrl !== 'string') return null;
   const s = pathOrUrl.trim();
   if (!s) return null;
   if (/^https?:\/\//i.test(s)) return s;
-  const base = API_BASE_URL.replace(/\/+$/, '');
+  const path = normalizeMediaPath(s);
+  const mediaBase = MEDIA_BASE_URL_RAW.replace(/\/+$/, '');
+  const apiBase = API_BASE_URL.replace(/\/+$/, '');
+  const base =
+    mediaBase && isPublicProductStaticPath(path) ? mediaBase : apiBase;
   if (!base) return null;
-  return s.startsWith('/') ? `${base}${s}` : `${base}/${s}`;
+  return `${base}${path}`;
 }
 const REQUEST_TIMEOUT_MS = 15000;
 
