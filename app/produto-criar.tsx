@@ -49,6 +49,7 @@ const defaultForm = {
   pack_name: '',
   unit_name: '',
   units_per_pack: '' as string | number,
+  units_per_box: '' as string | number,
   box_selling_price: '',
   unit_selling_price: '',
   minimum_stock: 0,
@@ -184,8 +185,14 @@ export default function ProdutoCriarScreen() {
       return;
     }
 
-    if (form.can_sell_by_unit && (!form.units_per_pack || Number(form.units_per_pack) < 1)) {
-      setError('Unidades por caixa é obrigatório quando a venda por unidade está activa.');
+    const packUnitsForRule =
+      Number(form.units_per_pack) >= 1
+        ? Number(form.units_per_pack)
+        : Number(form.units_per_box) >= 1
+          ? Number(form.units_per_box)
+          : 0;
+    if (form.can_sell_by_unit && packUnitsForRule < 1) {
+      setError('Indica unidades por caixa (pack) ou unidades por caixa (caixa) ≥ 1 quando vendes por unidade.');
       return;
     }
 
@@ -215,6 +222,8 @@ export default function ProdutoCriarScreen() {
       form.units_per_pack === '' || form.units_per_pack == null
         ? null
         : Number(form.units_per_pack);
+    const unitsPerBox =
+      form.units_per_box === '' || form.units_per_box == null ? null : Number(form.units_per_box);
     const boxPrice =
       form.box_selling_price === ''
         ? null
@@ -249,7 +258,8 @@ export default function ProdutoCriarScreen() {
     if (form.can_sell_by_box) payload.can_sell_by_box = true;
     if (form.can_sell_by_unit) {
       payload.can_sell_by_unit = true;
-      if (unitsPerPack != null) payload.units_per_pack = unitsPerPack;
+      if (unitsPerPack != null && unitsPerPack >= 1) payload.units_per_pack = unitsPerPack;
+      if (unitsPerBox != null && unitsPerBox >= 1) payload.units_per_box = unitsPerBox;
     }
     if (boxPrice != null && !Number.isNaN(boxPrice)) payload.box_selling_price = String(boxPrice);
     if (unitPrice != null && !Number.isNaN(unitPrice)) payload.unit_selling_price = String(unitPrice);
@@ -710,21 +720,39 @@ export default function ProdutoCriarScreen() {
                 </View>
 
                 {form.can_sell_by_unit && (
-                  <View style={styles.field}>
-                    <Text style={styles.label}>Unidades por caixa *</Text>
-                    <TextInput
-                      style={styles.input}
-                      keyboardType="number-pad"
-                      value={form.units_per_pack === '' ? '' : String(form.units_per_pack)}
-                      onChangeText={(t) =>
-                        update(
-                          'units_per_pack',
-                          t === '' ? '' : Number.parseInt(t.replace(/[^0-9]/g, ''), 10) || '',
-                        )
-                      }
-                      placeholder="Ex.: 10"
-                      placeholderTextColor="#6b7280"
-                    />
+                  <View style={styles.row}>
+                    <View style={[styles.field, { flex: 1 }]}>
+                      <Text style={styles.label}>Unid. por pack *</Text>
+                      <TextInput
+                        style={styles.input}
+                        keyboardType="number-pad"
+                        value={form.units_per_pack === '' ? '' : String(form.units_per_pack)}
+                        onChangeText={(t) =>
+                          update(
+                            'units_per_pack',
+                            t === '' ? '' : Number.parseInt(t.replace(/[^0-9]/g, ''), 10) || '',
+                          )
+                        }
+                        placeholder="Ex.: 10"
+                        placeholderTextColor="#6b7280"
+                      />
+                    </View>
+                    <View style={[styles.field, { flex: 1 }]}>
+                      <Text style={styles.label}>Unid. por caixa</Text>
+                      <TextInput
+                        style={styles.input}
+                        keyboardType="number-pad"
+                        value={form.units_per_box === '' ? '' : String(form.units_per_box)}
+                        onChangeText={(t) =>
+                          update(
+                            'units_per_box',
+                            t === '' ? '' : Number.parseInt(t.replace(/[^0-9]/g, ''), 10) || '',
+                          )
+                        }
+                        placeholder="Opcional"
+                        placeholderTextColor="#6b7280"
+                      />
+                    </View>
                   </View>
                 )}
 
@@ -737,13 +765,16 @@ export default function ProdutoCriarScreen() {
                       value={form.box_selling_price}
                       onChangeText={(t) => {
                         update('box_selling_price', t);
-                        if (form.can_sell_by_unit && form.units_per_pack) {
+                        if (form.can_sell_by_unit) {
                           const box = Number.parseFloat(t.replace(',', '.'));
-                          if (!Number.isNaN(box) && Number(form.units_per_pack) > 0) {
-                            update(
-                              'unit_selling_price',
-                              (box / Number(form.units_per_pack)).toFixed(2),
-                            );
+                          const up =
+                            Number(form.units_per_pack) >= 1
+                              ? Number(form.units_per_pack)
+                              : Number(form.units_per_box) >= 1
+                                ? Number(form.units_per_box)
+                                : 0;
+                          if (!Number.isNaN(box) && up > 0) {
+                            update('unit_selling_price', (box / up).toFixed(2));
                           }
                         }
                       }}

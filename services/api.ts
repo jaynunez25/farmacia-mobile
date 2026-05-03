@@ -27,6 +27,17 @@ function resolveApiBaseUrl(): string {
 }
 const API_BASE_URL: string = resolveApiBaseUrl();
 const IS_PRODUCTION = process.env.NODE_ENV === 'production';
+
+/** Absolute URL for product images (e.g. `/products/thumbnails/...` served by the API host). */
+export function resolveApiMediaUrl(pathOrUrl: string | null | undefined): string | null {
+  if (pathOrUrl == null || typeof pathOrUrl !== 'string') return null;
+  const s = pathOrUrl.trim();
+  if (!s) return null;
+  if (/^https?:\/\//i.test(s)) return s;
+  const base = API_BASE_URL.replace(/\/+$/, '');
+  if (!base) return null;
+  return s.startsWith('/') ? `${base}${s}` : `${base}/${s}`;
+}
 const REQUEST_TIMEOUT_MS = 15000;
 
 /** True when the web/production bundle was built without EXPO_PUBLIC_API_URL (shows setup screen instead of crashing). */

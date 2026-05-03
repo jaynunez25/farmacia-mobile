@@ -2,8 +2,11 @@ import { useEffect, useMemo, useState } from 'react';
 import {
   ActivityIndicator,
   FlatList,
+  Modal,
+  Platform,
   Pressable,
   RefreshControl,
+  ScrollView,
   StyleSheet,
   Text,
   TextInput,
@@ -17,6 +20,11 @@ import { api } from '@/services/api';
 import type { Product } from '@/types';
 import { fetchAllProducts } from '@/utils/fetchAllProducts';
 import { getErrorMessage } from '@/utils/errorMessage';
+import {
+  mergeJsonImportRow,
+  type JsonImportRowResult,
+  type ProductCreateBody,
+} from '@/utils/productJsonImport';
 import { isAdminRole } from '@/utils/roles';
 
 export default function StockScreen() {
@@ -36,6 +44,11 @@ export default function StockScreen() {
   /** Draft back/front per product. undefined = use server value, null = user cleared, number = user entered. */
   const [draftCounts, setDraftCounts] = useState<Record<number, { back?: number | null; front?: number | null }>>({});
   const [confirmingId, setConfirmingId] = useState<number | null>(null);
+  const [importJsonVisible, setImportJsonVisible] = useState(false);
+  const [importJsonText, setImportJsonText] = useState('');
+  const [importJsonBusy, setImportJsonBusy] = useState(false);
+  const [importJsonParseError, setImportJsonParseError] = useState<string | null>(null);
+  const [importJsonResults, setImportJsonResults] = useState<JsonImportRowResult[]>([]);
 
   /** Catálogo demo antigo usava SKUs longos (ex.: ANT-METR-TAB-013). Seed real usa formato curto (ex.: ANTI-0001). */
   const showsLegacyDemoCatalog = useMemo(
@@ -276,6 +289,88 @@ export default function StockScreen() {
     );
   };
 
+  const openImportJson = () => {
+    setImportJsonParseError(null);
+    setImportJsonResults([]);
+    setImportJsonVisible(true);
+  };
+
+  const runImportJson = async () => {
+    setImportJsonBusy(true);
+    setImportJsonParseError(null);
+    setImportJsonResults([]);
+    let parsed: unknown;
+    try {
+      parsed = JSON.parse(importJsonText.trim());
+    } catch {
+      setImportJsonParseError('JSON inválido. Verifica vírgulas, chaves e aspas.');
+      setImportJsonBusy(false);
+      return;
+    }
+    const rows = Array.isArray(parsed) ? parsed : [parsed];
+    const results: JsonImportRowResult[] = [];
+    for (let i = 0; i < rows.length; i++) {
+      const row = rows[i];
+      if (typeof row !== 'object' || row === null || Array.isArray(row)) {
+        results.push({
+          index: i,
+          status: 'error',
+          sku: '—',
+          message: 'Cada entrada tem de ser um objecto JSON.',
+        });
+        continue;
+      }
+      let payload: ProductCreateBody;
+      try {
+        payload = mergeJsonImportRow(row as Record<string, unknown>);
+      } catch (e) {
+        results.push({
+          index: i,
+          status: 'error',
+          sku: '—',
+          message: getErrorMessage(e),
+        });
+        continue;
+      }
+      const sku = (payload.sku ?? '').trim();
+      const name = (payload.name ?? '').trim();
+      if (!sku || !name) {
+        results.push({
+          index: i,
+          status: 'error',
+          sku: sku || '—',
+          name: name || undefined,
+          message: 'Cada produto precisa de sku e name preenchidos no JSON.',
+        });
+        continue;
+      }
+      try {
+        const created = await api.products.create(
+          payload as Omit<Product, 'id' | 'created_at' | 'updated_at'>,
+        );
+        const w = created.warnings?.filter(Boolean);
+        results.push({
+          index: i,
+          status: 'ok',
+          sku: created.sku,
+          name: created.name,
+          warnings: w && w.length > 0 ? w : undefined,
+        });
+      } catch (e) {
+        results.push({
+          index: i,
+          status: 'error',
+          sku,
+          name,
+          message: getErrorMessage(e),
+        });
+      }
+    }
+    setImportJsonResults(results);
+    setImportJsonBusy(false);
+    await loadProducts();
+  };
+
   const exportProducts = async () => {
     if (typeof document === 'undefined') {
       setError('Exportação Excel disponível na versão web.');
@@ -327,15 +422,27 @@ export default function StockScreen() {
             <Text style={styles.exportButtonText}>{exporting ? 'A exportar...' : 'Exportar Excel'}</Text>
           </Pressable>
           {canManageProducts ? (
-            <Pressable
-              style={({ pressed }) => [
-                styles.addButton,
-                pressed && styles.addButtonPressed,
-              ]}
-              android_ripple={{ color: '#166534' }}
-              onPress={() => router.push('/produto-criar')}>
-              <Text style={styles.addButtonText}>Adicionar produto</Text>
-            </Pressable>
+            <>
+              <Pressable
+                style={({ pressed }) => [
+                  styles.importJsonButton,
+                  pressed && styles.importJsonButtonPressed,
+                  importJsonBusy && styles.exportButtonDisabled,
+                ]}
+                disabled={importJsonBusy}
+                onPress={openImportJson}>
+                <Text style={styles.importJsonButtonText}>Importar JSON</Text>
+              </Pressable>
+              <Pressable
+                style={({ pressed }) => [
+                  styles.addButton,
+                  pressed && styles.addButtonPressed,
+                ]}
+                android_ripple={{ color: '#166534' }}
+                onPress={() => router.push('/produto-criar')}>
+                <Text style={styles.addButtonText}>Adicionar produto</Text>
+              </Pressable>
+            </>
           ) : null}
         </View>
       </View>
@@ -447,6 +554,76 @@ export default function StockScreen() {
           }
         />
       )}
+
+      <Modal
+        visible={importJsonVisible}
+        animationType="slide"
+        transparent
+        onRequestClose={() => !importJsonBusy && setImportJsonVisible(false)}>
+        <View style={styles.importModalOverlay}>
+          <View style={styles.importModalCard}>
+            <Text style={styles.importModalTitle}>Importar produtos (JSON)</Text>
+            <Text style={styles.importModalHint}>
+              Cola um objecto ou um array. Cada item precisa de sku e name. Campos extra alinham com a API (preços,
+              imagens, prateleira, etc.).
+            </Text>
+            <TextInput
+              value={importJsonText}
+              onChangeText={setImportJsonText}
+              placeholder='{ "sku": "...", "name": "...", ... }'
+              placeholderTextColor="#94a3b8"
+              multiline
+              editable={!importJsonBusy}
+              style={styles.importModalTextarea}
+              autoCapitalize="none"
+              autoCorrect={false}
+              textAlignVertical="top"
+            />
+            {importJsonParseError ? (
+              <Text style={styles.importModalError}>{importJsonParseError}</Text>
+            ) : null}
+            {importJsonResults.length > 0 ? (
+              <ScrollView style={styles.importModalResults} nestedScrollEnabled>
+                {importJsonResults.map((r) => (
+                  <Text
+                    key={`import-${r.index}`}
+                    style={
+                      r.status === 'ok' ? styles.importModalResultOk : styles.importModalResultErr
+                    }>
+                    #{r.index + 1} {r.sku}
+                    {r.status === 'ok'
+                      ? ` — OK (${r.name}${r.warnings?.length ? `; ${r.warnings.join('; ')}` : ''})`
+                      : ` — Erro${r.name ? ` (${r.name})` : ''}: ${r.message}`}
+                  </Text>
+                ))}
+              </ScrollView>
+            ) : null}
+            <View style={styles.importModalActions}>
+              <Pressable
+                style={({ pressed }) => [styles.importModalBtn, pressed && styles.importModalBtnPressed]}
+                disabled={importJsonBusy}
+                onPress={() => {
+                  setImportJsonVisible(false);
+                  setImportJsonParseError(null);
+                }}>
+                <Text style={styles.importModalBtnText}>Fechar</Text>
+              </Pressable>
+              <Pressable
+                style={({ pressed }) => [
+                  styles.importModalBtnPrimary,
+                  pressed && styles.importModalBtnPrimaryPressed,
+                  (!importJsonText.trim() || importJsonBusy) && styles.exportButtonDisabled,
+                ]}
+                disabled={!importJsonText.trim() || importJsonBusy}
+                onPress={() => void runImportJson()}>
+                <Text style={styles.importModalBtnPrimaryText}>
+                  {importJsonBusy ? 'A importar…' : 'Importar'}
+                </Text>
+              </Pressable>
+            </View>
+          </View>
+        </View>
+      </Modal>
     </SafeAreaView>
   );
 }
@@ -501,6 +678,22 @@ const styles = StyleSheet.create({
     backgroundColor: '#15803d',
   },
   addButtonText: {
+    color: '#f9fafb',
+    fontSize: 13,
+    fontWeight: '600',
+  },
+  importJsonButton: {
+    paddingHorizontal: 12,
+    paddingVertical: 8,
+    borderRadius: 999,
+    backgroundColor: '#334155',
+    borderWidth: 1,
+    borderColor: '#64748b',
+  },
+  importJsonButtonPressed: {
+    backgroundColor: '#475569',
+  },
+  importJsonButtonText: {
     color: '#f9fafb',
     fontSize: 13,
     fontWeight: '600',
@@ -755,6 +948,97 @@ const styles = StyleSheet.create({
     fontSize: 13,
     color: '#9ca3af',
     textAlign: 'center',
+  },
+  importModalOverlay: {
+    flex: 1,
+    backgroundColor: 'rgba(0,0,0,0.65)',
+    justifyContent: 'center',
+    padding: 16,
+  },
+  importModalCard: {
+    maxHeight: '90%',
+    borderRadius: 12,
+    padding: 16,
+    backgroundColor: '#0f172a',
+    borderWidth: 1,
+    borderColor: '#334155',
+  },
+  importModalTitle: {
+    fontSize: 18,
+    fontWeight: '700',
+    color: '#f1f5f9',
+    marginBottom: 8,
+  },
+  importModalHint: {
+    fontSize: 13,
+    color: '#94a3b8',
+    marginBottom: 10,
+    lineHeight: 18,
+  },
+  importModalTextarea: {
+    minHeight: 200,
+    maxHeight: 280,
+    borderRadius: 8,
+    padding: 10,
+    borderWidth: 1,
+    borderColor: '#334155',
+    backgroundColor: '#020617',
+    color: '#e2e8f0',
+    fontFamily: Platform.select({ ios: 'Menlo', android: 'monospace', default: 'monospace' }),
+    fontSize: 12,
+  },
+  importModalError: {
+    marginTop: 8,
+    color: '#fca5a5',
+    fontSize: 13,
+  },
+  importModalResults: {
+    marginTop: 10,
+    maxHeight: 140,
+  },
+  importModalResultOk: {
+    fontSize: 12,
+    color: '#86efac',
+    marginBottom: 6,
+  },
+  importModalResultErr: {
+    fontSize: 12,
+    color: '#fca5a5',
+    marginBottom: 6,
+  },
+  importModalActions: {
+    flexDirection: 'row',
+    justifyContent: 'flex-end',
+    gap: 10,
+    marginTop: 14,
+  },
+  importModalBtn: {
+    paddingHorizontal: 14,
+    paddingVertical: 10,
+    borderRadius: 999,
+    backgroundColor: '#334155',
+  },
+  importModalBtnPressed: {
+    opacity: 0.9,
+  },
+  importModalBtnText: {
+    color: '#e2e8f0',
+    fontWeight: '600',
+    fontSize: 14,
+  },
+  importModalBtnPrimary: {
+    paddingHorizontal: 16,
+    paddingVertical: 10,
+    borderRadius: 999,
+    backgroundColor: '#16a34a',
+  },
+  importModalBtnPrimaryPressed: {
+    backgroundColor: '#15803d',
+  },
+  importModalBtnPrimaryText: {
+    color: '#f9fafb',
+    fontWeight: '700',
+    fontSize: 14,
   },
 });
 

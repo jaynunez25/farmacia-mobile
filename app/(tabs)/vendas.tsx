@@ -2,6 +2,7 @@ import { useCallback, useEffect, useMemo, useRef, useState, type Dispatch, type 
 import {
   ActivityIndicator,
   FlatList,
+  Image,
   KeyboardAvoidingView,
   Modal,
   Platform,
@@ -22,7 +23,7 @@ import {
   type NumericKeypadAction,
 } from '@/components/pos/NumericKeypad';
 import { PosVirtualKeyboard, type PosKeyboardAction, type PosKeyboardMode } from '@/components/pos/PosVirtualKeyboard';
-import { api } from '@/services/api';
+import { api, resolveApiMediaUrl } from '@/services/api';
 import type { Product } from '@/types';
 import { formatCurrency } from '@/utils/currency';
 import { fetchAllProducts } from '@/utils/fetchAllProducts';
@@ -50,10 +51,16 @@ function cartLineSellHint(displayName: string, sell_as: CartItem['sell_as'], pro
   return '';
 }
 
-/** Same truthiness as `isPackProduct` (pack / lâmina no modal). */
+/** Same truthiness as `isPackProduct` (pack / lâmina no modal); `units_per_box` counts like web. */
 function isPackProductForSellModal(p: Product): boolean {
-  const raw = (p.can_sell_by_box || p.can_sell_by_unit) && (p.units_per_pack ?? 0) > 0;
-  return Boolean(raw);
+  return Boolean(
+    (p.can_sell_by_box || p.can_sell_by_unit) && Number(p.units_per_pack ?? p.units_per_box ?? 0) > 0,
+  );
+}
+
+function packUnitsPerBox(p: Product): number {
+  const raw = p.units_per_pack ?? p.units_per_box ?? 0;
+  return Math.max(1, Math.floor(Number(raw) || 1));
 }
 
 /** Local presentation for the sell-mode modal; uses existing `stock_quantity`, `stock_display_pack`, flags. */
@@ -70,7 +77,7 @@ function computePosSellModalStock(p: Product): {
 } {
   const total = Math.max(0, Math.floor(Number(p.stock_quantity) || 0));
   const pack = isPackProductForSellModal(p);
-  const upp = Math.max(1, Math.floor(Number(p.units_per_pack) || 1));
+  const upp = packUnitsPerBox(p);
 
   let boxes = 0;
   let laminae = 0;
@@ -140,9 +147,13 @@ function getDisplayUnitPriceAmount(p: Product): number {
     const n = Number(rawUnit);
     if (Number.isFinite(n)) return n;
   }
-  const upp = p.units_per_pack ?? 0;
+  const upp = p.units_per_pack ?? p.units_per_box ?? 0;
   const box = getDisplayBoxPriceAmount(p);
   return upp > 0 ? box / upp : Number(p.selling_price ?? 0);
+}
+
+function posProductShelfLine(p: Product): string {
+  return (p.shelf_display || p.shelf_location || p.location || '').trim();
 }
 
 /** react-native-web: flex + minWidth:0 on <Text> table headers collapses width and stacks letters vertically; use Views as cells. */
@@ -434,14 +445,14 @@ export default function VendasScreen() {
   const cartListNeedsScroll = cart.length > CART_VISIBLE_WITHOUT_SCROLL;
 
   const isPackProduct = (p: Product) =>
-    (p.can_sell_by_box || p.can_sell_by_unit) && (p.units_per_pack ?? 0) > 0;
+    (p.can_sell_by_box || p.can_sell_by_unit) && Number(p.units_per_pack ?? p.units_per_box ?? 0) > 0;
 
   const getBoxPrice = (p: Product) => getDisplayBoxPriceAmount(p);
 
   const getUnitPrice = (p: Product) => getDisplayUnitPriceAmount(p);
 
   const baseUnitsRequired = (item: CartItem) =>
-    item.sell_as === 'box' ? item.quantity * (item.product.units_per_pack ?? 1) : item.quantity;
+    item.sell_as === 'box' ? item.quantity * packUnitsPerBox(item.product) : item.quantity;
 
   const lineUnitPrice = useCallback((item: CartItem) => {
     if (item.sell_as === 'box') {
@@ -471,7 +482,7 @@ export default function VendasScreen() {
     const sellAs = isPackProduct(product)
       ? (options?.sellAs ?? (mode === 'manual' ? sellAsChoice : undefined))
       : undefined;
-    const required = sellAs === 'box' ? qty * (product.units_per_pack ?? 1) : qty;
+    const required = sellAs === 'box' ? qty * packUnitsPerBox(product) : qty;
     if (required > product.stock_quantity) {
       setError(`Stock insuficiente. Disponível: ${product.stock_quantity} unidades de base.`);
       return;
@@ -482,7 +493,7 @@ export default function VendasScreen() {
       if (idx >= 0) {
         const next = [...prev];
         const newQty = next[idx].quantity + qty;
-        const need = sellAs === 'box' ? newQty * (product.units_per_pack ?? 1) : newQty;
+        const need = sellAs === 'box' ? newQty * packUnitsPerBox(product) : newQty;
         if (need > product.stock_quantity) {
           setError(`Stock insuficiente. Máximo: ${product.stock_quantity} unidades de base.`);
           return prev;
@@ -893,6 +904,11 @@ export default function VendasScreen() {
 
   const renderProductCard = ({ item }: { item: Product }) => {
     const badge = productCardBadge(item);
+    const thumbUri = resolveApiMediaUrl(item.thumbnail_url);
+    const shelf = posProductShelfLine(item);
+    const dosage = (item.dosage || '').trim();
+    const form = (item.form || '').trim();
+    const subLine = [form, shelf].filter(Boolean).join(' · ');
     return (
       <Pressable
         style={({ pressed }) => [
@@ -908,12 +924,31 @@ export default function VendasScreen() {
             <Text style={styles.productBadgeText}>{badge.text}</Text>
           </View>
         )}
-        <Text style={styles.productCardName} numberOfLines={isPhone ? 1 : 2} ellipsizeMode="tail">
-          {item.name}
-        </Text>
-        <Text style={styles.productCardMeta} numberOfLines={1} ellipsizeMode="tail">
-          {formatCurrency(Number(item.selling_price))}
-        </Text>
+        <View style={styles.productCardRow}>
+          {thumbUri ? (
+            <Image source={{ uri: thumbUri }} style={styles.productCardThumb} resizeMode="cover" />
+          ) : (
+            <View style={styles.productCardThumbPlaceholder} />
+          )}
+          <View style={styles.productCardTextCol}>
+            <Text style={styles.productCardName} numberOfLines={isPhone ? 1 : 2} ellipsizeMode="tail">
+              {item.name}
+            </Text>
+            {dosage.length > 0 ? (
+              <Text style={styles.productCardDosage} numberOfLines={1}>
+                {dosage}
+              </Text>
+            ) : null}
+            {subLine.length > 0 ? (
+              <Text style={styles.productCardSub} numberOfLines={1} ellipsizeMode="tail">
+                {subLine}
+              </Text>
+            ) : null}
+            <Text style={styles.productCardMeta} numberOfLines={1}>
+              {formatCurrency(Number(item.selling_price))}
+            </Text>
+          </View>
+        </View>
       </Pressable>
     );
   };
@@ -2689,7 +2724,7 @@ const styles = StyleSheet.create({
 
   productCard: {
     flex: 1,
-    minHeight: 92,
+    minHeight: 100,
     borderRadius: 4,
     borderWidth: 1,
     borderColor: '#64748b',
@@ -2702,7 +2737,7 @@ const styles = StyleSheet.create({
   productCardMobile: {
     flex: 0,
     width: '100%',
-    minHeight: 92,
+    minHeight: 100,
     borderRadius: 4,
     borderWidth: 1,
     borderColor: '#64748b',
@@ -2711,6 +2746,40 @@ const styles = StyleSheet.create({
     margin: 0,
     gap: 4,
     justifyContent: 'space-between',
+  },
+  productCardRow: {
+    flexDirection: 'row',
+    alignItems: 'flex-start',
+    gap: 8,
+    flex: 1,
+  },
+  productCardThumb: {
+    width: 52,
+    height: 52,
+    borderRadius: 4,
+    backgroundColor: '#f1f5f9',
+  },
+  productCardThumbPlaceholder: {
+    width: 52,
+    height: 52,
+    borderRadius: 4,
+    backgroundColor: '#e2e8f0',
+  },
+  productCardTextCol: {
+    flex: 1,
+    minWidth: 0,
+    gap: 2,
+    justifyContent: 'center',
+  },
+  productCardDosage: {
+    fontSize: 12,
+    fontWeight: '800',
+    color: '#0f766e',
+  },
+  productCardSub: {
+    fontSize: 11,
+    color: '#64748b',
+    fontWeight: '600',
   },
   productCardPressed: {
     backgroundColor: '#f9fafb',
