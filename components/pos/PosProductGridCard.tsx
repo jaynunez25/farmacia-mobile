@@ -17,6 +17,12 @@ function productBadge(p: Product) {
   return null;
 }
 
+/** Image band height: ~120px tablet; slightly shorter on phone grid cells. */
+const IMAGE_BAND_TABLET = 120;
+const IMAGE_BAND_COMPACT = 100;
+const IMAGE_MAX_W = 150;
+const IMAGE_MAX_H = 110;
+
 export const PosProductGridCard = memo(function PosProductGridCard({
   product,
   onPress,
@@ -28,14 +34,14 @@ export const PosProductGridCard = memo(function PosProductGridCard({
 }) {
   const [imgFailed, setImgFailed] = useState(false);
   const badge = productBadge(product);
-  /** Prefer thumbnail for grids; fall back to image_url when thumbnail is unset in DB. */
-  const thumbRaw = (product.thumbnail_url ?? product.image_url ?? '').trim();
+  const thumbRaw = (product.thumbnail_url ?? '').trim();
   const uri = thumbRaw && !imgFailed ? resolveApiMediaUrl(thumbRaw) : null;
 
   useEffect(() => {
     setImgFailed(false);
   }, [thumbRaw]);
-  const mediaHeight = compact ? 72 : 100;
+
+  const imageBandHeight = compact ? IMAGE_BAND_COMPACT : IMAGE_BAND_TABLET;
   const dosage = (product.dosage || '').trim();
   const form = (product.form || '').trim();
   const shelf = shelfLine(product);
@@ -52,41 +58,45 @@ export const PosProductGridCard = memo(function PosProductGridCard({
       onPress={() => onPress(product)}
       accessible
       accessibilityRole="button">
-      <View style={[styles.mediaWrap, { height: mediaHeight }]}>
+      <View style={[styles.mediaWrap, { height: imageBandHeight }]}>
         {badge ? (
           <View style={[styles.badge, { backgroundColor: badge.bg }]}>
             <Text style={styles.badgeText}>{badge.text}</Text>
           </View>
         ) : null}
-        {uri ? (
-          <Image
-            key={uri}
-            source={{ uri }}
-            style={styles.mediaImage}
-            resizeMode="cover"
-            onError={handleImgError}
-          />
-        ) : (
-          <View style={styles.mediaPlaceholder} />
-        )}
+        <View style={styles.mediaInner}>
+          {uri ? (
+            <Image
+              key={uri}
+              source={{ uri }}
+              style={styles.mediaImage}
+              resizeMode="contain"
+              onError={handleImgError}
+            />
+          ) : (
+            <View style={styles.mediaPlaceholder} />
+          )}
+        </View>
       </View>
       <View style={styles.body}>
-        <Text style={styles.name} numberOfLines={compact ? 2 : 2} ellipsizeMode="tail">
-          {product.name}
-        </Text>
-        {dosage.length > 0 ? (
-          <Text style={styles.dosage} numberOfLines={1}>
-            {dosage}
+        <View style={styles.bodyTexts}>
+          <Text style={styles.name} numberOfLines={compact ? 2 : 2} ellipsizeMode="tail">
+            {product.name}
           </Text>
-        ) : null}
-        {form.length > 0 ? (
+          {dosage.length > 0 ? (
+            <Text style={styles.dosage} numberOfLines={1}>
+              {dosage}
+            </Text>
+          ) : null}
+          {form.length > 0 ? (
+            <Text style={styles.sub} numberOfLines={1} ellipsizeMode="tail">
+              {form}
+            </Text>
+          ) : null}
           <Text style={styles.sub} numberOfLines={1} ellipsizeMode="tail">
-            {form}
+            {shelf}
           </Text>
-        ) : null}
-        <Text style={styles.sub} numberOfLines={1} ellipsizeMode="tail">
-          {shelf}
-        </Text>
+        </View>
         <Text style={styles.meta} numberOfLines={1}>
           {`${formatCurrency(Number(product.selling_price))} · Stock ${stockN}`}
         </Text>
@@ -98,7 +108,7 @@ export const PosProductGridCard = memo(function PosProductGridCard({
 const styles = StyleSheet.create({
   card: {
     flex: 1,
-    minHeight: 210,
+    minHeight: 248,
     borderRadius: 4,
     borderWidth: 1,
     borderColor: '#64748b',
@@ -109,7 +119,7 @@ const styles = StyleSheet.create({
   cardMobile: {
     flex: 0,
     width: '100%',
-    minHeight: 182,
+    minHeight: 228,
     borderRadius: 4,
     borderWidth: 1,
     borderColor: '#64748b',
@@ -131,13 +141,24 @@ const styles = StyleSheet.create({
     backgroundColor: '#f1f5f9',
     position: 'relative',
   },
-  mediaImage: {
+  mediaInner: {
+    flex: 1,
     width: '100%',
-    height: '100%',
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingHorizontal: 4,
+    paddingVertical: 4,
+  },
+  mediaImage: {
+    width: IMAGE_MAX_W,
+    height: IMAGE_MAX_H,
+    maxWidth: '100%',
+    maxHeight: '100%',
   },
   mediaPlaceholder: {
-    width: '100%',
-    height: '100%',
+    width: 56,
+    height: 56,
+    borderRadius: 4,
     backgroundColor: '#e2e8f0',
   },
   badge: {
@@ -155,10 +176,17 @@ const styles = StyleSheet.create({
     fontSize: 11,
   },
   body: {
-    paddingHorizontal: 8,
-    paddingVertical: 6,
-    gap: 2,
+    flex: 1,
     flexGrow: 1,
+    paddingHorizontal: 8,
+    paddingTop: 6,
+    paddingBottom: 8,
+    minHeight: 0,
+    justifyContent: 'space-between',
+  },
+  bodyTexts: {
+    gap: 3,
+    flexShrink: 1,
   },
   name: {
     fontSize: 13,
@@ -172,7 +200,8 @@ const styles = StyleSheet.create({
     color: '#0f766e',
   },
   sub: {
-    fontSize: 11,
+    fontSize: 10,
+    lineHeight: 13,
     color: '#64748b',
     fontWeight: '600',
   },
@@ -180,6 +209,9 @@ const styles = StyleSheet.create({
     fontSize: 12,
     color: '#334155',
     fontWeight: '700',
-    marginTop: 2,
+    marginTop: 6,
+    paddingTop: 4,
+    borderTopWidth: StyleSheet.hairlineWidth,
+    borderTopColor: '#e2e8f0',
   },
 });

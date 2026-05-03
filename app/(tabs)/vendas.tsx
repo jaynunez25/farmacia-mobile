@@ -386,8 +386,8 @@ export default function VendasScreen() {
   const isPhone = !isTablet;
 
   const productGridColumns = (() => {
-    if (isTabletLandscape) return width >= 1200 ? 6 : 5;
-    if (isTablet) return 4;
+    if (isTabletLandscape) return width >= 1200 ? 5 : 4;
+    if (isTablet) return 3;
     return 2;
   })();
 
