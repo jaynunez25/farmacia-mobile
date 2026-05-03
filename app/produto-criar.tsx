@@ -666,7 +666,7 @@ export default function ProdutoCriarScreen() {
               />
             </View>
             <View style={styles.field}>
-              <Text style={styles.label}>Stock mínimo</Text>
+              <Text style={styles.label}>Stock no storage</Text>
               <TextInput
                 style={styles.input}
                 keyboardType="number-pad"

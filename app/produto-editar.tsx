@@ -112,7 +112,7 @@ export default function ProdutoEditarScreen() {
     if (Number.isNaN(stock) || stock < 0 || Number.isNaN(minStock) || minStock < 0) {
       Alert.alert(
         'Valores inválidos',
-        'Stock actual e stock mínimo devem ser números maiores ou iguais a 0.',
+        'Stock na prateleira e stock no storage devem ser números maiores ou iguais a 0.',
       );
       return;
     }
@@ -343,11 +343,12 @@ export default function ProdutoEditarScreen() {
             <View style={styles.section}>
               <Text style={styles.sectionTitle}>Stock</Text>
               <Text style={styles.stockHint}>
-                Ao guardar, o stock actual é ajustado por movimento para manter o histórico.
+                À frente na loja (prateleira) vs referência para alertas. Ao guardar, alterações ao stock na
+                prateleira são ajustadas por movimento para manter o histórico.
               </Text>
               <View style={styles.row}>
                 <View style={[styles.field, { flex: 1 }]}>
-                  <Text style={styles.label}>Stock actual</Text>
+                  <Text style={styles.label}>Stock prateleira</Text>
                   <TextInput
                     style={styles.input}
                     value={String(product.stock_quantity)}
@@ -361,7 +362,7 @@ export default function ProdutoEditarScreen() {
                   />
                 </View>
                 <View style={[styles.field, { flex: 1 }]}>
-                  <Text style={styles.label}>Stock mínimo</Text>
+                  <Text style={styles.label}>Stock no storage</Text>
                   <TextInput
                     style={styles.input}
                     value={String(product.minimum_stock)}
