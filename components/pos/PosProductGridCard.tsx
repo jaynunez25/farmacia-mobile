@@ -1,4 +1,4 @@
-import { memo, useCallback, useState } from 'react';
+import { memo, useCallback, useEffect, useState } from 'react';
 import { Image, Pressable, StyleSheet, Text, View } from 'react-native';
 
 import { resolveApiMediaUrl } from '@/services/api';
@@ -28,8 +28,13 @@ export const PosProductGridCard = memo(function PosProductGridCard({
 }) {
   const [imgFailed, setImgFailed] = useState(false);
   const badge = productBadge(product);
-  const thumbRaw = (product.thumbnail_url ?? '').trim();
+  /** Prefer thumbnail for grids; fall back to image_url when thumbnail is unset in DB. */
+  const thumbRaw = (product.thumbnail_url ?? product.image_url ?? '').trim();
   const uri = thumbRaw && !imgFailed ? resolveApiMediaUrl(thumbRaw) : null;
+
+  useEffect(() => {
+    setImgFailed(false);
+  }, [thumbRaw]);
   const mediaHeight = compact ? 72 : 100;
   const dosage = (product.dosage || '').trim();
   const form = (product.form || '').trim();
@@ -55,6 +60,7 @@ export const PosProductGridCard = memo(function PosProductGridCard({
         ) : null}
         {uri ? (
           <Image
+            key={uri}
             source={{ uri }}
             style={styles.mediaImage}
             resizeMode="cover"
