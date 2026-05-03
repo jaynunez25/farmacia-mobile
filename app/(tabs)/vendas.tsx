@@ -2,7 +2,6 @@ import { useCallback, useEffect, useMemo, useRef, useState, type Dispatch, type 
 import {
   ActivityIndicator,
   FlatList,
-  Image,
   KeyboardAvoidingView,
   Modal,
   Platform,
@@ -22,8 +21,9 @@ import {
   applyNumericKeypadKey,
   type NumericKeypadAction,
 } from '@/components/pos/NumericKeypad';
+import { PosProductGridCard } from '@/components/pos/PosProductGridCard';
 import { PosVirtualKeyboard, type PosKeyboardAction, type PosKeyboardMode } from '@/components/pos/PosVirtualKeyboard';
-import { api, resolveApiMediaUrl } from '@/services/api';
+import { api } from '@/services/api';
 import type { Product } from '@/types';
 import { formatCurrency } from '@/utils/currency';
 import { fetchAllProducts } from '@/utils/fetchAllProducts';
@@ -150,10 +150,6 @@ function getDisplayUnitPriceAmount(p: Product): number {
   const upp = p.units_per_pack ?? p.units_per_box ?? 0;
   const box = getDisplayBoxPriceAmount(p);
   return upp > 0 ? box / upp : Number(p.selling_price ?? 0);
-}
-
-function posProductShelfLine(p: Product): string {
-  return (p.shelf_display || p.shelf_location || p.location || '').trim();
 }
 
 /** react-native-web: flex + minWidth:0 on <Text> table headers collapses width and stacks letters vertically; use Views as cells. */
@@ -895,63 +891,9 @@ export default function VendasScreen() {
     return pages;
   }, [productsToShow, isPhone]);
 
-  const productCardBadge = (p: Product) => {
-    if (p.is_expired) return { text: 'Expirado', bg: '#dc2626' };
-    if (p.is_expiring_soon) return { text: 'Expira', bg: '#f97316' };
-    if (p.stock_quantity <= p.minimum_stock) return { text: 'Baixo stock', bg: '#eab308' };
-    return null;
-  };
-
-  const renderProductCard = ({ item }: { item: Product }) => {
-    const badge = productCardBadge(item);
-    const thumbUri = resolveApiMediaUrl(item.thumbnail_url);
-    const shelf = posProductShelfLine(item);
-    const dosage = (item.dosage || '').trim();
-    const form = (item.form || '').trim();
-    const subLine = [form, shelf].filter(Boolean).join(' · ');
-    return (
-      <Pressable
-        style={({ pressed }) => [
-          isPhone ? styles.productCardMobile : styles.productCard,
-          pressed && (isPhone ? styles.productCardPressedMobile : styles.productCardPressed),
-          badge && { borderColor: '#e5e7eb' },
-        ]}
-        onPress={() => onProductPress(item)}
-        accessible
-        accessibilityRole="button">
-        {badge && (
-          <View style={[styles.productBadge, { backgroundColor: badge.bg }]}>
-            <Text style={styles.productBadgeText}>{badge.text}</Text>
-          </View>
-        )}
-        <View style={styles.productCardRow}>
-          {thumbUri ? (
-            <Image source={{ uri: thumbUri }} style={styles.productCardThumb} resizeMode="cover" />
-          ) : (
-            <View style={styles.productCardThumbPlaceholder} />
-          )}
-          <View style={styles.productCardTextCol}>
-            <Text style={styles.productCardName} numberOfLines={isPhone ? 1 : 2} ellipsizeMode="tail">
-              {item.name}
-            </Text>
-            {dosage.length > 0 ? (
-              <Text style={styles.productCardDosage} numberOfLines={1}>
-                {dosage}
-              </Text>
-            ) : null}
-            {subLine.length > 0 ? (
-              <Text style={styles.productCardSub} numberOfLines={1} ellipsizeMode="tail">
-                {subLine}
-              </Text>
-            ) : null}
-            <Text style={styles.productCardMeta} numberOfLines={1}>
-              {formatCurrency(Number(item.selling_price))}
-            </Text>
-          </View>
-        </View>
-      </Pressable>
-    );
-  };
+  const renderProductCard = ({ item }: { item: Product }) => (
+    <PosProductGridCard product={item} onPress={onProductPress} compact={isPhone} />
+  );
 
   const categoriesBar = ['Todas', ...categories];
 
@@ -2720,100 +2662,6 @@ const styles = StyleSheet.create({
     paddingTop: 6,
     paddingBottom: 8,
     paddingHorizontal: 6,
-  },
-
-  productCard: {
-    flex: 1,
-    minHeight: 100,
-    borderRadius: 4,
-    borderWidth: 1,
-    borderColor: '#64748b',
-    backgroundColor: '#ffffff',
-    padding: 8,
-    margin: 3,
-    gap: 4,
-    justifyContent: 'space-between',
-  },
-  productCardMobile: {
-    flex: 0,
-    width: '100%',
-    minHeight: 100,
-    borderRadius: 4,
-    borderWidth: 1,
-    borderColor: '#64748b',
-    backgroundColor: '#ffffff',
-    padding: 6,
-    margin: 0,
-    gap: 4,
-    justifyContent: 'space-between',
-  },
-  productCardRow: {
-    flexDirection: 'row',
-    alignItems: 'flex-start',
-    gap: 8,
-    flex: 1,
-  },
-  productCardThumb: {
-    width: 52,
-    height: 52,
-    borderRadius: 4,
-    backgroundColor: '#f1f5f9',
-  },
-  productCardThumbPlaceholder: {
-    width: 52,
-    height: 52,
-    borderRadius: 4,
-    backgroundColor: '#e2e8f0',
-  },
-  productCardTextCol: {
-    flex: 1,
-    minWidth: 0,
-    gap: 2,
-    justifyContent: 'center',
-  },
-  productCardDosage: {
-    fontSize: 12,
-    fontWeight: '800',
-    color: '#0f766e',
-  },
-  productCardSub: {
-    fontSize: 11,
-    color: '#64748b',
-    fontWeight: '600',
-  },
-  productCardPressed: {
-    backgroundColor: '#f9fafb',
-  },
-  productCardPressedMobile: {
-    backgroundColor: '#f9fafb',
-  },
-  productBadge: {
-    alignSelf: 'flex-start',
-    paddingVertical: 2,
-    paddingHorizontal: 6,
-    borderRadius: 2,
-  },
-  productBadgeText: {
-    color: '#ffffff',
-    fontWeight: '900',
-    fontSize: 11,
-  },
-
-  productCardName: {
-    fontSize: 13,
-    fontWeight: '800',
-    color: '#0f172a',
-    flexShrink: 1,
-  },
-  productCardMeta: {
-    fontSize: 12,
-    color: '#334155',
-    fontWeight: '700',
-  },
-  productCardSku: {
-    fontSize: 11,
-    color: '#9ca3af',
-    fontWeight: '700',
   },
 
   manualCard: {
