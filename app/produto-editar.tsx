@@ -88,6 +88,16 @@ export default function ProdutoEditarScreen() {
     setProduct((prev) => (prev ? { ...prev, [key]: value } : prev));
   };
 
+  const setUnitsPerBoxSynced = (t: string) => {
+    const trimmed = t.trim();
+    if (trimmed === '') {
+      setProduct((prev) => (prev ? { ...prev, units_per_pack: null, units_per_box: null } : prev));
+      return;
+    }
+    const n = Math.max(1, Number.parseInt(trimmed.replace(/[^0-9]/g, ''), 10) || 1);
+    setProduct((prev) => (prev ? { ...prev, units_per_pack: n, units_per_box: n } : prev));
+  };
+
   const handleSave = async () => {
     if (!id || !product) return;
 
@@ -107,7 +117,13 @@ export default function ProdutoEditarScreen() {
       return;
     }
 
-    if (product.can_sell_by_unit && (!product.units_per_pack || product.units_per_pack < 1)) {
+    const packUnits =
+      product.units_per_pack != null && Number(product.units_per_pack) >= 1
+        ? Number(product.units_per_pack)
+        : product.units_per_box != null && Number(product.units_per_box) >= 1
+          ? Number(product.units_per_box)
+          : null;
+    if (product.can_sell_by_unit && (packUnits == null || packUnits < 1)) {
       Alert.alert(
         'Configuração inválida',
         'Unidades por caixa é obrigatório quando a venda por unidade está activa.',
@@ -132,25 +148,51 @@ export default function ProdutoEditarScreen() {
         product.units_per_pack == null || String(product.units_per_pack).trim() === ''
           ? null
           : Math.max(1, Number.parseInt(String(product.units_per_pack), 10) || 1);
+      const unitsPerBoxSynced =
+        product.units_per_box == null || String(product.units_per_box).trim() === ''
+          ? unitsPerPack
+          : Math.max(1, Number.parseInt(String(product.units_per_box), 10) || 1);
+      const unitsForPayload = unitsPerPack ?? unitsPerBoxSynced;
+
+      const sellingNum =
+        Number.parseFloat(String(product.selling_price ?? '0').replace(',', '.')) || 0;
+      let unitPriceStr = toPrice(product.unit_selling_price);
+      const packU =
+        unitsForPayload != null && unitsForPayload >= 1
+          ? unitsForPayload
+          : packUnits != null && packUnits >= 1
+            ? packUnits
+            : null;
+      if (
+        product.can_sell_by_unit &&
+        unitPriceStr == null &&
+        packU != null &&
+        packU >= 1 &&
+        sellingNum > 0
+      ) {
+        unitPriceStr = (sellingNum / packU).toFixed(2);
+      }
 
       // Stock actual is handled through stock movement adjustment below.
       const payload: Partial<Product> = {
         name: String(product.name ?? '').trim(),
         category: toNullableTrimmed(product.category),
         brand: toNullableTrimmed(product.brand),
-        selling_price: String(Number.parseFloat(String(product.selling_price ?? '0').replace(',', '.')) || 0),
+        selling_price: String(sellingNum),
         cost_price: toPrice(product.cost_price),
         batch_number: toNullableTrimmed(product.batch_number),
         expiry_date: toNullableTrimmed(product.expiry_date),
         location: toNullableTrimmed(product.location),
         is_verified: Boolean(product.is_verified),
-        can_sell_by_box: Boolean(product.can_sell_by_box),
+        can_sell_by_box: true,
         can_sell_by_unit: Boolean(product.can_sell_by_unit),
         pack_name: toNullableTrimmed(product.pack_name),
         unit_name: toNullableTrimmed(product.unit_name),
-        units_per_pack: unitsPerPack,
-        box_selling_price: toPrice(product.box_selling_price),
-        unit_selling_price: toPrice(product.unit_selling_price),
+        units_per_pack: unitsForPayload,
+        units_per_box: unitsForPayload,
+        box_selling_price: String(sellingNum),
+        sale_price_box: String(sellingNum),
+        unit_selling_price: unitPriceStr,
         minimum_stock: minStock,
       };
 
@@ -335,16 +377,13 @@ export default function ProdutoEditarScreen() {
               </View>
             </View>
 
-            {/* Venda por caixa / unidade */}
+            {/* Venda por unidade (opcional); preço da caixa = preço de venda */}
             <View style={styles.section}>
-              <Text style={styles.sectionTitle}>Venda por caixa / unidade</Text>
-              <View style={styles.toggleRow}>
-                <Text style={styles.label}>Pode vender por caixa</Text>
-                <Switch
-                  value={!!product.can_sell_by_box}
-                  onValueChange={(v) => update('can_sell_by_box', v)}
-                />
-              </View>
+              <Text style={styles.sectionTitle}>Venda por unidade (opcional)</Text>
+              <Text style={styles.stockHint}>
+                O preço da caixa é o <Text style={{ fontWeight: '700', color: '#e5e7eb' }}>Preço de venda</Text> acima.
+                A venda por caixa fica sempre activa no POS.
+              </Text>
               <View style={styles.toggleRow}>
                 <Text style={styles.label}>Pode vender por unidade</Text>
                 <Switch
@@ -353,94 +392,64 @@ export default function ProdutoEditarScreen() {
                 />
               </View>
 
-              {(product.can_sell_by_box || product.can_sell_by_unit) && (
-                <>
-                  <View style={styles.row}>
-                    <View style={[styles.field, { flex: 1 }]}>
-                      <Text style={styles.label}>Nome da caixa</Text>
-                      <TextInput
-                        style={styles.input}
-                        value={product.pack_name ?? ''}
-                        onChangeText={(t) => update('pack_name', t || null)}
-                        placeholder="Caixa"
-                        placeholderTextColor="#6b7280"
-                      />
-                    </View>
-                    <View style={[styles.field, { flex: 1 }]}>
-                      <Text style={styles.label}>Nome da unidade</Text>
-                      <TextInput
-                        style={styles.input}
-                        value={product.unit_name ?? ''}
-                        onChangeText={(t) => update('unit_name', t || null)}
-                        placeholder="Lâmina"
-                        placeholderTextColor="#6b7280"
-                      />
-                    </View>
-                  </View>
+              <View style={styles.row}>
+                <View style={[styles.field, { flex: 1 }]}>
+                  <Text style={styles.label}>Nome da caixa</Text>
+                  <TextInput
+                    style={styles.input}
+                    value={product.pack_name ?? ''}
+                    onChangeText={(t) => update('pack_name', t || null)}
+                    placeholder="Caixa"
+                    placeholderTextColor="#6b7280"
+                  />
+                </View>
+                <View style={[styles.field, { flex: 1 }]}>
+                  <Text style={styles.label}>Nome da unidade</Text>
+                  <TextInput
+                    style={styles.input}
+                    value={product.unit_name ?? ''}
+                    onChangeText={(t) => update('unit_name', t || null)}
+                    placeholder="Unidade"
+                    placeholderTextColor="#6b7280"
+                  />
+                </View>
+              </View>
 
-                  {product.can_sell_by_unit && (
-                    <View style={styles.field}>
-                      <Text style={styles.label}>Unidades por caixa</Text>
-                      <TextInput
-                        style={styles.input}
-                        keyboardType="number-pad"
-                        value={product.units_per_pack ? String(product.units_per_pack) : ''}
-                        onChangeText={(t) =>
-                          update(
-                            'units_per_pack',
-                            t === ''
-                              ? null
-                              : (Number.parseInt(t.replace(/[^0-9]/g, ''), 10) || null),
-                          )
-                        }
-                        placeholder="3"
-                        placeholderTextColor="#6b7280"
-                      />
-                    </View>
-                  )}
+              <View style={styles.field}>
+                <Text style={styles.label}>Unidades por caixa</Text>
+                <TextInput
+                  style={styles.input}
+                  keyboardType="number-pad"
+                  value={
+                    product.units_per_box != null && Number(product.units_per_box) >= 1
+                      ? String(product.units_per_box)
+                      : product.units_per_pack != null && Number(product.units_per_pack) >= 1
+                        ? String(product.units_per_pack)
+                        : ''
+                  }
+                  onChangeText={setUnitsPerBoxSynced}
+                  placeholder={product.can_sell_by_unit ? 'Obrigatório se vendes por unidade' : 'ex.: 100'}
+                  placeholderTextColor="#6b7280"
+                />
+                <Text style={styles.stockHint}>Sincroniza units_per_box e units_per_pack na API.</Text>
+              </View>
 
-                  <View style={styles.row}>
-                    <View style={[styles.field, { flex: 1 }]}>
-                      <Text style={styles.label}>Preço caixa (Kz)</Text>
-                      <TextInput
-                        style={styles.input}
-                        keyboardType="decimal-pad"
-                        value={product.box_selling_price ? String(product.box_selling_price) : ''}
-                        onChangeText={(t) => {
-                          const value = (t === '' ? null : t) as any;
-                          update('box_selling_price', value);
-                          if (product.can_sell_by_unit && product.units_per_pack) {
-                            const box = Number.parseFloat(t.replace(',', '.'));
-                            if (!Number.isNaN(box) && product.units_per_pack) {
-                              const unit = box / product.units_per_pack;
-                              const unitValue = unit.toFixed(2) as any;
-                              update('unit_selling_price', unitValue);
-                            }
-                          }
-                        }}
-                        placeholder="5000"
-                        placeholderTextColor="#6b7280"
-                      />
-                    </View>
-                    <View style={[styles.field, { flex: 1 }]}>
-                      <Text style={styles.label}>Preço unidade (Kz)</Text>
-                      <TextInput
-                        style={styles.input}
-                        keyboardType="decimal-pad"
-                        value={product.unit_selling_price ? String(product.unit_selling_price) : ''}
-                        onChangeText={(t) =>
-                          {
-                            const value = (t === '' ? null : t) as any;
-                            update('unit_selling_price', value);
-                          }
-                        }
-                        placeholder="Auto se vazio"
-                        placeholderTextColor="#6b7280"
-                      />
-                    </View>
-                  </View>
-                </>
-              )}
+              {product.can_sell_by_unit ? (
+                <View style={styles.field}>
+                  <Text style={styles.label}>Preço unidade (Kz)</Text>
+                  <TextInput
+                    style={styles.input}
+                    keyboardType="decimal-pad"
+                    value={product.unit_selling_price ? String(product.unit_selling_price) : ''}
+                    onChangeText={(t) => {
+                      const value = (t === '' ? null : t) as any;
+                      update('unit_selling_price', value);
+                    }}
+                    placeholder="Vazio = preço de venda ÷ unidades por caixa"
+                    placeholderTextColor="#6b7280"
+                  />
+                </View>
+              ) : null}
             </View>
 
             {/* Validade / localização */}

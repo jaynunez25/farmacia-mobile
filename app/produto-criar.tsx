@@ -44,13 +44,11 @@ const defaultForm = {
   brand: '',
   selling_price: '0',
   cost_price: '',
-  can_sell_by_box: false,
   can_sell_by_unit: false,
   pack_name: '',
   unit_name: '',
   units_per_pack: '' as string | number,
   units_per_box: '' as string | number,
-  box_selling_price: '',
   unit_selling_price: '',
   minimum_stock: 0,
   batch_number: '',
@@ -93,6 +91,13 @@ export default function ProdutoCriarScreen() {
 
   const update = <K extends keyof typeof form>(key: K, value: (typeof form)[K]) => {
     setForm((prev) => ({ ...prev, [key]: value }));
+    setError(null);
+  };
+
+  const setUnitsPerBoxSynced = (t: string) => {
+    const v =
+      t === '' ? ('' as const) : Number.parseInt(t.replace(/[^0-9]/g, ''), 10) || ('' as const);
+    setForm((prev) => ({ ...prev, units_per_box: v, units_per_pack: v }));
     setError(null);
   };
 
@@ -224,16 +229,15 @@ export default function ProdutoCriarScreen() {
         : Number(form.units_per_pack);
     const unitsPerBox =
       form.units_per_box === '' || form.units_per_box == null ? null : Number(form.units_per_box);
-    const boxPrice =
-      form.box_selling_price === ''
-        ? null
-        : Number.parseFloat(String(form.box_selling_price).replace(',', '.'));
-    const unitPrice =
+    let unitPrice =
       form.unit_selling_price === ''
         ? null
         : Number.parseFloat(String(form.unit_selling_price).replace(',', '.'));
+    if (form.can_sell_by_unit && (unitPrice == null || Number.isNaN(unitPrice)) && packUnitsForRule >= 1) {
+      unitPrice = sellingPrice / packUnitsForRule;
+    }
 
-    // Send a conservative payload: required fields always, optional fields only when provided.
+    // Venda por caixa: sempre activa; preço da caixa = selling_price (sem campo duplicado no formulário).
     const payload: Record<string, unknown> = {
       sku,
       name,
@@ -241,8 +245,10 @@ export default function ProdutoCriarScreen() {
       selling_price: String(sellingPrice),
       minimum_stock: Number(form.minimum_stock) || 0,
       stock_quantity: 0,
-      can_sell_by_box: !!form.can_sell_by_box,
+      can_sell_by_box: true,
       can_sell_by_unit: !!form.can_sell_by_unit,
+      box_selling_price: String(sellingPrice),
+      sale_price_box: String(sellingPrice),
       barcode: barcode || '',
       brand: form.brand?.trim() || '',
       cost_price:
@@ -255,13 +261,11 @@ export default function ProdutoCriarScreen() {
       expiry_date: form.expiry_date?.trim() || '',
       location: form.location?.trim() || '',
     };
-    if (form.can_sell_by_box) payload.can_sell_by_box = true;
     if (form.can_sell_by_unit) {
       payload.can_sell_by_unit = true;
       if (unitsPerPack != null && unitsPerPack >= 1) payload.units_per_pack = unitsPerPack;
       if (unitsPerBox != null && unitsPerBox >= 1) payload.units_per_box = unitsPerBox;
     }
-    if (boxPrice != null && !Number.isNaN(boxPrice)) payload.box_selling_price = String(boxPrice);
     if (unitPrice != null && !Number.isNaN(unitPrice)) payload.unit_selling_price = String(unitPrice);
     const fallbackPayload: Record<string, unknown> = {
       sku,
@@ -270,8 +274,10 @@ export default function ProdutoCriarScreen() {
       selling_price: String(sellingPrice),
       minimum_stock: Number(form.minimum_stock) || 0,
       stock_quantity: 0,
-      can_sell_by_box: !!form.can_sell_by_box,
+      can_sell_by_box: true,
       can_sell_by_unit: !!form.can_sell_by_unit,
+      box_selling_price: String(sellingPrice),
+      sale_price_box: String(sellingPrice),
       barcode: barcode || '',
       brand: form.brand?.trim() || '',
       cost_price:
@@ -672,20 +678,13 @@ export default function ProdutoCriarScreen() {
             </View>
           </View>
 
-          {/* Venda por caixa / unidade (single product, multiple sale modes) */}
+          {/* Venda por unidade (opcional); preço da caixa = Preço de venda acima */}
           <View style={styles.section}>
-            <Text style={styles.sectionTitle}>Venda por caixa / unidade</Text>
+            <Text style={styles.sectionTitle}>Venda por unidade (opcional)</Text>
             <Text style={styles.hint}>
-              Um único produto pode ser vendido por caixa e/ou por unidade (ex.: caixa de 10
-              comprimidos).
+              O preço da caixa é o <Text style={{ fontWeight: '700' }}>Preço de venda (Kz)</Text> acima. A
+              venda por caixa fica sempre activa no POS; aqui só defines se também vendes por unidade.
             </Text>
-            <View style={styles.toggleRow}>
-              <Text style={styles.label}>Pode vender por caixa</Text>
-              <Switch
-                value={form.can_sell_by_box}
-                onValueChange={(v) => update('can_sell_by_box', v)}
-              />
-            </View>
             <View style={styles.toggleRow}>
               <Text style={styles.label}>Pode vender por unidade</Text>
               <Switch
@@ -694,108 +693,61 @@ export default function ProdutoCriarScreen() {
               />
             </View>
 
-            {(form.can_sell_by_box || form.can_sell_by_unit) && (
-              <>
-                <View style={styles.row}>
-                  <View style={[styles.field, { flex: 1 }]}>
-                    <Text style={styles.label}>Nome da caixa</Text>
-                    <TextInput
-                      style={styles.input}
-                      value={form.pack_name}
-                      onChangeText={(t) => update('pack_name', t)}
-                      placeholder="Caixa"
-                      placeholderTextColor="#6b7280"
-                    />
-                  </View>
-                  <View style={[styles.field, { flex: 1 }]}>
-                    <Text style={styles.label}>Nome da unidade</Text>
-                    <TextInput
-                      style={styles.input}
-                      value={form.unit_name}
-                      onChangeText={(t) => update('unit_name', t)}
-                      placeholder="Lâmina"
-                      placeholderTextColor="#6b7280"
-                    />
-                  </View>
-                </View>
+            <View style={styles.row}>
+              <View style={[styles.field, { flex: 1 }]}>
+                <Text style={styles.label}>Nome da caixa</Text>
+                <TextInput
+                  style={styles.input}
+                  value={form.pack_name}
+                  onChangeText={(t) => update('pack_name', t)}
+                  placeholder="Caixa"
+                  placeholderTextColor="#6b7280"
+                />
+              </View>
+              <View style={[styles.field, { flex: 1 }]}>
+                <Text style={styles.label}>Nome da unidade</Text>
+                <TextInput
+                  style={styles.input}
+                  value={form.unit_name}
+                  onChangeText={(t) => update('unit_name', t)}
+                  placeholder="Unidade"
+                  placeholderTextColor="#6b7280"
+                />
+              </View>
+            </View>
 
-                {form.can_sell_by_unit && (
-                  <View style={styles.row}>
-                    <View style={[styles.field, { flex: 1 }]}>
-                      <Text style={styles.label}>Unid. por pack *</Text>
-                      <TextInput
-                        style={styles.input}
-                        keyboardType="number-pad"
-                        value={form.units_per_pack === '' ? '' : String(form.units_per_pack)}
-                        onChangeText={(t) =>
-                          update(
-                            'units_per_pack',
-                            t === '' ? '' : Number.parseInt(t.replace(/[^0-9]/g, ''), 10) || '',
-                          )
-                        }
-                        placeholder="Ex.: 10"
-                        placeholderTextColor="#6b7280"
-                      />
-                    </View>
-                    <View style={[styles.field, { flex: 1 }]}>
-                      <Text style={styles.label}>Unid. por caixa</Text>
-                      <TextInput
-                        style={styles.input}
-                        keyboardType="number-pad"
-                        value={form.units_per_box === '' ? '' : String(form.units_per_box)}
-                        onChangeText={(t) =>
-                          update(
-                            'units_per_box',
-                            t === '' ? '' : Number.parseInt(t.replace(/[^0-9]/g, ''), 10) || '',
-                          )
-                        }
-                        placeholder="Opcional"
-                        placeholderTextColor="#6b7280"
-                      />
-                    </View>
-                  </View>
-                )}
+            <View style={styles.field}>
+              <Text style={styles.label}>Unidades por caixa</Text>
+              <TextInput
+                style={styles.input}
+                keyboardType="number-pad"
+                value={
+                  form.units_per_box !== '' && form.units_per_box != null
+                    ? String(form.units_per_box)
+                    : form.units_per_pack !== '' && form.units_per_pack != null
+                      ? String(form.units_per_pack)
+                      : ''
+                }
+                onChangeText={setUnitsPerBoxSynced}
+                placeholder={form.can_sell_by_unit ? 'Obrigatório se vendes por unidade' : 'ex.: 100'}
+                placeholderTextColor="#6b7280"
+              />
+              <Text style={styles.hint}>Sincroniza com a API em units_per_box e units_per_pack.</Text>
+            </View>
 
-                <View style={styles.row}>
-                  <View style={[styles.field, { flex: 1 }]}>
-                    <Text style={styles.label}>Preço caixa (Kz)</Text>
-                    <TextInput
-                      style={styles.input}
-                      keyboardType="decimal-pad"
-                      value={form.box_selling_price}
-                      onChangeText={(t) => {
-                        update('box_selling_price', t);
-                        if (form.can_sell_by_unit) {
-                          const box = Number.parseFloat(t.replace(',', '.'));
-                          const up =
-                            Number(form.units_per_pack) >= 1
-                              ? Number(form.units_per_pack)
-                              : Number(form.units_per_box) >= 1
-                                ? Number(form.units_per_box)
-                                : 0;
-                          if (!Number.isNaN(box) && up > 0) {
-                            update('unit_selling_price', (box / up).toFixed(2));
-                          }
-                        }
-                      }}
-                      placeholder="5000"
-                      placeholderTextColor="#6b7280"
-                    />
-                  </View>
-                  <View style={[styles.field, { flex: 1 }]}>
-                    <Text style={styles.label}>Preço unidade (Kz)</Text>
-                    <TextInput
-                      style={styles.input}
-                      keyboardType="decimal-pad"
-                      value={form.unit_selling_price}
-                      onChangeText={(t) => update('unit_selling_price', t)}
-                      placeholder="Auto a partir da caixa"
-                      placeholderTextColor="#6b7280"
-                    />
-                  </View>
-                </View>
-              </>
-            )}
+            {form.can_sell_by_unit ? (
+              <View style={styles.field}>
+                <Text style={styles.label}>Preço unidade (Kz)</Text>
+                <TextInput
+                  style={styles.input}
+                  keyboardType="decimal-pad"
+                  value={form.unit_selling_price}
+                  onChangeText={(t) => update('unit_selling_price', t)}
+                  placeholder="Vazio = preço de venda ÷ unidades por caixa"
+                  placeholderTextColor="#6b7280"
+                />
+              </View>
+            ) : null}
           </View>
 
           {/* Validade / localização */}
