@@ -47,20 +47,39 @@ function cartLineSellHint(displayName: string, sell_as: CartItem['sell_as'], pro
   if (sell_as === 'unit') {
     const u = (product.unit_name || '').trim();
     if (u && u.toLowerCase() !== dn) return u;
-    return 'Por unidade';
+    return 'Por lâmina';
   }
   return '';
 }
 
 /** Same truthiness as `isPackProduct` (pack / lâmina no modal); `units_per_box` counts like web. */
 function isPackProductForSellModal(p: Product): boolean {
-  return Boolean(
-    (p.can_sell_by_box || p.can_sell_by_unit) && Number(p.units_per_pack ?? p.units_per_box ?? 0) > 0,
-  );
+  return Boolean((p.can_sell_by_box && getUnitsPerBox(p) > 0) || (p.can_sell_by_unit && getUnitsPerBlister(p) > 0));
+}
+
+function getUnitsPerBox(p: Product): number {
+  const raw = p.units_per_box ?? 0;
+  return Math.max(0, Math.floor(Number(raw) || 0));
+}
+
+function getUnitsPerBlister(p: Product): number {
+  const raw = p.units_per_blister ?? p.units_per_pack ?? 0;
+  return Math.max(0, Math.floor(Number(raw) || 0));
+}
+
+function getBlisterPriceAmount(p: Product): number {
+  const rawBlister = p.sale_price_blister ?? p.price_unit ?? p.unit_selling_price;
+  if (rawBlister != null && String(rawBlister).trim() !== '') {
+    const n = Number(rawBlister);
+    if (Number.isFinite(n)) return n;
+  }
+  const units = getUnitsPerBlister(p);
+  const box = getDisplayBoxPriceAmount(p);
+  return units > 0 ? box / units : Number(p.selling_price ?? 0);
 }
 
 function packUnitsPerBox(p: Product): number {
-  const raw = p.units_per_pack ?? p.units_per_box ?? 0;
+  const raw = p.units_per_box ?? p.units_per_pack ?? 0;
   return Math.max(1, Math.floor(Number(raw) || 1));
 }
 
@@ -78,7 +97,8 @@ function computePosSellModalStock(p: Product): {
 } {
   const total = Math.max(0, Math.floor(Number(p.stock_quantity) || 0));
   const pack = isPackProductForSellModal(p);
-  const upp = packUnitsPerBox(p);
+  const unitsPerBox = getUnitsPerBox(p);
+  const unitsPerBlister = getUnitsPerBlister(p);
 
   let boxes = 0;
   let laminae = 0;
@@ -87,8 +107,10 @@ function computePosSellModalStock(p: Product): {
       boxes = Math.max(0, Math.floor(p.stock_display_pack.full_boxes));
       laminae = Math.max(0, Math.floor(p.stock_display_pack.loose_units));
     } else {
-      boxes = Math.floor(total / upp);
-      laminae = total % upp;
+      const boxDivisor = Math.max(1, unitsPerBox || packUnitsPerBox(p));
+      const blisterDivisor = Math.max(1, unitsPerBlister || boxDivisor);
+      boxes = Math.floor(total / boxDivisor);
+      laminae = Math.floor((total % boxDivisor) / blisterDivisor);
     }
   }
 
@@ -99,8 +121,10 @@ function computePosSellModalStock(p: Product): {
   const minStock = Math.max(0, Math.floor(Number(p.minimum_stock) || 0));
   const isLowStock = total > 0 && minStock > 0 && total <= minStock;
 
-  const boxButtonDisabled = isOutOfStock || (pack && (!p.can_sell_by_box || boxes < 1));
-  const unitButtonDisabled = isOutOfStock || (pack && !p.can_sell_by_unit);
+  const boxButtonDisabled = isOutOfStock || (pack && (!p.can_sell_by_box || !unitsPerBox || boxes < 1));
+  const unitButtonDisabled =
+    isOutOfStock ||
+    (pack && (!p.can_sell_by_unit || !unitsPerBlister || getBlisterPriceAmount(p) <= 0));
 
   return {
     total,
@@ -143,14 +167,7 @@ function getDisplayBoxPriceAmount(p: Product): number {
 }
 
 function getDisplayUnitPriceAmount(p: Product): number {
-  const rawUnit = p.price_unit ?? p.unit_selling_price;
-  if (rawUnit != null && String(rawUnit).trim() !== '') {
-    const n = Number(rawUnit);
-    if (Number.isFinite(n)) return n;
-  }
-  const upp = p.units_per_pack ?? p.units_per_box ?? 0;
-  const box = getDisplayBoxPriceAmount(p);
-  return upp > 0 ? box / upp : Number(p.selling_price ?? 0);
+  return getBlisterPriceAmount(p);
 }
 
 /** react-native-web: flex + minWidth:0 on <Text> table headers collapses width and stacks letters vertically; use Views as cells. */
@@ -442,14 +459,18 @@ export default function VendasScreen() {
   const cartListNeedsScroll = cart.length > CART_VISIBLE_WITHOUT_SCROLL;
 
   const isPackProduct = (p: Product) =>
-    (p.can_sell_by_box || p.can_sell_by_unit) && Number(p.units_per_pack ?? p.units_per_box ?? 0) > 0;
+    (p.can_sell_by_box && getUnitsPerBox(p) > 0) || (p.can_sell_by_unit && getUnitsPerBlister(p) > 0);
 
   const getBoxPrice = (p: Product) => getDisplayBoxPriceAmount(p);
 
   const getUnitPrice = (p: Product) => getDisplayUnitPriceAmount(p);
 
   const baseUnitsRequired = (item: CartItem) =>
-    item.sell_as === 'box' ? item.quantity * packUnitsPerBox(item.product) : item.quantity;
+    item.sell_as === 'box'
+      ? item.quantity * Math.max(1, getUnitsPerBox(item.product))
+      : item.sell_as === 'unit'
+        ? item.quantity * Math.max(1, getUnitsPerBlister(item.product))
+        : item.quantity;
 
   const lineUnitPrice = useCallback((item: CartItem) => {
     if (item.sell_as === 'box') {
@@ -479,9 +500,22 @@ export default function VendasScreen() {
     const sellAs = isPackProduct(product)
       ? (options?.sellAs ?? (mode === 'manual' ? sellAsChoice : undefined))
       : undefined;
-    const required = sellAs === 'box' ? qty * packUnitsPerBox(product) : qty;
+    const required =
+      sellAs === 'box'
+        ? qty * Math.max(1, getUnitsPerBox(product))
+        : sellAs === 'unit'
+          ? qty * Math.max(1, getUnitsPerBlister(product))
+          : qty;
+    if (sellAs === 'unit' && (!product.can_sell_by_unit || getUnitsPerBlister(product) <= 0 || getBlisterPriceAmount(product) <= 0)) {
+      setError('Produto sem configuração válida para venda por lâmina.');
+      return;
+    }
     if (required > product.stock_quantity) {
-      setError(`Stock insuficiente. Disponível: ${product.stock_quantity} unidades de base.`);
+      setError(
+        sellAs === 'unit'
+          ? 'Stock insuficiente para vender esta quantidade de lâminas.'
+          : `Stock insuficiente. Disponível: ${product.stock_quantity} unidades de base.`,
+      );
       return;
     }
     setError(null);
@@ -490,9 +524,18 @@ export default function VendasScreen() {
       if (idx >= 0) {
         const next = [...prev];
         const newQty = next[idx].quantity + qty;
-        const need = sellAs === 'box' ? newQty * packUnitsPerBox(product) : newQty;
+        const need =
+          sellAs === 'box'
+            ? newQty * Math.max(1, getUnitsPerBox(product))
+            : sellAs === 'unit'
+              ? newQty * Math.max(1, getUnitsPerBlister(product))
+              : newQty;
         if (need > product.stock_quantity) {
-          setError(`Stock insuficiente. Máximo: ${product.stock_quantity} unidades de base.`);
+          setError(
+            sellAs === 'unit'
+              ? 'Stock insuficiente para vender esta quantidade de lâminas.'
+              : `Stock insuficiente. Máximo: ${product.stock_quantity} unidades de base.`,
+          );
           return prev;
         }
         next[idx] = { ...next[idx], quantity: newQty };
@@ -1050,7 +1093,7 @@ export default function VendasScreen() {
                             Preço caixa: {formatCurrency(sellModePrices.box ?? 0)}
                           </Text>
                           <Text style={styles.sellModePriceText}>
-                            Preço unidade: {formatCurrency(sellModePrices.unit ?? 0)}
+                            Preço lâmina: {formatCurrency(sellModePrices.unit ?? 0)}
                           </Text>
                         </>
                       )}
@@ -1202,7 +1245,7 @@ export default function VendasScreen() {
                             {Math.max(0, Math.floor(Number(selectedProduct.stock_quantity) || 0))}
                           </Text>
                           <Text style={styles.manualProductMeta}>
-                            Preço caixa: {formatCurrency(getDisplayBoxPriceAmount(selectedProduct))} · Preço unidade:{' '}
+                            Preço caixa: {formatCurrency(getDisplayBoxPriceAmount(selectedProduct))} · Preço lâmina:{' '}
                             {formatCurrency(getDisplayUnitPriceAmount(selectedProduct))}
                           </Text>
 
@@ -1229,7 +1272,7 @@ export default function VendasScreen() {
                                   ]}
                                   onPress={() => setSellAsChoice('unit')}>
                                   <Text style={[styles.chipText, sellAsChoice === 'unit' && styles.chipTextActive]}>
-                                    {selectedProduct.unit_name || 'Unidade'}
+                                    {selectedProduct.unit_name || 'Lâmina'}
                                   </Text>
                                 </Pressable>
                               </View>
@@ -1423,7 +1466,7 @@ export default function VendasScreen() {
                           {Math.max(0, Math.floor(Number(selectedProduct.stock_quantity) || 0))}
                         </Text>
                         <Text style={styles.manualProductMeta}>
-                          Preço caixa: {formatCurrency(getDisplayBoxPriceAmount(selectedProduct))} · Preço unidade:{' '}
+                          Preço caixa: {formatCurrency(getDisplayBoxPriceAmount(selectedProduct))} · Preço lâmina:{' '}
                           {formatCurrency(getDisplayUnitPriceAmount(selectedProduct))}
                         </Text>
 
@@ -1455,7 +1498,7 @@ export default function VendasScreen() {
                                     styles.chipText,
                                     sellAsChoice === 'unit' && styles.chipTextActive,
                                   ]}>
-                                  {selectedProduct.unit_name || 'Unidade'}
+                                  {selectedProduct.unit_name || 'Lâmina'}
                                 </Text>
                               </Pressable>
                             </View>
@@ -1685,7 +1728,7 @@ export default function VendasScreen() {
                           {Math.max(0, Math.floor(Number(selectedProduct.stock_quantity) || 0))}
                         </Text>
                         <Text style={styles.manualProductMeta}>
-                          Preço caixa: {formatCurrency(getDisplayBoxPriceAmount(selectedProduct))} · Preço unidade:{' '}
+                          Preço caixa: {formatCurrency(getDisplayBoxPriceAmount(selectedProduct))} · Preço lâmina:{' '}
                           {formatCurrency(getDisplayUnitPriceAmount(selectedProduct))}
                         </Text>
 
@@ -1712,7 +1755,7 @@ export default function VendasScreen() {
                                 ]}
                                 onPress={() => setSellAsChoice('unit')}>
                                 <Text style={[styles.chipText, sellAsChoice === 'unit' && styles.chipTextActive]}>
-                                  {selectedProduct.unit_name || 'Unidade'}
+                                  {selectedProduct.unit_name || 'Lâmina'}
                                 </Text>
                               </Pressable>
                             </View>
