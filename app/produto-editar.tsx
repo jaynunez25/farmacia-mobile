@@ -34,7 +34,6 @@ export default function ProdutoEditarScreen() {
   }, [user, router]);
 
   const [product, setProduct] = useState<EditableProduct | null>(null);
-  const [originalStockQuantity, setOriginalStockQuantity] = useState(0);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -52,8 +51,30 @@ export default function ProdutoEditarScreen() {
       try {
         const data = await api.products.get(Number(id));
         if (!mounted) return;
+        const total = Math.max(0, Number.parseInt(String(data.stock_quantity ?? 0), 10) || 0);
+        const hasSplit =
+          data.shelf_stock_quantity != null || data.warehouse_stock_quantity != null;
+        let shelf = Math.max(
+          0,
+          data.shelf_stock_quantity != null
+            ? Number.parseInt(String(data.shelf_stock_quantity), 10) || 0
+            : total,
+        );
+        let warehouse = Math.max(
+          0,
+          data.warehouse_stock_quantity != null
+            ? Number.parseInt(String(data.warehouse_stock_quantity), 10) || 0
+            : 0,
+        );
+        if (!hasSplit) {
+          shelf = total;
+          warehouse = 0;
+        }
         const normalized: EditableProduct = {
           ...data,
+          shelf_stock_quantity: shelf,
+          warehouse_stock_quantity: warehouse,
+          stock_quantity: total,
           box_selling_price:
             data.box_selling_price != null
               ? String(data.box_selling_price)
@@ -68,7 +89,6 @@ export default function ProdutoEditarScreen() {
                 : null,
         };
         setProduct(normalized);
-        setOriginalStockQuantity(Math.max(0, Number.parseInt(String(normalized.stock_quantity ?? 0), 10) || 0));
       } catch (err) {
         if (!mounted) return;
         setError(getErrorMessage(err));
@@ -107,12 +127,20 @@ export default function ProdutoEditarScreen() {
       return;
     }
 
-    const stock = Number.parseInt(String(product.stock_quantity ?? 0), 10);
+    const shelf = Number.parseInt(String(product.shelf_stock_quantity ?? 0), 10);
+    const warehouse = Number.parseInt(String(product.warehouse_stock_quantity ?? 0), 10);
     const minStock = Number.parseInt(String(product.minimum_stock ?? 0), 10);
-    if (Number.isNaN(stock) || stock < 0 || Number.isNaN(minStock) || minStock < 0) {
+    if (
+      Number.isNaN(shelf) ||
+      shelf < 0 ||
+      Number.isNaN(warehouse) ||
+      warehouse < 0 ||
+      Number.isNaN(minStock) ||
+      minStock < 0
+    ) {
       Alert.alert(
         'Valores inválidos',
-        'Stock na prateleira e stock no storage devem ser números maiores ou iguais a 0.',
+        'Stock na prateleira, no storage e stock mínimo devem ser números ≥ 0.',
       );
       return;
     }
@@ -173,7 +201,6 @@ export default function ProdutoEditarScreen() {
         unitPriceStr = (sellingNum / packU).toFixed(2);
       }
 
-      // Stock actual is handled through stock movement adjustment below.
       const payload: Partial<Product> = {
         name: String(product.name ?? '').trim(),
         category: toNullableTrimmed(product.category),
@@ -193,6 +220,8 @@ export default function ProdutoEditarScreen() {
         box_selling_price: String(sellingNum),
         sale_price_box: String(sellingNum),
         unit_selling_price: unitPriceStr,
+        shelf_stock_quantity: shelf,
+        warehouse_stock_quantity: warehouse,
         minimum_stock: minStock,
       };
 
@@ -201,16 +230,6 @@ export default function ProdutoEditarScreen() {
         payload,
       });
       await api.products.update(Number(id), payload);
-      const stockDelta = stock - originalStockQuantity;
-      if (stockDelta !== 0) {
-        await api.stockMovements.adjustStock({
-          product_id: Number(id),
-          quantity: stockDelta,
-          reason: 'Ajuste de stock via edição de produto',
-          performed_by: user?.id,
-          admin_override: stockDelta < 0,
-        });
-      }
 
       Alert.alert('Produto actualizado', 'As alterações foram guardadas.', [
         {
@@ -343,19 +362,19 @@ export default function ProdutoEditarScreen() {
             <View style={styles.section}>
               <Text style={styles.sectionTitle}>Stock</Text>
               <Text style={styles.stockHint}>
-                À frente na loja (prateleira) vs referência para alertas. Ao guardar, alterações ao stock na
-                prateleira são ajustadas por movimento para manter o histórico.
+                Dois saldos: prateleira (à frente) e armazém. Nas vendas retira-se primeiro da prateleira. O
+                total na base de dados é a soma dos dois.
               </Text>
               <View style={styles.row}>
                 <View style={[styles.field, { flex: 1 }]}>
                   <Text style={styles.label}>Stock prateleira</Text>
                   <TextInput
                     style={styles.input}
-                    value={String(product.stock_quantity)}
+                    value={String(product.shelf_stock_quantity ?? 0)}
                     keyboardType="number-pad"
                     onChangeText={(t) =>
                       update(
-                        'stock_quantity',
+                        'shelf_stock_quantity',
                         Number.parseInt(t.replace(/[^0-9]/g, ''), 10) || 0,
                       )
                     }
@@ -365,17 +384,35 @@ export default function ProdutoEditarScreen() {
                   <Text style={styles.label}>Stock no storage</Text>
                   <TextInput
                     style={styles.input}
-                    value={String(product.minimum_stock)}
+                    value={String(product.warehouse_stock_quantity ?? 0)}
                     keyboardType="number-pad"
                     onChangeText={(t) =>
                       update(
-                        'minimum_stock',
+                        'warehouse_stock_quantity',
                         Number.parseInt(t.replace(/[^0-9]/g, ''), 10) || 0,
                       )
                     }
                   />
                 </View>
               </View>
+              <View style={styles.field}>
+                <Text style={styles.label}>Stock mínimo (alertas)</Text>
+                <TextInput
+                  style={styles.input}
+                  value={String(product.minimum_stock)}
+                  keyboardType="number-pad"
+                  onChangeText={(t) =>
+                    update(
+                      'minimum_stock',
+                      Number.parseInt(t.replace(/[^0-9]/g, ''), 10) || 0,
+                    )
+                  }
+                />
+              </View>
+              <Text style={styles.stockHint}>
+                Total: {(product.shelf_stock_quantity ?? 0) + (product.warehouse_stock_quantity ?? 0)} (API:{' '}
+                {product.stock_quantity})
+              </Text>
             </View>
 
             {/* Venda por unidade (opcional); preço da caixa = preço de venda */}

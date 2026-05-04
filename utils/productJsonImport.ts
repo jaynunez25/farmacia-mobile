@@ -41,6 +41,8 @@ const IMPORT_JSON_KEYS = new Set<string>([
   'last_price_update',
   'needs_review',
   'stock_quantity',
+  'shelf_stock_quantity',
+  'warehouse_stock_quantity',
   'minimum_stock',
   'batch_number',
   'expiry_date',
@@ -77,6 +79,8 @@ export function baseProductCreateDefaults(): ProductCreateBody {
     box_selling_price: null,
     unit_selling_price: null,
     stock_quantity: 0,
+    shelf_stock_quantity: 0,
+    warehouse_stock_quantity: 0,
     minimum_stock: 0,
     batch_number: null,
     expiry_date: null,
@@ -152,6 +156,8 @@ export function mergeJsonImportRow(row: Record<string, unknown>): ProductCreateB
         o[key] = toDecimalStringOrNull(v);
         break;
       case 'stock_quantity':
+      case 'shelf_stock_quantity':
+      case 'warehouse_stock_quantity':
         o[key] = toNonNegativeInt(v, 0);
         break;
       case 'minimum_stock':

@@ -42,6 +42,8 @@ export interface Product {
   box_selling_price?: string | null;
   unit_selling_price?: string | null;
   stock_quantity: number;
+  shelf_stock_quantity?: number;
+  warehouse_stock_quantity?: number;
   minimum_stock: number;
   /** Stock na loja (exposição); fallback UI: initial_front_count se a API não enviar. */
   front_stock_quantity?: number | null;

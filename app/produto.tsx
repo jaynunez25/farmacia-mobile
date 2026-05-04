@@ -106,8 +106,11 @@ export default function ProdutoDetailScreen() {
             <Text style={styles.title}>{product.name}</Text>
             <Text style={styles.meta}>SKU: {product.sku}</Text>
             {product.barcode && <Text style={styles.meta}>Código: {product.barcode}</Text>}
-            <Text style={styles.meta}>Stock prateleira: {product.stock_quantity}</Text>
-            <Text style={styles.meta}>Stock no storage: {product.minimum_stock}</Text>
+            <Text style={styles.meta}>
+              Prateleira: {product.shelf_stock_quantity ?? 0} · Storage:{' '}
+              {product.warehouse_stock_quantity ?? 0} · Total: {product.stock_quantity}
+            </Text>
+            <Text style={styles.meta}>Stock mínimo (alertas): {product.minimum_stock}</Text>
             {product.documentary_name ? (
               <Text style={styles.meta}>Nome documental: {product.documentary_name}</Text>
             ) : null}
