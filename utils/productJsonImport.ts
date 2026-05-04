@@ -1,5 +1,7 @@
 import type { Product } from '@/types';
 
+import { isLiquidPharmaceuticalForm } from '@/utils/liquidPharmaceuticalForm';
+
 /** POST /products body shape (no server-generated fields). */
 export type ProductCreateBody = Omit<
   Product,
@@ -196,5 +198,25 @@ export function mergeJsonImportRow(row: Record<string, unknown>): ProductCreateB
       }
     }
   }
-  return out;
+  if (!isLiquidPharmaceuticalForm(out.form)) return out;
+  const packName = (out.pack_name ?? '').toString().trim() || 'Frasco';
+  const upb =
+    out.units_per_box != null && !Number.isNaN(Number(out.units_per_box)) && Number(out.units_per_box) >= 1
+      ? out.units_per_box
+      : 1;
+  const upp =
+    out.units_per_pack != null && !Number.isNaN(Number(out.units_per_pack)) && Number(out.units_per_pack) >= 1
+      ? out.units_per_pack
+      : 1;
+  return {
+    ...out,
+    can_sell_by_unit: false,
+    units_per_blister: null,
+    unit_name: null,
+    unit_selling_price: null,
+    sale_price_blister: '0',
+    pack_name: packName,
+    units_per_box: upb,
+    units_per_pack: upp,
+  };
 }

@@ -19,6 +19,7 @@ import { useAuth } from '@/contexts/AuthContext';
 import type { Product } from '@/types';
 import { api } from '@/services/api';
 import { getErrorMessage } from '@/utils/errorMessage';
+import { isLiquidPharmaceuticalForm } from '@/utils/liquidPharmaceuticalForm';
 import { isAdminRole } from '@/utils/roles';
 
 type DuplicateReason = 'sku' | 'barcode' | 'similar';
@@ -42,6 +43,8 @@ const defaultForm = {
   name: '',
   category: '',
   brand: '',
+  /** Pharmaceutical form (e.g. Xarope) — used for liquid pack rules. */
+  form: '',
   selling_price: '0',
   cost_price: '',
   can_sell_by_unit: false,
@@ -198,7 +201,8 @@ export default function ProdutoCriarScreen() {
         : Number(form.units_per_box) >= 1
           ? Number(form.units_per_box)
           : 0;
-    if (form.can_sell_by_unit && packUnitsForRule < 1) {
+    const liquidForm = isLiquidPharmaceuticalForm(String(form.form ?? '').trim());
+    if (form.can_sell_by_unit && !liquidForm && packUnitsForRule < 1) {
       setError('Indica unidades por caixa (pack) ou unidades por caixa (caixa) ≥ 1 quando vendes por unidade.');
       return;
     }
@@ -235,9 +239,27 @@ export default function ProdutoCriarScreen() {
       form.unit_selling_price === ''
         ? null
         : Number.parseFloat(String(form.unit_selling_price).replace(',', '.'));
-    if (form.can_sell_by_unit && (unitPrice == null || Number.isNaN(unitPrice)) && packUnitsForRule >= 1) {
+    if (
+      form.can_sell_by_unit &&
+      !liquidForm &&
+      (unitPrice == null || Number.isNaN(unitPrice)) &&
+      packUnitsForRule >= 1
+    ) {
       unitPrice = sellingPrice / packUnitsForRule;
     }
+
+    const formTrim = String(form.form ?? '').trim();
+    const packNameOut = liquidForm ? (form.pack_name?.trim() || 'Frasco') : form.pack_name?.trim() || '';
+    const unitsOut =
+      liquidForm && (unitsPerPack == null || unitsPerPack < 1) && (unitsPerBox == null || unitsPerBox < 1)
+        ? 1
+        : unitsPerPack != null && unitsPerPack >= 1
+          ? unitsPerPack
+          : unitsPerBox != null && unitsPerBox >= 1
+            ? unitsPerBox
+            : liquidForm
+              ? 1
+              : null;
 
     // Venda por caixa: sempre activa; preço da caixa = selling_price (sem campo duplicado no formulário).
     const payload: Record<string, unknown> = {
@@ -250,7 +272,7 @@ export default function ProdutoCriarScreen() {
       shelf_stock_quantity: Number(form.shelf_stock_quantity) || 0,
       warehouse_stock_quantity: Number(form.warehouse_stock_quantity) || 0,
       can_sell_by_box: true,
-      can_sell_by_unit: !!form.can_sell_by_unit,
+      can_sell_by_unit: liquidForm ? false : !!form.can_sell_by_unit,
       box_selling_price: String(sellingPrice),
       sale_price_box: String(sellingPrice),
       barcode: barcode || '',
@@ -259,18 +281,24 @@ export default function ProdutoCriarScreen() {
         form.cost_price === ''
           ? '0'
           : String(Number.parseFloat(String(form.cost_price).replace(',', '.')) || 0),
-      pack_name: form.pack_name?.trim() || '',
-      unit_name: form.unit_name?.trim() || '',
+      pack_name: packNameOut,
+      unit_name: liquidForm ? null : form.unit_name?.trim() || '',
       batch_number: form.batch_number?.trim() || '',
       expiry_date: form.expiry_date?.trim() || '',
       location: form.location?.trim() || '',
     };
-    if (form.can_sell_by_unit) {
-      payload.can_sell_by_unit = true;
-      if (unitsPerPack != null && unitsPerPack >= 1) payload.units_per_pack = unitsPerPack;
-      if (unitsPerBox != null && unitsPerBox >= 1) payload.units_per_box = unitsPerBox;
+    if (formTrim) payload.form = formTrim;
+    if (liquidForm) {
+      payload.units_per_blister = null;
+      payload.unit_selling_price = null;
+      payload.sale_price_blister = '0';
     }
-    if (unitPrice != null && !Number.isNaN(unitPrice)) payload.unit_selling_price = String(unitPrice);
+    if (unitsOut != null && unitsOut >= 1 && (liquidForm || form.can_sell_by_unit)) {
+      payload.units_per_pack = unitsOut;
+      payload.units_per_box = unitsOut;
+    }
+    if (unitPrice != null && !Number.isNaN(unitPrice) && !liquidForm)
+      payload.unit_selling_price = String(unitPrice);
     const fallbackPayload: Record<string, unknown> = {
       sku,
       name,
@@ -281,7 +309,7 @@ export default function ProdutoCriarScreen() {
       shelf_stock_quantity: Number(form.shelf_stock_quantity) || 0,
       warehouse_stock_quantity: Number(form.warehouse_stock_quantity) || 0,
       can_sell_by_box: true,
-      can_sell_by_unit: !!form.can_sell_by_unit,
+      can_sell_by_unit: liquidForm ? false : !!form.can_sell_by_unit,
       box_selling_price: String(sellingPrice),
       sale_price_box: String(sellingPrice),
       barcode: barcode || '',
@@ -290,12 +318,22 @@ export default function ProdutoCriarScreen() {
         form.cost_price === ''
           ? '0'
           : String(Number.parseFloat(String(form.cost_price).replace(',', '.')) || 0),
-      pack_name: form.pack_name?.trim() || '',
-      unit_name: form.unit_name?.trim() || '',
+      pack_name: packNameOut,
+      unit_name: liquidForm ? null : form.unit_name?.trim() || '',
       batch_number: form.batch_number?.trim() || '',
       expiry_date: form.expiry_date?.trim() || '',
       location: form.location?.trim() || '',
     };
+    if (formTrim) fallbackPayload.form = formTrim;
+    if (liquidForm) {
+      fallbackPayload.units_per_blister = null;
+      fallbackPayload.unit_selling_price = null;
+      fallbackPayload.sale_price_blister = '0';
+    }
+    if (unitsOut != null && unitsOut >= 1 && (liquidForm || form.can_sell_by_unit)) {
+      fallbackPayload.units_per_pack = unitsOut;
+      fallbackPayload.units_per_box = unitsOut;
+    }
     const minimalPayload: Record<string, unknown> = {
       sku,
       name,
@@ -437,6 +475,8 @@ export default function ProdutoCriarScreen() {
       setSaving(false);
     }
   };
+
+  const liquidFormUi = isLiquidPharmaceuticalForm(String(form.form ?? '').trim());
 
   return (
     <SafeAreaView style={styles.safeArea} edges={['bottom']}>
@@ -622,6 +662,21 @@ export default function ProdutoCriarScreen() {
                 placeholderTextColor="#6b7280"
               />
             </View>
+            <View style={styles.field}>
+              <Text style={styles.label}>Forma farmacêutica (opcional)</Text>
+              <TextInput
+                style={styles.input}
+                value={form.form}
+                onChangeText={(t) => update('form', t)}
+                placeholder="ex.: Xarope, Comprimido"
+                placeholderTextColor="#6b7280"
+                autoCapitalize="sentences"
+              />
+              <Text style={styles.hint}>
+                Se indicar xarope, suspensão, solução oral, gotas ou frasco, o produto é tratado como líquido (sem
+                venda por unidade/blister).
+              </Text>
+            </View>
           </View>
 
           {/* Preços */}
@@ -691,10 +746,17 @@ export default function ProdutoCriarScreen() {
               O preço da caixa é o <Text style={{ fontWeight: '700' }}>Preço de venda (Kz)</Text> acima. A
               venda por caixa fica sempre activa no POS; aqui só defines se também vendes por unidade.
             </Text>
+            {liquidFormUi ? (
+              <Text style={styles.hint}>
+                Forma líquida detectada: venda por unidade não se aplica; ao gravar usamos 1 unidade por caixa e nome
+                de embalagem &quot;Frasco&quot; se deixares o nome da caixa vazio.
+              </Text>
+            ) : null}
             <View style={styles.toggleRow}>
               <Text style={styles.label}>Pode vender por unidade</Text>
               <Switch
-                value={form.can_sell_by_unit}
+                value={liquidFormUi ? false : form.can_sell_by_unit}
+                disabled={liquidFormUi}
                 onValueChange={(v) => update('can_sell_by_unit', v)}
               />
             </View>

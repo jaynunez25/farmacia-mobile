@@ -18,6 +18,7 @@ import { useAuth } from '@/contexts/AuthContext';
 import type { Product } from '@/types';
 import { api } from '@/services/api';
 import { getErrorMessage } from '@/utils/errorMessage';
+import { isLiquidPharmaceuticalForm } from '@/utils/liquidPharmaceuticalForm';
 import { isAdminRole } from '@/utils/roles';
 
 type EditableProduct = Product;
@@ -151,7 +152,9 @@ export default function ProdutoEditarScreen() {
         : product.units_per_box != null && Number(product.units_per_box) >= 1
           ? Number(product.units_per_box)
           : null;
-    if (product.can_sell_by_unit && (packUnits == null || packUnits < 1)) {
+    const pharmForm = String(product.form ?? '').trim();
+    const liquidForm = isLiquidPharmaceuticalForm(pharmForm);
+    if (product.can_sell_by_unit && !liquidForm && (packUnits == null || packUnits < 1)) {
       Alert.alert(
         'Configuração inválida',
         'Unidades por caixa é obrigatório quando a venda por unidade está activa.',
@@ -193,6 +196,7 @@ export default function ProdutoEditarScreen() {
             : null;
       if (
         product.can_sell_by_unit &&
+        !liquidForm &&
         unitPriceStr == null &&
         packU != null &&
         packU >= 1 &&
@@ -200,6 +204,16 @@ export default function ProdutoEditarScreen() {
       ) {
         unitPriceStr = (sellingNum / packU).toFixed(2);
       }
+
+      const packNameRaw = toNullableTrimmed(product.pack_name);
+      const liquidPackName = liquidForm ? packNameRaw || 'Frasco' : packNameRaw;
+      const unitsForPayloadResolved = liquidForm
+        ? unitsForPayload != null &&
+            !Number.isNaN(Number(unitsForPayload)) &&
+            Number(unitsForPayload) >= 1
+          ? unitsForPayload
+          : 1
+        : unitsForPayload;
 
       const payload: Partial<Product> = {
         name: String(product.name ?? '').trim(),
@@ -212,14 +226,16 @@ export default function ProdutoEditarScreen() {
         location: toNullableTrimmed(product.location),
         is_verified: Boolean(product.is_verified),
         can_sell_by_box: true,
-        can_sell_by_unit: Boolean(product.can_sell_by_unit),
-        pack_name: toNullableTrimmed(product.pack_name),
-        unit_name: toNullableTrimmed(product.unit_name),
-        units_per_pack: unitsForPayload,
-        units_per_box: unitsForPayload,
+        can_sell_by_unit: liquidForm ? false : Boolean(product.can_sell_by_unit),
+        pack_name: liquidPackName,
+        unit_name: liquidForm ? null : toNullableTrimmed(product.unit_name),
+        units_per_pack: unitsForPayloadResolved,
+        units_per_box: unitsForPayloadResolved,
         box_selling_price: String(sellingNum),
         sale_price_box: String(sellingNum),
-        unit_selling_price: unitPriceStr,
+        unit_selling_price: liquidForm ? null : unitPriceStr,
+        sale_price_blister: liquidForm ? '0' : undefined,
+        units_per_blister: liquidForm ? null : product.units_per_blister ?? undefined,
         shelf_stock_quantity: shelf,
         warehouse_stock_quantity: warehouse,
         minimum_stock: minStock,
