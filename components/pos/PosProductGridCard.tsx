@@ -17,9 +17,11 @@ function productBadge(p: Product) {
   return null;
 }
 
-/** Image band height: ~120px tablet; phone grid uses same visual weight as web POS. */
+/** Image band height: ~120px tablet; slightly shorter on phone grid cells. */
 const IMAGE_BAND_TABLET = 120;
-const IMAGE_BAND_COMPACT = 112;
+const IMAGE_BAND_COMPACT = 100;
+const IMAGE_MAX_W = 150;
+const IMAGE_MAX_H = 110;
 
 export const PosProductGridCard = memo(function PosProductGridCard({
   product,
@@ -68,7 +70,7 @@ export const PosProductGridCard = memo(function PosProductGridCard({
               key={uri}
               source={{ uri }}
               style={styles.mediaImage}
-              resizeMode="cover"
+              resizeMode="contain"
               onError={handleImgError}
             />
           ) : (
@@ -140,13 +142,18 @@ const styles = StyleSheet.create({
     position: 'relative',
   },
   mediaInner: {
-    ...StyleSheet.absoluteFillObject,
-    overflow: 'hidden',
-  },
-  /** Fill media band; `cover` crops edges so tall/narrow pack shots match syringe-style cards. */
-  mediaImage: {
+    flex: 1,
     width: '100%',
-    height: '100%',
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingHorizontal: 4,
+    paddingVertical: 4,
+  },
+  mediaImage: {
+    width: IMAGE_MAX_W,
+    height: IMAGE_MAX_H,
+    maxWidth: '100%',
+    maxHeight: '100%',
   },
   mediaPlaceholder: {
     width: 56,
