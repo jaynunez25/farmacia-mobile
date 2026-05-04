@@ -17,11 +17,11 @@ function productBadge(p: Product) {
   return null;
 }
 
-/** Image band height: ~120px tablet; slightly shorter on phone grid cells. */
-const IMAGE_BAND_TABLET = 120;
-const IMAGE_BAND_COMPACT = 100;
-const IMAGE_MAX_W = 150;
-const IMAGE_MAX_H = 110;
+/** Larger POS image area for faster product recognition. */
+const IMAGE_BAND_TABLET = 150;
+const IMAGE_BAND_COMPACT = 150;
+const IMAGE_MAX_W = 190;
+const IMAGE_MAX_H = 140;
 
 export const PosProductGridCard = memo(function PosProductGridCard({
   product,
