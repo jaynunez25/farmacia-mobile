@@ -112,11 +112,31 @@ export default function ProdutoEditarScreen() {
   const setUnitsPerBoxSynced = (t: string) => {
     const trimmed = t.trim();
     if (trimmed === '') {
-      setProduct((prev) => (prev ? { ...prev, units_per_pack: null, units_per_box: null } : prev));
+      setProduct((prev) => (prev ? { ...prev, units_per_box: null } : prev));
       return;
     }
     const n = Math.max(1, Number.parseInt(trimmed.replace(/[^0-9]/g, ''), 10) || 1);
-    setProduct((prev) => (prev ? { ...prev, units_per_pack: n, units_per_box: n } : prev));
+    setProduct((prev) => (prev ? { ...prev, units_per_box: n } : prev));
+  };
+
+  const setBlistersPerBox = (t: string) => {
+    const trimmed = t.trim();
+    if (trimmed === '') {
+      setProduct((prev) => (prev ? { ...prev, units_per_pack: null } : prev));
+      return;
+    }
+    const n = Math.max(1, Number.parseInt(trimmed.replace(/[^0-9]/g, ''), 10) || 1);
+    setProduct((prev) => (prev ? { ...prev, units_per_pack: n } : prev));
+  };
+
+  const setUnitsPerBlister = (t: string) => {
+    const trimmed = t.trim();
+    if (trimmed === '') {
+      setProduct((prev) => (prev ? { ...prev, units_per_blister: null } : prev));
+      return;
+    }
+    const n = Math.max(1, Number.parseInt(trimmed.replace(/[^0-9]/g, ''), 10) || 1);
+    setProduct((prev) => (prev ? { ...prev, units_per_blister: n } : prev));
   };
 
   const handleSave = async () => {
@@ -146,18 +166,27 @@ export default function ProdutoEditarScreen() {
       return;
     }
 
-    const packUnits =
+    const blistersPerBox =
       product.units_per_pack != null && Number(product.units_per_pack) >= 1
         ? Number(product.units_per_pack)
-        : product.units_per_box != null && Number(product.units_per_box) >= 1
-          ? Number(product.units_per_box)
-          : null;
+        : null;
+    const unitsPerBlisterRule =
+      product.units_per_blister != null && Number(product.units_per_blister) >= 1
+        ? Number(product.units_per_blister)
+        : null;
     const pharmForm = String(product.form ?? '').trim();
     const liquidForm = isLiquidPharmaceuticalForm(pharmForm);
-    if (product.can_sell_by_unit && !liquidForm && (packUnits == null || packUnits < 1)) {
+    if (product.can_sell_by_unit && !liquidForm && (blistersPerBox == null || blistersPerBox < 1)) {
       Alert.alert(
         'Configuração inválida',
-        'Unidades por caixa é obrigatório quando a venda por unidade está activa.',
+        'Número de lâminas por caixa é obrigatório quando a venda por lâmina está activa.',
+      );
+      return;
+    }
+    if (product.can_sell_by_unit && !liquidForm && (unitsPerBlisterRule == null || unitsPerBlisterRule < 1)) {
+      Alert.alert(
+        'Configuração inválida',
+        'Comprimidos por lâmina é obrigatório quando a venda por lâmina está activa.',
       );
       return;
     }
@@ -179,21 +208,20 @@ export default function ProdutoEditarScreen() {
         product.units_per_pack == null || String(product.units_per_pack).trim() === ''
           ? null
           : Math.max(1, Number.parseInt(String(product.units_per_pack), 10) || 1);
+      const unitsPerBlister =
+        product.units_per_blister == null || String(product.units_per_blister).trim() === ''
+          ? null
+          : Math.max(1, Number.parseInt(String(product.units_per_blister), 10) || 1);
       const unitsPerBoxSynced =
         product.units_per_box == null || String(product.units_per_box).trim() === ''
-          ? unitsPerPack
+          ? (unitsPerPack != null && unitsPerBlister != null ? unitsPerPack * unitsPerBlister : null)
           : Math.max(1, Number.parseInt(String(product.units_per_box), 10) || 1);
-      const unitsForPayload = unitsPerPack ?? unitsPerBoxSynced;
+      const unitsForPayload = unitsPerPack;
 
       const sellingNum =
         Number.parseFloat(String(product.selling_price ?? '0').replace(',', '.')) || 0;
       let unitPriceStr = toPrice(product.unit_selling_price);
-      const packU =
-        unitsForPayload != null && unitsForPayload >= 1
-          ? unitsForPayload
-          : packUnits != null && packUnits >= 1
-            ? packUnits
-            : null;
+      const packU = unitsForPayload != null && unitsForPayload >= 1 ? unitsForPayload : blistersPerBox;
       if (
         product.can_sell_by_unit &&
         !liquidForm &&
@@ -230,12 +258,12 @@ export default function ProdutoEditarScreen() {
         pack_name: liquidPackName,
         unit_name: liquidForm ? null : toNullableTrimmed(product.unit_name),
         units_per_pack: unitsForPayloadResolved,
-        units_per_box: unitsForPayloadResolved,
+        units_per_box: liquidForm ? 1 : unitsPerBoxSynced,
         box_selling_price: String(sellingNum),
         sale_price_box: String(sellingNum),
         unit_selling_price: liquidForm ? null : unitPriceStr,
-        sale_price_blister: liquidForm ? '0' : undefined,
-        units_per_blister: liquidForm ? null : product.units_per_blister ?? undefined,
+        sale_price_blister: liquidForm ? '0' : unitPriceStr ?? undefined,
+        units_per_blister: liquidForm ? null : unitsPerBlister ?? undefined,
         shelf_stock_quantity: shelf,
         warehouse_stock_quantity: warehouse,
         minimum_stock: minStock,
@@ -433,13 +461,13 @@ export default function ProdutoEditarScreen() {
 
             {/* Venda por unidade (opcional); preço da caixa = preço de venda */}
             <View style={styles.section}>
-              <Text style={styles.sectionTitle}>Venda por unidade (opcional)</Text>
+              <Text style={styles.sectionTitle}>Venda por lâmina (opcional)</Text>
               <Text style={styles.stockHint}>
                 O preço da caixa é o <Text style={{ fontWeight: '700', color: '#e5e7eb' }}>Preço de venda</Text> acima.
                 A venda por caixa fica sempre activa no POS.
               </Text>
               <View style={styles.toggleRow}>
-                <Text style={styles.label}>Pode vender por unidade</Text>
+                <Text style={styles.label}>Pode vender por lâmina</Text>
                 <Switch
                   value={!!product.can_sell_by_unit}
                   onValueChange={(v) => update('can_sell_by_unit', v)}
@@ -458,15 +486,47 @@ export default function ProdutoEditarScreen() {
                   />
                 </View>
                 <View style={[styles.field, { flex: 1 }]}>
-                  <Text style={styles.label}>Nome da unidade</Text>
+                  <Text style={styles.label}>Nome da lâmina</Text>
                   <TextInput
                     style={styles.input}
                     value={product.unit_name ?? ''}
                     onChangeText={(t) => update('unit_name', t || null)}
-                    placeholder="Unidade"
+                    placeholder="Lâmina"
                     placeholderTextColor="#6b7280"
                   />
                 </View>
+              </View>
+
+              <View style={styles.field}>
+                <Text style={styles.label}>Número de lâminas por caixa</Text>
+                <TextInput
+                  style={styles.input}
+                  keyboardType="number-pad"
+                  value={
+                    product.units_per_pack != null && Number(product.units_per_pack) >= 1
+                      ? String(product.units_per_pack)
+                      : ''
+                  }
+                  onChangeText={setBlistersPerBox}
+                  placeholder={product.can_sell_by_unit ? 'Obrigatório se vendes por lâmina' : 'ex.: 5'}
+                  placeholderTextColor="#6b7280"
+                />
+              </View>
+
+              <View style={styles.field}>
+                <Text style={styles.label}>Comprimidos por lâmina</Text>
+                <TextInput
+                  style={styles.input}
+                  keyboardType="number-pad"
+                  value={
+                    product.units_per_blister != null && Number(product.units_per_blister) >= 1
+                      ? String(product.units_per_blister)
+                      : ''
+                  }
+                  onChangeText={setUnitsPerBlister}
+                  placeholder={product.can_sell_by_unit ? 'Obrigatório se vendes por lâmina' : 'ex.: 10'}
+                  placeholderTextColor="#6b7280"
+                />
               </View>
 
               <View style={styles.field}>
@@ -477,20 +537,18 @@ export default function ProdutoEditarScreen() {
                   value={
                     product.units_per_box != null && Number(product.units_per_box) >= 1
                       ? String(product.units_per_box)
-                      : product.units_per_pack != null && Number(product.units_per_pack) >= 1
-                        ? String(product.units_per_pack)
-                        : ''
+                      : ''
                   }
                   onChangeText={setUnitsPerBoxSynced}
-                  placeholder={product.can_sell_by_unit ? 'Obrigatório se vendes por unidade' : 'ex.: 100'}
+                  placeholder={product.can_sell_by_unit ? 'Opcional (auto = lâminas x comprimidos)' : 'ex.: 50'}
                   placeholderTextColor="#6b7280"
                 />
-                <Text style={styles.stockHint}>Sincroniza units_per_box e units_per_pack na API.</Text>
+                <Text style={styles.stockHint}>Exemplo: 5x10 = 5 lâminas por caixa, 10 comprimidos por lâmina, 50 por caixa.</Text>
               </View>
 
               {product.can_sell_by_unit ? (
                 <View style={styles.field}>
-                  <Text style={styles.label}>Preço unidade (Kz)</Text>
+                  <Text style={styles.label}>Preço da lâmina (Kz)</Text>
                   <TextInput
                     style={styles.input}
                     keyboardType="decimal-pad"
@@ -499,7 +557,7 @@ export default function ProdutoEditarScreen() {
                       const value = (t === '' ? null : t) as any;
                       update('unit_selling_price', value);
                     }}
-                    placeholder="Vazio = preço de venda ÷ unidades por caixa"
+                    placeholder="Vazio = preço da caixa ÷ número de lâminas"
                     placeholderTextColor="#6b7280"
                   />
                 </View>
