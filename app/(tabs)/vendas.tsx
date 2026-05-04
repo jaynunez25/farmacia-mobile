@@ -578,8 +578,6 @@ export default function VendasScreen() {
 
   const hasInsufficientStock = cart.some(c => baseUnitsRequired(c) > c.product.stock_quantity);
 
-  const canConfirm = cart.length > 0 && !hasInsufficientStock && !confirming && hasOpenSession;
-
   const cashReceivedNumber = useMemo(() => {
     const digits = cashReceived.replace(/\D/g, '');
     if (!digits) return null;
@@ -587,10 +585,15 @@ export default function VendasScreen() {
     return Number.isNaN(v) ? null : v;
   }, [cashReceived]);
 
+  const cashReceivedForValidation = cashReceivedNumber ?? 0;
+  const cashInsufficient = paymentMode === 'simple' && paymentMethod === 'cash' && cashReceivedForValidation < total;
+
   const trocoNumber =
-    paymentMode === 'simple' && paymentMethod === 'cash' && cashReceivedNumber != null
-      ? cashReceivedNumber - total
+    paymentMode === 'simple' && paymentMethod === 'cash'
+      ? cashReceivedForValidation - total
       : null;
+
+  const canConfirm = cart.length > 0 && !hasInsufficientStock && !cashInsufficient && !confirming && hasOpenSession;
 
   useEffect(() => {
     if (paymentMode === 'split') {
@@ -683,6 +686,7 @@ export default function VendasScreen() {
           {trocoNumber != null ? formatCurrency(Math.max(0, trocoNumber)) : '—'}
         </Text>
       </View>
+      {cashInsufficient ? <Text style={styles.errorText}>Valor recebido insuficiente.</Text> : null}
     </>
   );
 
@@ -759,6 +763,10 @@ export default function VendasScreen() {
 
   const confirmSale = async () => {
     if (!canConfirm || !hasOpenSession) return;
+    if (paymentMode === 'simple' && paymentMethod === 'cash' && cashInsufficient) {
+      setError('Valor recebido insuficiente.');
+      return;
+    }
     if (paymentMode === 'split') {
       const sum = splitPayments.reduce((s, p) => s + (p.amount || 0), 0);
       if (Math.abs(sum - total) > 0.01) {
@@ -790,9 +798,7 @@ export default function VendasScreen() {
       } else {
         body.payment_method = paymentMethod || 'cash';
         if (paymentMethod === 'cash') {
-          if (cashReceivedNumber != null) {
-            body.cash_received = cashReceivedNumber;
-          }
+          body.cash_received = cashReceivedForValidation;
           if (trocoNumber != null) {
             body.cash_change = Math.max(0, trocoNumber);
           }
