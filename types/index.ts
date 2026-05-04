@@ -119,7 +119,7 @@ export interface SaleItem {
   quantity: number;
   unit_price: string;
   total: string;
-  sale_unit_type?: 'box' | 'unit' | null;
+  sale_unit_type?: 'box' | 'blister' | 'bottle' | 'ampoule' | 'unit' | null;
 }
 
 export interface Sale {

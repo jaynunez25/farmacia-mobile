@@ -551,7 +551,7 @@ export const api = {
         product_id: number;
         quantity: number;
         unit_price: string;
-        sell_as?: 'box' | 'unit';
+        sell_as?: 'box' | 'blister' | 'bottle' | 'ampoule';
       }[];
       user_id?: number;
       payment_method?: string;

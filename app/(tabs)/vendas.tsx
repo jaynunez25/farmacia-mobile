@@ -33,8 +33,10 @@ import { isLiquidPharmaceuticalForm } from '@/utils/liquidPharmaceuticalForm';
 type CartItem = {
   product: Product;
   quantity: number;
-  sell_as?: 'box' | 'unit';
+  sell_as?: 'box' | 'blister' | 'bottle' | 'ampoule';
 };
+
+type SaleOption = 'box' | 'blister' | 'bottle' | 'ampoule';
 
 /** Second line under product name: sell-mode hint only (price/qty live in their columns). Skips unit/pack labels that duplicate the product title. */
 function cartLineSellHint(displayName: string, sell_as: CartItem['sell_as'], product: Product): string {
@@ -44,11 +46,13 @@ function cartLineSellHint(displayName: string, sell_as: CartItem['sell_as'], pro
     if (p && p.toLowerCase() !== dn) return p;
     return 'Por caixa';
   }
-  if (sell_as === 'unit') {
+  if (sell_as === 'blister') {
     const u = (product.unit_name || '').trim();
     if (u && u.toLowerCase() !== dn) return u;
     return 'Por lâmina';
   }
+  if (sell_as === 'bottle') return 'Por frasco';
+  if (sell_as === 'ampoule') return 'Por ampola';
   return '';
 }
 
@@ -76,6 +80,47 @@ function getBlisterPriceAmount(p: Product): number {
   const units = getUnitsPerBlister(p);
   const box = getDisplayBoxPriceAmount(p);
   return units > 0 ? box / units : Number(p.selling_price ?? 0);
+}
+
+function getAmpoulePriceAmount(p: Product): number {
+  const raw = p.unit_selling_price ?? p.sale_price_blister ?? p.selling_price;
+  const n = Number(raw);
+  return Number.isFinite(n) ? n : 0;
+}
+
+function foldPackagingText(v: string | null | undefined): string {
+  return String(v ?? '')
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '')
+    .toLowerCase();
+}
+
+function inferSaleOptions(p: Product): SaleOption[] {
+  const text = `${foldPackagingText(p.form)} ${foldPackagingText(p.name)} ${foldPackagingText(p.category)}`;
+  const isLiquid = /(xarope|suspensao|solution|solucao|liquid|bottle|frasco)/.test(text);
+  const isAmpoule = /(ampola|ampoule|injectable|injection|injecao|injeccao)/.test(text);
+  const isTabletCapsule = /(comprimido|capsula|tablet|capsule)/.test(text);
+  const canBox = !!p.can_sell_by_box && getUnitsPerBox(p) > 0;
+  const canBlister = !!p.can_sell_by_unit && getUnitsPerBlister(p) > 0 && getBlisterPriceAmount(p) > 0;
+
+  if (isLiquid) return canBox && getUnitsPerBox(p) > 1 ? ['box', 'bottle'] : ['bottle'];
+  if (isAmpoule) return canBox && getUnitsPerBox(p) > 1 ? ['box', 'ampoule'] : ['ampoule'];
+  if (isTabletCapsule && canBlister) return canBox ? ['box', 'blister'] : ['blister'];
+  return ['box'];
+}
+
+function saleOptionLabel(option: SaleOption, product?: Product | null): string {
+  if (option === 'box') return (product?.pack_name || '').trim() || 'Caixa';
+  if (option === 'blister') return (product?.unit_name || '').trim() || 'Lâmina';
+  if (option === 'bottle') return 'Frasco';
+  return 'Ampola';
+}
+
+function saleOptionStockError(option: SaleOption): string {
+  if (option === 'box') return 'Stock insuficiente para vender esta quantidade de caixas.';
+  if (option === 'blister') return 'Stock insuficiente para vender esta quantidade de lâminas.';
+  if (option === 'bottle') return 'Stock insuficiente para vender esta quantidade de frascos.';
+  return 'Stock insuficiente para vender esta quantidade de ampolas.';
 }
 
 function packUnitsPerBox(p: Product): number {
@@ -187,7 +232,7 @@ function CartTableHeaderRow({ webCart }: { webCart: boolean }) {
         </View>
         <View style={styles.cartThUnit}>
           <Text style={[styles.th, styles.cartThUnitText]} numberOfLines={1}>
-            P.unit
+            Preço
           </Text>
         </View>
         <View style={styles.cartThTotal}>
@@ -202,7 +247,7 @@ function CartTableHeaderRow({ webCart }: { webCart: boolean }) {
     <View style={styles.summaryTableHeader}>
       <Text style={[styles.th, styles.thQty]}>Qtd</Text>
       <Text style={[styles.th, styles.thName]}>Produto</Text>
-      <Text style={[styles.th, styles.thUnit]}>P.unit</Text>
+      <Text style={[styles.th, styles.thUnit]}>Preço</Text>
       <Text style={[styles.th, styles.thSubtotal]}>Total</Text>
     </View>
   );
@@ -265,7 +310,7 @@ function PaymentCartLines({
   /** Reservado (layout do carrinho é sempre viewport fixo de 6 linhas). */
   fillAvailableHeight: boolean;
   lineUnitPrice: (item: CartItem) => number;
-  updateCartQty: (productId: number, sellAs: 'box' | 'unit' | undefined, delta: number) => void;
+  updateCartQty: (productId: number, sellAs: SaleOption | undefined, delta: number) => void;
   /** Quando true (tablet / web com painel limitado em altura), a lista encolhe e faz scroll; rodapé (Recebido / Troco / botão) fica sempre visível. */
   panelBoundedHeight: boolean;
   hasInsufficientStock: boolean;
@@ -417,7 +462,7 @@ export default function VendasScreen() {
   const [searching, setSearching] = useState(false);
 
   const [cart, setCart] = useState<CartItem[]>([]);
-  const [sellAsChoice, setSellAsChoice] = useState<'box' | 'unit'>('unit');
+  const [sellAsChoice, setSellAsChoice] = useState<SaleOption>('box');
   const [selectedProduct, setSelectedProduct] = useState<Product | null>(null);
   const [selectedQty, setSelectedQty] = useState('1');
 
@@ -458,8 +503,7 @@ export default function VendasScreen() {
   const CART_VISIBLE_WITHOUT_SCROLL = 6;
   const cartListNeedsScroll = cart.length > CART_VISIBLE_WITHOUT_SCROLL;
 
-  const isPackProduct = (p: Product) =>
-    (p.can_sell_by_box && getUnitsPerBox(p) > 0) || (p.can_sell_by_unit && getUnitsPerBlister(p) > 0);
+  const isPackProduct = (p: Product) => inferSaleOptions(p).length > 1;
 
   const getBoxPrice = (p: Product) => getDisplayBoxPriceAmount(p);
 
@@ -468,7 +512,7 @@ export default function VendasScreen() {
   const baseUnitsRequired = (item: CartItem) =>
     item.sell_as === 'box'
       ? item.quantity * Math.max(1, getUnitsPerBox(item.product))
-      : item.sell_as === 'unit'
+      : item.sell_as === 'blister'
         ? item.quantity * Math.max(1, getUnitsPerBlister(item.product))
         : item.quantity;
 
@@ -476,16 +520,17 @@ export default function VendasScreen() {
     if (item.sell_as === 'box') {
       return getDisplayBoxPriceAmount(item.product);
     }
-    if (item.sell_as === 'unit') {
+    if (item.sell_as === 'blister') {
       return getDisplayUnitPriceAmount(item.product);
     }
+    if (item.sell_as === 'ampoule') return getAmpoulePriceAmount(item.product);
     return Number(item.product.selling_price);
   }, []);
 
   const addProductToCart = (
     product: Product,
     mode: 'tap' | 'manual' = 'tap',
-    options?: { qty?: number; sellAs?: 'box' | 'unit' },
+    options?: { qty?: number; sellAs?: SaleOption },
   ) => {
     if (!hasOpenSession) {
       setError('Não pode registar vendas sem uma sessão de caixa aberta. Abra uma sessão em Caixa primeiro.');
@@ -497,25 +542,21 @@ export default function VendasScreen() {
         : mode === 'tap'
           ? 1
           : Math.max(1, parseInt(selectedQty || '1', 10) || 1);
-    const sellAs = isPackProduct(product)
-      ? (options?.sellAs ?? (mode === 'manual' ? sellAsChoice : undefined))
-      : undefined;
+    const available = inferSaleOptions(product);
+    const desired = options?.sellAs ?? (mode === 'manual' ? sellAsChoice : undefined);
+    const sellAs = desired && available.includes(desired) ? desired : available[0];
     const required =
       sellAs === 'box'
         ? qty * Math.max(1, getUnitsPerBox(product))
-        : sellAs === 'unit'
+        : sellAs === 'blister'
           ? qty * Math.max(1, getUnitsPerBlister(product))
           : qty;
-    if (sellAs === 'unit' && (!product.can_sell_by_unit || getUnitsPerBlister(product) <= 0 || getBlisterPriceAmount(product) <= 0)) {
+    if (sellAs === 'blister' && (!product.can_sell_by_unit || getUnitsPerBlister(product) <= 0 || getBlisterPriceAmount(product) <= 0)) {
       setError('Produto sem configuração válida para venda por lâmina.');
       return;
     }
     if (required > product.stock_quantity) {
-      setError(
-        sellAs === 'unit'
-          ? 'Stock insuficiente para vender esta quantidade de lâminas.'
-          : `Stock insuficiente. Disponível: ${product.stock_quantity} unidades de base.`,
-      );
+      setError(saleOptionStockError(sellAs));
       return;
     }
     setError(null);
@@ -527,15 +568,11 @@ export default function VendasScreen() {
         const need =
           sellAs === 'box'
             ? newQty * Math.max(1, getUnitsPerBox(product))
-            : sellAs === 'unit'
+            : sellAs === 'blister'
               ? newQty * Math.max(1, getUnitsPerBlister(product))
               : newQty;
         if (need > product.stock_quantity) {
-          setError(
-            sellAs === 'unit'
-              ? 'Stock insuficiente para vender esta quantidade de lâminas.'
-              : `Stock insuficiente. Máximo: ${product.stock_quantity} unidades de base.`,
-          );
+          setError(saleOptionStockError(sellAs));
           return prev;
         }
         next[idx] = { ...next[idx], quantity: newQty };
@@ -606,7 +643,7 @@ export default function VendasScreen() {
     setSelectedQty('1');
   };
 
-  const updateCartQty = (productId: number, sellAs: 'box' | 'unit' | undefined, delta: number) => {
+  const updateCartQty = (productId: number, sellAs: SaleOption | undefined, delta: number) => {
     setCart(prev =>
       prev
         .map(c => {
@@ -747,6 +784,7 @@ export default function VendasScreen() {
   const onProductPress = (product: Product) => {
     // POS requirement: always ask how to sell on product tap.
     setSellModeProduct(product);
+    setSellAsChoice(inferSaleOptions(product)[0] ?? 'box');
     setUnitSellQty('1');
     setSellModeModalVisible(true);
   };
@@ -782,26 +820,18 @@ export default function VendasScreen() {
   }, [sellModeModalVisible, sellModeProduct?.id]);
 
   const getSellModePrices = () => {
-    if (!sellModeProduct) return { box: null as number | null, unit: null as number | null };
+    if (!sellModeProduct) return { box: null as number | null, blister: null as number | null, bottle: null as number | null, ampoule: null as number | null };
     const box = getBoxPrice(sellModeProduct);
-    const unit = getUnitPrice(sellModeProduct);
-    return { box, unit };
+    const blister = getUnitPrice(sellModeProduct);
+    const bottle = Number(sellModeProduct.selling_price ?? sellModeProduct.box_selling_price ?? 0);
+    const ampoule = getAmpoulePriceAmount(sellModeProduct);
+    return { box, blister, bottle, ampoule };
   };
 
-  const confirmSellAsBox = () => {
+  const confirmSellAsChoice = (sellAs: SaleOption) => {
     if (!sellModeProduct) return;
-    const stockInfo = computePosSellModalStock(sellModeProduct);
-    if (stockInfo.boxButtonDisabled) return;
-    addProductToCart(sellModeProduct, 'manual', { qty: 1, sellAs: 'box' });
-    closeSellModeModal();
-  };
-
-  const confirmSellAsUnit = () => {
-    if (!sellModeProduct) return;
-    const stockInfo = computePosSellModalStock(sellModeProduct);
-    if (stockInfo.unitButtonDisabled) return;
-    const qty = Math.max(1, parseInt(unitSellQty || '1', 10) || 1);
-    addProductToCart(sellModeProduct, 'manual', { qty, sellAs: 'unit' });
+    const qty = sellAs === 'box' ? 1 : Math.max(1, parseInt(unitSellQty || '1', 10) || 1);
+    addProductToCart(sellModeProduct, 'manual', { qty, sellAs });
     closeSellModeModal();
   };
 
@@ -962,7 +992,18 @@ export default function VendasScreen() {
     () => (sellModeProduct ? computePosSellModalStock(sellModeProduct) : null),
     [sellModeProduct],
   );
+  const sellModeOptions = useMemo(
+    () => (sellModeProduct ? inferSaleOptions(sellModeProduct) : []),
+    [sellModeProduct],
+  );
   const sellModeLiquid = Boolean(sellModeProduct && isLiquidPharmaceuticalForm(String(sellModeProduct.form ?? '')));
+
+  useEffect(() => {
+    if (!sellModeOptions.length) return;
+    if (!sellModeOptions.includes(sellAsChoice)) {
+      setSellAsChoice(sellModeOptions[0]);
+    }
+  }, [sellModeOptions, sellAsChoice]);
 
   return (
     <SafeAreaView style={styles.safeArea}>
@@ -1002,9 +1043,7 @@ export default function VendasScreen() {
                 <View style={styles.sellModeOverlay}>
                   <View style={styles.sellModeCard}>
                     <View style={styles.sellModeHeader}>
-                      <Text style={styles.sellModeTitle}>
-                        {sellModeLiquid ? 'Vender (frasco / líquido)' : 'Vender Caixa ou Lâmina?'}
-                      </Text>
+                      <Text style={styles.sellModeTitle}>Vender embalagem</Text>
                       <Pressable style={styles.inlineCloseButton} onPress={closeSellModeModal}>
                         <Text style={styles.inlineCloseButtonText}>X</Text>
                       </Pressable>
@@ -1063,15 +1102,12 @@ export default function VendasScreen() {
                               : `Caixa(s) restantes: ${sellModeStockInfo.boxes}`}
                           </Text>
                         )}
-                        {sellModeStockInfo.showLaminaLine && !sellModeLiquid && (
+                        {sellModeStockInfo.showLaminaLine && sellModeOptions.includes('blister') && (
                           <Text style={styles.sellModeStockRow}>
                             Lâmina(s) restantes: {sellModeStockInfo.laminae}
                           </Text>
                         )}
-                        <Text style={styles.sellModeStockRowTotal}>
-                          {sellModeLiquid ? 'Stock total (frascos): ' : 'Stock total (unidades): '}
-                          {sellModeStockInfo.total}
-                        </Text>
+                        <Text style={styles.sellModeStockRowTotal}>Stock total (unidades): {sellModeStockInfo.total}</Text>
                         {sellModeStockInfo.isOutOfStock && (
                           <Text style={styles.sellModeStockOutLabel}>Sem stock</Text>
                         )}
@@ -1083,55 +1119,49 @@ export default function VendasScreen() {
                       </View>
                     )}
                     <View style={styles.sellModePriceRow}>
-                      {sellModeLiquid ? (
-                        <Text style={styles.sellModePriceText}>
-                          Preço: {formatCurrency(sellModePrices.box ?? sellModePrices.unit ?? 0)}
-                        </Text>
-                      ) : (
-                        <>
-                          <Text style={styles.sellModePriceText}>
-                            Preço caixa: {formatCurrency(sellModePrices.box ?? 0)}
-                          </Text>
-                          <Text style={styles.sellModePriceText}>
-                            Preço lâmina: {formatCurrency(sellModePrices.unit ?? 0)}
-                          </Text>
-                        </>
-                      )}
+                      <Text style={styles.sellModePriceText}>
+                        {`Preço ${saleOptionLabel(sellAsChoice, sellModeProduct).toLowerCase()}: `}
+                        {formatCurrency(
+                          sellAsChoice === 'box'
+                            ? (sellModePrices.box ?? 0)
+                            : sellAsChoice === 'blister'
+                              ? (sellModePrices.blister ?? 0)
+                              : sellAsChoice === 'bottle'
+                                ? (sellModePrices.bottle ?? 0)
+                                : (sellModePrices.ampoule ?? 0),
+                        )}
+                      </Text>
                     </View>
                     <View style={styles.sellModeActions}>
-                      <Pressable
-                        style={({ pressed }) => [
-                          styles.secondaryButton,
-                          sellModeStockInfo?.boxButtonDisabled && styles.sellModeActionDisabled,
-                          pressed && !sellModeStockInfo?.boxButtonDisabled && styles.secondaryButtonPressed,
-                        ]}
-                        disabled={!!sellModeStockInfo?.boxButtonDisabled}
-                        onPress={confirmSellAsBox}>
-                        <Text
-                          style={[
-                            styles.secondaryButtonText,
-                            sellModeStockInfo?.boxButtonDisabled && styles.sellModeActionDisabledText,
-                          ]}>
-                          {sellModeLiquid
-                            ? (sellModeProduct?.pack_name || '').trim() || 'Embalagem'
-                            : 'Caixa'}
-                        </Text>
-                      </Pressable>
+                      {sellModeOptions.map((opt) => (
+                        <Pressable
+                          key={opt}
+                          style={({ pressed }) => [
+                            styles.secondaryButton,
+                            sellAsChoice === opt && styles.posChipActive,
+                            pressed && styles.secondaryButtonPressed,
+                          ]}
+                          onPress={() => setSellAsChoice(opt)}>
+                          <Text style={[styles.secondaryButtonText, sellAsChoice === opt && styles.chipTextActive]}>
+                            {saleOptionLabel(opt, sellModeProduct)}
+                          </Text>
+                        </Pressable>
+                      ))}
                     </View>
                     <View style={styles.sellModeUnitRow}>
                       <View style={{ flex: 1 }}>
                         <Text style={styles.label}>
-                          {sellModeLiquid ? 'Quantidade (frascos)' : 'Lâmina - quantidade'}
+                          {`Quantidade (${saleOptionLabel(sellAsChoice, sellModeProduct).toLowerCase()})`}
                         </Text>
                         <TextInput
                           style={[
                             styles.posInput,
-                            sellModeStockInfo?.unitButtonDisabled && styles.sellModeInputDisabled,
+                            !sellModeOptions.length && styles.sellModeInputDisabled,
                           ]}
                           value={unitSellQty}
                           placeholder="1"
                           placeholderTextColor="#6b7280"
-                          editable={!sellModeStockInfo?.unitButtonDisabled}
+                          editable={sellModeOptions.length > 0}
                           keyboardType="number-pad"
                           showSoftInputOnFocus={false}
                           onFocus={() => openVirtualKeyboard('unitSellQty', 'numeric')}
@@ -1143,11 +1173,11 @@ export default function VendasScreen() {
                         style={({ pressed }) => [
                           styles.primaryButton,
                           styles.sellModePrimary,
-                          sellModeStockInfo?.unitButtonDisabled && styles.sellModePrimaryDisabled,
-                          pressed && !sellModeStockInfo?.unitButtonDisabled && styles.primaryButtonPressed,
+                          !sellModeOptions.length && styles.sellModePrimaryDisabled,
+                          pressed && sellModeOptions.length > 0 && styles.primaryButtonPressed,
                         ]}
-                        disabled={!!sellModeStockInfo?.unitButtonDisabled}
-                        onPress={confirmSellAsUnit}>
+                        disabled={!sellModeOptions.length}
+                        onPress={() => confirmSellAsChoice(sellAsChoice)}>
                         <Text
                           style={[
                             styles.primaryButtonText,
@@ -1253,28 +1283,20 @@ export default function VendasScreen() {
                             <View style={styles.sellAsRow}>
                               <Text style={styles.label}>Vender por</Text>
                               <View style={styles.sellAsButtons}>
-                                <Pressable
-                                  style={({ pressed }) => [
-                                    styles.posChip,
-                                    sellAsChoice === 'box' && styles.posChipActive,
-                                    pressed && styles.chipPressed,
-                                  ]}
-                                  onPress={() => setSellAsChoice('box')}>
-                                  <Text style={[styles.chipText, sellAsChoice === 'box' && styles.chipTextActive]}>
-                                    {selectedProduct.pack_name || 'Caixa'}
-                                  </Text>
-                                </Pressable>
-                                <Pressable
-                                  style={({ pressed }) => [
-                                    styles.posChip,
-                                    sellAsChoice === 'unit' && styles.posChipActive,
-                                    pressed && styles.chipPressed,
-                                  ]}
-                                  onPress={() => setSellAsChoice('unit')}>
-                                  <Text style={[styles.chipText, sellAsChoice === 'unit' && styles.chipTextActive]}>
-                                    {selectedProduct.unit_name || 'Lâmina'}
-                                  </Text>
-                                </Pressable>
+                                {inferSaleOptions(selectedProduct).map((opt) => (
+                                  <Pressable
+                                    key={opt}
+                                    style={({ pressed }) => [
+                                      styles.posChip,
+                                      sellAsChoice === opt && styles.posChipActive,
+                                      pressed && styles.chipPressed,
+                                    ]}
+                                    onPress={() => setSellAsChoice(opt)}>
+                                    <Text style={[styles.chipText, sellAsChoice === opt && styles.chipTextActive]}>
+                                      {saleOptionLabel(opt, selectedProduct)}
+                                    </Text>
+                                  </Pressable>
+                                ))}
                               </View>
                             </View>
                           )}
@@ -1474,33 +1496,24 @@ export default function VendasScreen() {
                           <View style={styles.sellAsRow}>
                             <Text style={styles.label}>Vender por</Text>
                             <View style={styles.sellAsButtons}>
-                              <Pressable
-                                style={({ pressed }) => [
-                                  styles.posChip,
-                                  sellAsChoice === 'box' && styles.posChipActive,
-                                  pressed && styles.chipPressed,
-                                ]}
-                                onPress={() => setSellAsChoice('box')}>
-                                <Text
-                                  style={[styles.chipText, sellAsChoice === 'box' && styles.chipTextActive]}>
-                                  {selectedProduct.pack_name || 'Caixa'}
-                                </Text>
-                              </Pressable>
-                              <Pressable
-                                style={({ pressed }) => [
-                                  styles.posChip,
-                                  sellAsChoice === 'unit' && styles.posChipActive,
-                                  pressed && styles.chipPressed,
-                                ]}
-                                onPress={() => setSellAsChoice('unit')}>
-                                <Text
-                                  style={[
-                                    styles.chipText,
-                                    sellAsChoice === 'unit' && styles.chipTextActive,
-                                  ]}>
-                                  {selectedProduct.unit_name || 'Lâmina'}
-                                </Text>
-                              </Pressable>
+                              {inferSaleOptions(selectedProduct).map((opt) => (
+                                <Pressable
+                                  key={opt}
+                                  style={({ pressed }) => [
+                                    styles.posChip,
+                                    sellAsChoice === opt && styles.posChipActive,
+                                    pressed && styles.chipPressed,
+                                  ]}
+                                  onPress={() => setSellAsChoice(opt)}>
+                                  <Text
+                                    style={[
+                                      styles.chipText,
+                                      sellAsChoice === opt && styles.chipTextActive,
+                                    ]}>
+                                    {saleOptionLabel(opt, selectedProduct)}
+                                  </Text>
+                                </Pressable>
+                              ))}
                             </View>
                           </View>
                         )}
@@ -1736,28 +1749,20 @@ export default function VendasScreen() {
                           <View style={styles.sellAsRow}>
                             <Text style={styles.label}>Vender por</Text>
                             <View style={styles.sellAsButtons}>
-                              <Pressable
-                                style={({ pressed }) => [
-                                  styles.posChip,
-                                  sellAsChoice === 'box' && styles.posChipActive,
-                                  pressed && styles.chipPressed,
-                                ]}
-                                onPress={() => setSellAsChoice('box')}>
-                                <Text style={[styles.chipText, sellAsChoice === 'box' && styles.chipTextActive]}>
-                                  {selectedProduct.pack_name || 'Caixa'}
-                                </Text>
-                              </Pressable>
-                              <Pressable
-                                style={({ pressed }) => [
-                                  styles.posChip,
-                                  sellAsChoice === 'unit' && styles.posChipActive,
-                                  pressed && styles.chipPressed,
-                                ]}
-                                onPress={() => setSellAsChoice('unit')}>
-                                <Text style={[styles.chipText, sellAsChoice === 'unit' && styles.chipTextActive]}>
-                                  {selectedProduct.unit_name || 'Lâmina'}
-                                </Text>
-                              </Pressable>
+                              {inferSaleOptions(selectedProduct).map((opt) => (
+                                <Pressable
+                                  key={opt}
+                                  style={({ pressed }) => [
+                                    styles.posChip,
+                                    sellAsChoice === opt && styles.posChipActive,
+                                    pressed && styles.chipPressed,
+                                  ]}
+                                  onPress={() => setSellAsChoice(opt)}>
+                                  <Text style={[styles.chipText, sellAsChoice === opt && styles.chipTextActive]}>
+                                    {saleOptionLabel(opt, selectedProduct)}
+                                  </Text>
+                                </Pressable>
+                              ))}
                             </View>
                           </View>
                         )}
