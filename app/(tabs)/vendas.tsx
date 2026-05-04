@@ -28,6 +28,7 @@ import type { Product } from '@/types';
 import { formatCurrency } from '@/utils/currency';
 import { fetchAllProducts } from '@/utils/fetchAllProducts';
 import { getErrorMessage } from '@/utils/errorMessage';
+import { isLiquidPharmaceuticalForm } from '@/utils/liquidPharmaceuticalForm';
 
 type CartItem = {
   product: Product;
@@ -918,6 +919,7 @@ export default function VendasScreen() {
     () => (sellModeProduct ? computePosSellModalStock(sellModeProduct) : null),
     [sellModeProduct],
   );
+  const sellModeLiquid = Boolean(sellModeProduct && isLiquidPharmaceuticalForm(String(sellModeProduct.form ?? '')));
 
   return (
     <SafeAreaView style={styles.safeArea}>
@@ -957,7 +959,9 @@ export default function VendasScreen() {
                 <View style={styles.sellModeOverlay}>
                   <View style={styles.sellModeCard}>
                     <View style={styles.sellModeHeader}>
-                      <Text style={styles.sellModeTitle}>Vender Caixa ou Lâmina?</Text>
+                      <Text style={styles.sellModeTitle}>
+                        {sellModeLiquid ? 'Vender (frasco / líquido)' : 'Vender Caixa ou Lâmina?'}
+                      </Text>
                       <Pressable style={styles.inlineCloseButton} onPress={closeSellModeModal}>
                         <Text style={styles.inlineCloseButtonText}>X</Text>
                       </Pressable>
@@ -1011,16 +1015,19 @@ export default function VendasScreen() {
                         <Text style={styles.sellModeStockHeading}>Stock disponível (venda)</Text>
                         {sellModeStockInfo.showBoxLine && (
                           <Text style={styles.sellModeStockRow}>
-                            Caixa(s) restantes: {sellModeStockInfo.boxes}
+                            {sellModeLiquid
+                              ? `${(sellModeProduct?.pack_name || 'Embalagem').trim()}(s) restantes: ${sellModeStockInfo.boxes}`
+                              : `Caixa(s) restantes: ${sellModeStockInfo.boxes}`}
                           </Text>
                         )}
-                        {sellModeStockInfo.showLaminaLine && (
+                        {sellModeStockInfo.showLaminaLine && !sellModeLiquid && (
                           <Text style={styles.sellModeStockRow}>
                             Lâmina(s) restantes: {sellModeStockInfo.laminae}
                           </Text>
                         )}
                         <Text style={styles.sellModeStockRowTotal}>
-                          Stock total (unidades): {sellModeStockInfo.total}
+                          {sellModeLiquid ? 'Stock total (frascos): ' : 'Stock total (unidades): '}
+                          {sellModeStockInfo.total}
                         </Text>
                         {sellModeStockInfo.isOutOfStock && (
                           <Text style={styles.sellModeStockOutLabel}>Sem stock</Text>
@@ -1033,12 +1040,20 @@ export default function VendasScreen() {
                       </View>
                     )}
                     <View style={styles.sellModePriceRow}>
-                      <Text style={styles.sellModePriceText}>
-                        Preço caixa: {formatCurrency(sellModePrices.box ?? 0)}
-                      </Text>
-                      <Text style={styles.sellModePriceText}>
-                        Preço unidade: {formatCurrency(sellModePrices.unit ?? 0)}
-                      </Text>
+                      {sellModeLiquid ? (
+                        <Text style={styles.sellModePriceText}>
+                          Preço: {formatCurrency(sellModePrices.box ?? sellModePrices.unit ?? 0)}
+                        </Text>
+                      ) : (
+                        <>
+                          <Text style={styles.sellModePriceText}>
+                            Preço caixa: {formatCurrency(sellModePrices.box ?? 0)}
+                          </Text>
+                          <Text style={styles.sellModePriceText}>
+                            Preço unidade: {formatCurrency(sellModePrices.unit ?? 0)}
+                          </Text>
+                        </>
+                      )}
                     </View>
                     <View style={styles.sellModeActions}>
                       <Pressable
@@ -1054,13 +1069,17 @@ export default function VendasScreen() {
                             styles.secondaryButtonText,
                             sellModeStockInfo?.boxButtonDisabled && styles.sellModeActionDisabledText,
                           ]}>
-                          Caixa
+                          {sellModeLiquid
+                            ? (sellModeProduct?.pack_name || '').trim() || 'Embalagem'
+                            : 'Caixa'}
                         </Text>
                       </Pressable>
                     </View>
                     <View style={styles.sellModeUnitRow}>
                       <View style={{ flex: 1 }}>
-                        <Text style={styles.label}>Lâmina - quantidade</Text>
+                        <Text style={styles.label}>
+                          {sellModeLiquid ? 'Quantidade (frascos)' : 'Lâmina - quantidade'}
+                        </Text>
                         <TextInput
                           style={[
                             styles.posInput,
