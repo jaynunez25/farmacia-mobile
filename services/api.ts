@@ -35,7 +35,7 @@ function normalizeMediaPath(s: string): string {
   return s.startsWith('/') ? s : `/${s}`;
 }
 
-/** Paths stored in DB that map to Vite `public/products/` (served by the frontend host, not FastAPI). */
+/** Product media paths persisted in DB. */
 function isPublicProductStaticPath(path: string): boolean {
   return path.startsWith('/products/thumbnails/') || path.startsWith('/products/images/');
 }
@@ -43,8 +43,9 @@ function isPublicProductStaticPath(path: string): boolean {
 /**
  * Absolute URL for product media.
  * - Full `http(s)://…` is returned as-is.
- * - `/products/thumbnails/…` and `/products/images/…` use `EXPO_PUBLIC_MEDIA_BASE_URL` when set (the inventory web origin);
- *   otherwise they fall back to the API base (legacy; Railway usually does not serve these files).
+ * - For `/products/thumbnails/...` and `/products/images/...`, prefer the API base first.
+ *   This keeps web/mobile aligned with backend static media served by Railway (including via Vercel `/api` proxy).
+ * - `EXPO_PUBLIC_MEDIA_BASE_URL` is used only as fallback when API base is unavailable.
  */
 export function resolveApiMediaUrl(pathOrUrl: string | null | undefined): string | null {
   if (pathOrUrl == null || typeof pathOrUrl !== 'string') return null;
@@ -54,8 +55,10 @@ export function resolveApiMediaUrl(pathOrUrl: string | null | undefined): string
   const path = normalizeMediaPath(s);
   const mediaBase = MEDIA_BASE_URL_RAW.replace(/\/+$/, '');
   const apiBase = API_BASE_URL.replace(/\/+$/, '');
-  const base =
-    mediaBase && isPublicProductStaticPath(path) ? mediaBase : apiBase;
+  let base = apiBase;
+  if (isPublicProductStaticPath(path)) {
+    base = apiBase || mediaBase;
+  }
   if (!base) return null;
   return `${base}${path}`;
 }
