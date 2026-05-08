@@ -1,0 +1,2049 @@
+{
+  "generatedAt": "2026-05-08T15:41:45.957Z",
+  "source": "farmacia-mobile/public/products",
+  "imageCount": 225,
+  "uniqueNormalizedSlugCount": 223,
+  "duplicateSlugGroups": [
+    {
+      "normalizedSlug": "ofloxt-oz",
+      "slugs": [
+        "ofloxt-oz",
+        "ofloxt_oz"
+      ]
+    },
+    {
+      "normalizedSlug": "perfect-vita",
+      "slugs": [
+        "perfect-vita",
+        "perfect_vita"
+      ]
+    }
+  ],
+  "items": [
+    {
+      "index": 1,
+      "filename": "3days.webp",
+      "slug": "3days",
+      "normalizedSlug": "3days",
+      "imagePath": "/products/images/3days.webp",
+      "thumbnailPath": "/products/thumbnails/3days.webp",
+      "thumbnailExists": true
+    },
+    {
+      "index": 2,
+      "filename": "7days.webp",
+      "slug": "7days",
+      "normalizedSlug": "7days",
+      "imagePath": "/products/images/7days.webp",
+      "thumbnailPath": "/products/thumbnails/7days.webp",
+      "thumbnailExists": true
+    },
+    {
+      "index": 3,
+      "filename": "afrimox.webp",
+      "slug": "afrimox",
+      "normalizedSlug": "afrimox",
+      "imagePath": "/products/images/afrimox.webp",
+      "thumbnailPath": "/products/thumbnails/afrimox.webp",
+      "thumbnailExists": true
+    },
+    {
+      "index": 4,
+      "filename": "agua_digestiva.webp",
+      "slug": "agua_digestiva",
+      "normalizedSlug": "agua-digestiva",
+      "imagePath": "/products/images/agua_digestiva.webp",
+      "thumbnailPath": "/products/thumbnails/agua_digestiva.webp",
+      "thumbnailExists": true
+    },
+    {
+      "index": 5,
+      "filename": "albenz_400.webp",
+      "slug": "albenz_400",
+      "normalizedSlug": "albenz-400",
+      "imagePath": "/products/images/albenz_400.webp",
+      "thumbnailPath": "/products/thumbnails/albenz_400.webp",
+      "thumbnailExists": true
+    },
+    {
+      "index": 6,
+      "filename": "alprazolam.webp",
+      "slug": "alprazolam",
+      "normalizedSlug": "alprazolam",
+      "imagePath": "/products/images/alprazolam.webp",
+      "thumbnailPath": "/products/thumbnails/alprazolam.webp",
+      "thumbnailExists": true
+    },
+    {
+      "index": 7,
+      "filename": "ambrux.webp",
+      "slug": "ambrux",
+      "normalizedSlug": "ambrux",
+      "imagePath": "/products/images/ambrux.webp",
+      "thumbnailPath": "/products/thumbnails/ambrux.webp",
+      "thumbnailExists": true
+    },
+    {
+      "index": 8,
+      "filename": "amiga.webp",
+      "slug": "amiga",
+      "normalizedSlug": "amiga",
+      "imagePath": "/products/images/amiga.webp",
+      "thumbnailPath": "/products/thumbnails/amiga.webp",
+      "thumbnailExists": true
+    },
+    {
+      "index": 9,
+      "filename": "amiloride.webp",
+      "slug": "amiloride",
+      "normalizedSlug": "amiloride",
+      "imagePath": "/products/images/amiloride.webp",
+      "thumbnailPath": "/products/thumbnails/amiloride.webp",
+      "thumbnailExists": true
+    },
+    {
+      "index": 10,
+      "filename": "amlodipina.webp",
+      "slug": "amlodipina",
+      "normalizedSlug": "amlodipina",
+      "imagePath": "/products/images/amlodipina.webp",
+      "thumbnailPath": "/products/thumbnails/amlodipina.webp",
+      "thumbnailExists": true
+    },
+    {
+      "index": 11,
+      "filename": "amox-y-250.webp",
+      "slug": "amox-y-250",
+      "normalizedSlug": "amox-y-250",
+      "imagePath": "/products/images/amox-y-250.webp",
+      "thumbnailPath": "/products/thumbnails/amox-y-250.webp",
+      "thumbnailExists": true
+    },
+    {
+      "index": 12,
+      "filename": "amoxicilina_iv_1g.webp",
+      "slug": "amoxicilina_iv_1g",
+      "normalizedSlug": "amoxicilina-iv-1g",
+      "imagePath": "/products/images/amoxicilina_iv_1g.webp",
+      "thumbnailPath": "/products/thumbnails/amoxicilina_iv_1g.webp",
+      "thumbnailExists": true
+    },
+    {
+      "index": 13,
+      "filename": "ampi-250.webp",
+      "slug": "ampi-250",
+      "normalizedSlug": "ampi-250",
+      "imagePath": "/products/images/ampi-250.webp",
+      "thumbnailPath": "/products/thumbnails/ampi-250.webp",
+      "thumbnailExists": true
+    },
+    {
+      "index": 14,
+      "filename": "ampicilina-500.webp",
+      "slug": "ampicilina-500",
+      "normalizedSlug": "ampicilina-500",
+      "imagePath": "/products/images/ampicilina-500.webp",
+      "thumbnailPath": "/products/thumbnails/ampicilina-500.webp",
+      "thumbnailExists": true
+    },
+    {
+      "index": 15,
+      "filename": "ampicilina_inj.webp",
+      "slug": "ampicilina_inj",
+      "normalizedSlug": "ampicilina-inj",
+      "imagePath": "/products/images/ampicilina_inj.webp",
+      "thumbnailPath": "/products/thumbnails/ampicilina_inj.webp",
+      "thumbnailExists": true
+    },
+    {
+      "index": 16,
+      "filename": "ampinext.webp",
+      "slug": "ampinext",
+      "normalizedSlug": "ampinext",
+      "imagePath": "/products/images/ampinext.webp",
+      "thumbnailPath": "/products/thumbnails/ampinext.webp",
+      "thumbnailExists": true
+    },
+    {
+      "index": 17,
+      "filename": "anaflam.webp",
+      "slug": "anaflam",
+      "normalizedSlug": "anaflam",
+      "imagePath": "/products/images/anaflam.webp",
+      "thumbnailPath": "/products/thumbnails/anaflam.webp",
+      "thumbnailExists": true
+    },
+    {
+      "index": 18,
+      "filename": "appee_boost.webp",
+      "slug": "appee_boost",
+      "normalizedSlug": "appee-boost",
+      "imagePath": "/products/images/appee_boost.webp",
+      "thumbnailPath": "/products/thumbnails/appee_boost.webp",
+      "thumbnailExists": true
+    },
+    {
+      "index": 19,
+      "filename": "artemeter_inj.webp",
+      "slug": "artemeter_inj",
+      "normalizedSlug": "artemeter-inj",
+      "imagePath": "/products/images/artemeter_inj.webp",
+      "thumbnailPath": "/products/thumbnails/artemeter_inj.webp",
+      "thumbnailExists": true
+    },
+    {
+      "index": 20,
+      "filename": "artemeter_lume_18.webp",
+      "slug": "artemeter_lume_18",
+      "normalizedSlug": "artemeter-lume-18",
+      "imagePath": "/products/images/artemeter_lume_18.webp",
+      "thumbnailPath": "/products/thumbnails/artemeter_lume_18.webp",
+      "thumbnailExists": true
+    },
+    {
+      "index": 21,
+      "filename": "asp-forte.webp",
+      "slug": "asp-forte",
+      "normalizedSlug": "asp-forte",
+      "imagePath": "/products/images/asp-forte.webp",
+      "thumbnailPath": "/products/thumbnails/asp-forte.webp",
+      "thumbnailExists": true
+    },
+    {
+      "index": 22,
+      "filename": "aspirina-gr.webp",
+      "slug": "aspirina-gr",
+      "normalizedSlug": "aspirina-gr",
+      "imagePath": "/products/images/aspirina-gr.webp",
+      "thumbnailPath": "/products/thumbnails/aspirina-gr.webp",
+      "thumbnailExists": true
+    },
+    {
+      "index": 23,
+      "filename": "aspiriz.webp",
+      "slug": "aspiriz",
+      "normalizedSlug": "aspiriz",
+      "imagePath": "/products/images/aspiriz.webp",
+      "thumbnailPath": "/products/thumbnails/aspiriz.webp",
+      "thumbnailExists": true
+    },
+    {
+      "index": 24,
+      "filename": "azimyn.webp",
+      "slug": "azimyn",
+      "normalizedSlug": "azimyn",
+      "imagePath": "/products/images/azimyn.webp",
+      "thumbnailPath": "/products/thumbnails/azimyn.webp",
+      "thumbnailExists": true
+    },
+    {
+      "index": 25,
+      "filename": "b_complex_inj.webp",
+      "slug": "b_complex_inj",
+      "normalizedSlug": "b-complex-inj",
+      "imagePath": "/products/images/b_complex_inj.webp",
+      "thumbnailPath": "/products/thumbnails/b_complex_inj.webp",
+      "thumbnailExists": true
+    },
+    {
+      "index": 26,
+      "filename": "babycare.webp",
+      "slug": "babycare",
+      "normalizedSlug": "babycare",
+      "imagePath": "/products/images/babycare.webp",
+      "thumbnailPath": "/products/thumbnails/babycare.webp",
+      "thumbnailExists": true
+    },
+    {
+      "index": 27,
+      "filename": "bandage.webp",
+      "slug": "bandage",
+      "normalizedSlug": "bandage",
+      "imagePath": "/products/images/bandage.webp",
+      "thumbnailPath": "/products/thumbnails/bandage.webp",
+      "thumbnailExists": true
+    },
+    {
+      "index": 28,
+      "filename": "big_body.webp",
+      "slug": "big_body",
+      "normalizedSlug": "big-body",
+      "imagePath": "/products/images/big_body.webp",
+      "thumbnailPath": "/products/thumbnails/big_body.webp",
+      "thumbnailExists": true
+    },
+    {
+      "index": 29,
+      "filename": "bromistar_forte.webp",
+      "slug": "bromistar_forte",
+      "normalizedSlug": "bromistar-forte",
+      "imagePath": "/products/images/bromistar_forte.webp",
+      "thumbnailPath": "/products/thumbnails/bromistar_forte.webp",
+      "thumbnailExists": true
+    },
+    {
+      "index": 30,
+      "filename": "bromistar_infantil.webp",
+      "slug": "bromistar_infantil",
+      "normalizedSlug": "bromistar-infantil",
+      "imagePath": "/products/images/bromistar_infantil.webp",
+      "thumbnailPath": "/products/thumbnails/bromistar_infantil.webp",
+      "thumbnailExists": true
+    },
+    {
+      "index": 31,
+      "filename": "bucopext-10.webp",
+      "slug": "bucopext-10",
+      "normalizedSlug": "bucopext-10",
+      "imagePath": "/products/images/bucopext-10.webp",
+      "thumbnailPath": "/products/thumbnails/bucopext-10.webp",
+      "thumbnailExists": true
+    },
+    {
+      "index": 32,
+      "filename": "burn-clear.webp",
+      "slug": "burn-clear",
+      "normalizedSlug": "burn-clear",
+      "imagePath": "/products/images/burn-clear.webp",
+      "thumbnailPath": "/products/thumbnails/burn-clear.webp",
+      "thumbnailExists": true
+    },
+    {
+      "index": 33,
+      "filename": "canderm-powder.webp",
+      "slug": "canderm-powder",
+      "normalizedSlug": "canderm-powder",
+      "imagePath": "/products/images/canderm-powder.webp",
+      "thumbnailPath": "/products/thumbnails/canderm-powder.webp",
+      "thumbnailExists": true
+    },
+    {
+      "index": 34,
+      "filename": "candisten-v6.webp",
+      "slug": "candisten-v6",
+      "normalizedSlug": "candisten-v6",
+      "imagePath": "/products/images/candisten-v6.webp",
+      "thumbnailPath": "/products/thumbnails/candisten-v6.webp",
+      "thumbnailExists": true
+    },
+    {
+      "index": 35,
+      "filename": "candisten_clotrimazol_30g.webp",
+      "slug": "candisten_clotrimazol_30g",
+      "normalizedSlug": "candisten-clotrimazol-30g",
+      "imagePath": "/products/images/candisten_clotrimazol_30g.webp",
+      "thumbnailPath": "/products/thumbnails/candisten_clotrimazol_30g.webp",
+      "thumbnailExists": true
+    },
+    {
+      "index": 36,
+      "filename": "canext.webp",
+      "slug": "canext",
+      "normalizedSlug": "canext",
+      "imagePath": "/products/images/canext.webp",
+      "thumbnailPath": "/products/thumbnails/canext.webp",
+      "thumbnailExists": true
+    },
+    {
+      "index": 37,
+      "filename": "cefazolina_prizol.webp",
+      "slug": "cefazolina_prizol",
+      "normalizedSlug": "cefazolina-prizol",
+      "imagePath": "/products/images/cefazolina_prizol.webp",
+      "thumbnailPath": "/products/thumbnails/cefazolina_prizol.webp",
+      "thumbnailExists": true
+    },
+    {
+      "index": 38,
+      "filename": "ceftriaxona.webp",
+      "slug": "ceftriaxona",
+      "normalizedSlug": "ceftriaxona",
+      "imagePath": "/products/images/ceftriaxona.webp",
+      "thumbnailPath": "/products/thumbnails/ceftriaxona.webp",
+      "thumbnailExists": true
+    },
+    {
+      "index": 39,
+      "filename": "certo-lor.webp",
+      "slug": "certo-lor",
+      "normalizedSlug": "certo-lor",
+      "imagePath": "/products/images/certo-lor.webp",
+      "thumbnailPath": "/products/thumbnails/certo-lor.webp",
+      "thumbnailExists": true
+    },
+    {
+      "index": 40,
+      "filename": "cevite_500mg.webp",
+      "slug": "cevite_500mg",
+      "normalizedSlug": "cevite-500mg",
+      "imagePath": "/products/images/cevite_500mg.webp",
+      "thumbnailPath": "/products/thumbnails/cevite_500mg.webp",
+      "thumbnailExists": true
+    },
+    {
+      "index": 41,
+      "filename": "chaoral.webp",
+      "slug": "chaoral",
+      "normalizedSlug": "chaoral",
+      "imagePath": "/products/images/chaoral.webp",
+      "thumbnailPath": "/products/thumbnails/chaoral.webp",
+      "thumbnailExists": true
+    },
+    {
+      "index": 42,
+      "filename": "chasprin.webp",
+      "slug": "chasprin",
+      "normalizedSlug": "chasprin",
+      "imagePath": "/products/images/chasprin.webp",
+      "thumbnailPath": "/products/thumbnails/chasprin.webp",
+      "thumbnailExists": true
+    },
+    {
+      "index": 43,
+      "filename": "ciprofloxacina.webp",
+      "slug": "ciprofloxacina",
+      "normalizedSlug": "ciprofloxacina",
+      "imagePath": "/products/images/ciprofloxacina.webp",
+      "thumbnailPath": "/products/thumbnails/ciprofloxacina.webp",
+      "thumbnailExists": true
+    },
+    {
+      "index": 44,
+      "filename": "clavomin.webp",
+      "slug": "clavomin",
+      "normalizedSlug": "clavomin",
+      "imagePath": "/products/images/clavomin.webp",
+      "thumbnailPath": "/products/thumbnails/clavomin.webp",
+      "thumbnailExists": true
+    },
+    {
+      "index": 45,
+      "filename": "clavonext-250.webp",
+      "slug": "clavonext-250",
+      "normalizedSlug": "clavonext-250",
+      "imagePath": "/products/images/clavonext-250.webp",
+      "thumbnailPath": "/products/thumbnails/clavonext-250.webp",
+      "thumbnailExists": true
+    },
+    {
+      "index": 46,
+      "filename": "clavonext-625.webp",
+      "slug": "clavonext-625",
+      "normalizedSlug": "clavonext-625",
+      "imagePath": "/products/images/clavonext-625.webp",
+      "thumbnailPath": "/products/thumbnails/clavonext-625.webp",
+      "thumbnailExists": true
+    },
+    {
+      "index": 47,
+      "filename": "cloranfenicol.webp",
+      "slug": "cloranfenicol",
+      "normalizedSlug": "cloranfenicol",
+      "imagePath": "/products/images/cloranfenicol.webp",
+      "thumbnailPath": "/products/thumbnails/cloranfenicol.webp",
+      "thumbnailExists": true
+    },
+    {
+      "index": 48,
+      "filename": "clorfeniramina-4-blue.webp",
+      "slug": "clorfeniramina-4-blue",
+      "normalizedSlug": "clorfeniramina-4-blue",
+      "imagePath": "/products/images/clorfeniramina-4-blue.webp",
+      "thumbnailPath": "/products/thumbnails/clorfeniramina-4-blue.webp",
+      "thumbnailExists": true
+    },
+    {
+      "index": 49,
+      "filename": "clorfeniramina-4-white.webp",
+      "slug": "clorfeniramina-4-white",
+      "normalizedSlug": "clorfeniramina-4-white",
+      "imagePath": "/products/images/clorfeniramina-4-white.webp",
+      "thumbnailPath": "/products/thumbnails/clorfeniramina-4-white.webp",
+      "thumbnailExists": true
+    },
+    {
+      "index": 50,
+      "filename": "clotrimazole-basi.webp",
+      "slug": "clotrimazole-basi",
+      "normalizedSlug": "clotrimazole-basi",
+      "imagePath": "/products/images/clotrimazole-basi.webp",
+      "thumbnailPath": "/products/thumbnails/clotrimazole-basi.webp",
+      "thumbnailExists": true
+    },
+    {
+      "index": 51,
+      "filename": "coflix_xarope.webp",
+      "slug": "coflix_xarope",
+      "normalizedSlug": "coflix-xarope",
+      "imagePath": "/products/images/coflix_xarope.webp",
+      "thumbnailPath": "/products/thumbnails/coflix_xarope.webp",
+      "thumbnailExists": true
+    },
+    {
+      "index": 52,
+      "filename": "cold_clear.webp",
+      "slug": "cold_clear",
+      "normalizedSlug": "cold-clear",
+      "imagePath": "/products/images/cold_clear.webp",
+      "thumbnailPath": "/products/thumbnails/cold_clear.webp",
+      "thumbnailExists": true
+    },
+    {
+      "index": 53,
+      "filename": "colo_xarope.webp",
+      "slug": "colo_xarope",
+      "normalizedSlug": "colo-xarope",
+      "imagePath": "/products/images/colo_xarope.webp",
+      "thumbnailPath": "/products/thumbnails/colo_xarope.webp",
+      "thumbnailExists": true
+    },
+    {
+      "index": 54,
+      "filename": "corpion.webp",
+      "slug": "corpion",
+      "normalizedSlug": "corpion",
+      "imagePath": "/products/images/corpion.webp",
+      "thumbnailPath": "/products/thumbnails/corpion.webp",
+      "thumbnailExists": true
+    },
+    {
+      "index": 55,
+      "filename": "cotrim.webp",
+      "slug": "cotrim",
+      "normalizedSlug": "cotrim",
+      "imagePath": "/products/images/cotrim.webp",
+      "thumbnailPath": "/products/thumbnails/cotrim.webp",
+      "thumbnailExists": true
+    },
+    {
+      "index": 56,
+      "filename": "curita.webp",
+      "slug": "curita",
+      "normalizedSlug": "curita",
+      "imagePath": "/products/images/curita.webp",
+      "thumbnailPath": "/products/thumbnails/curita.webp",
+      "thumbnailExists": true
+    },
+    {
+      "index": 57,
+      "filename": "cypomex_4mg.webp",
+      "slug": "cypomex_4mg",
+      "normalizedSlug": "cypomex-4mg",
+      "imagePath": "/products/images/cypomex_4mg.webp",
+      "thumbnailPath": "/products/thumbnails/cypomex_4mg.webp",
+      "thumbnailExists": true
+    },
+    {
+      "index": 58,
+      "filename": "davibrom.webp",
+      "slug": "davibrom",
+      "normalizedSlug": "davibrom",
+      "imagePath": "/products/images/davibrom.webp",
+      "thumbnailPath": "/products/thumbnails/davibrom.webp",
+      "thumbnailExists": true
+    },
+    {
+      "index": 59,
+      "filename": "davimether.webp",
+      "slug": "davimether",
+      "normalizedSlug": "davimether",
+      "imagePath": "/products/images/davimether.webp",
+      "thumbnailPath": "/products/thumbnails/davimether.webp",
+      "thumbnailExists": true
+    },
+    {
+      "index": 60,
+      "filename": "davitoux.webp",
+      "slug": "davitoux",
+      "normalizedSlug": "davitoux",
+      "imagePath": "/products/images/davitoux.webp",
+      "thumbnailPath": "/products/thumbnails/davitoux.webp",
+      "thumbnailExists": true
+    },
+    {
+      "index": 61,
+      "filename": "davizine-promethazine-25.webp",
+      "slug": "davizine-promethazine-25",
+      "normalizedSlug": "davizine-promethazine-25",
+      "imagePath": "/products/images/davizine-promethazine-25.webp",
+      "thumbnailPath": "/products/thumbnails/davizine-promethazine-25.webp",
+      "thumbnailExists": true
+    },
+    {
+      "index": 62,
+      "filename": "declonova-100.webp",
+      "slug": "declonova-100",
+      "normalizedSlug": "declonova-100",
+      "imagePath": "/products/images/declonova-100.webp",
+      "thumbnailPath": "/products/thumbnails/declonova-100.webp",
+      "thumbnailExists": true
+    },
+    {
+      "index": 63,
+      "filename": "dexacort.webp",
+      "slug": "dexacort",
+      "normalizedSlug": "dexacort",
+      "imagePath": "/products/images/dexacort.webp",
+      "thumbnailPath": "/products/thumbnails/dexacort.webp",
+      "thumbnailExists": true
+    },
+    {
+      "index": 64,
+      "filename": "dexametasona.webp",
+      "slug": "dexametasona",
+      "normalizedSlug": "dexametasona",
+      "imagePath": "/products/images/dexametasona.webp",
+      "thumbnailPath": "/products/thumbnails/dexametasona.webp",
+      "thumbnailExists": true
+    },
+    {
+      "index": 65,
+      "filename": "dexametasona_inj.webp",
+      "slug": "dexametasona_inj",
+      "normalizedSlug": "dexametasona-inj",
+      "imagePath": "/products/images/dexametasona_inj.webp",
+      "thumbnailPath": "/products/thumbnails/dexametasona_inj.webp",
+      "thumbnailExists": true
+    },
+    {
+      "index": 66,
+      "filename": "diclofenaco_inj.webp",
+      "slug": "diclofenaco_inj",
+      "normalizedSlug": "diclofenaco-inj",
+      "imagePath": "/products/images/diclofenaco_inj.webp",
+      "thumbnailPath": "/products/thumbnails/diclofenaco_inj.webp",
+      "thumbnailExists": true
+    },
+    {
+      "index": 67,
+      "filename": "dicnac-forte.webp",
+      "slug": "dicnac-forte",
+      "normalizedSlug": "dicnac-forte",
+      "imagePath": "/products/images/dicnac-forte.webp",
+      "thumbnailPath": "/products/thumbnails/dicnac-forte.webp",
+      "thumbnailExists": true
+    },
+    {
+      "index": 68,
+      "filename": "dolarm.webp",
+      "slug": "dolarm",
+      "normalizedSlug": "dolarm",
+      "imagePath": "/products/images/dolarm.webp",
+      "thumbnailPath": "/products/thumbnails/dolarm.webp",
+      "thumbnailExists": true
+    },
+    {
+      "index": 69,
+      "filename": "dor-king.webp",
+      "slug": "dor-king",
+      "normalizedSlug": "dor-king",
+      "imagePath": "/products/images/dor-king.webp",
+      "thumbnailPath": "/products/thumbnails/dor-king.webp",
+      "thumbnailExists": true
+    },
+    {
+      "index": 70,
+      "filename": "eatwell.webp",
+      "slug": "eatwell",
+      "normalizedSlug": "eatwell",
+      "imagePath": "/products/images/eatwell.webp",
+      "thumbnailPath": "/products/thumbnails/eatwell.webp",
+      "thumbnailExists": true
+    },
+    {
+      "index": 71,
+      "filename": "enalapril-20.webp",
+      "slug": "enalapril-20",
+      "normalizedSlug": "enalapril-20",
+      "imagePath": "/products/images/enalapril-20.webp",
+      "thumbnailPath": "/products/thumbnails/enalapril-20.webp",
+      "thumbnailExists": true
+    },
+    {
+      "index": 72,
+      "filename": "enalapril-20mg.webp",
+      "slug": "enalapril-20mg",
+      "normalizedSlug": "enalapril-20mg",
+      "imagePath": "/products/images/enalapril-20mg.webp",
+      "thumbnailPath": "/products/thumbnails/enalapril-20mg.webp",
+      "thumbnailExists": true
+    },
+    {
+      "index": 73,
+      "filename": "enalapril-5.webp",
+      "slug": "enalapril-5",
+      "normalizedSlug": "enalapril-5",
+      "imagePath": "/products/images/enalapril-5.webp",
+      "thumbnailPath": "/products/thumbnails/enalapril-5.webp",
+      "thumbnailExists": true
+    },
+    {
+      "index": 74,
+      "filename": "epiderm-creme.webp",
+      "slug": "epiderm-creme",
+      "normalizedSlug": "epiderm-creme",
+      "imagePath": "/products/images/epiderm-creme.webp",
+      "thumbnailPath": "/products/thumbnails/epiderm-creme.webp",
+      "thumbnailExists": true
+    },
+    {
+      "index": 75,
+      "filename": "epiderm.webp",
+      "slug": "epiderm",
+      "normalizedSlug": "epiderm",
+      "imagePath": "/products/images/epiderm.webp",
+      "thumbnailPath": "/products/thumbnails/epiderm.webp",
+      "thumbnailExists": true
+    },
+    {
+      "index": 76,
+      "filename": "erithromex.webp",
+      "slug": "erithromex",
+      "normalizedSlug": "erithromex",
+      "imagePath": "/products/images/erithromex.webp",
+      "thumbnailPath": "/products/thumbnails/erithromex.webp",
+      "thumbnailExists": true
+    },
+    {
+      "index": 77,
+      "filename": "eritromicina_onia.webp",
+      "slug": "eritromicina_onia",
+      "normalizedSlug": "eritromicina-onia",
+      "imagePath": "/products/images/eritromicina_onia.webp",
+      "thumbnailPath": "/products/thumbnails/eritromicina_onia.webp",
+      "thumbnailExists": true
+    },
+    {
+      "index": 78,
+      "filename": "erynext.webp",
+      "slug": "erynext",
+      "normalizedSlug": "erynext",
+      "imagePath": "/products/images/erynext.webp",
+      "thumbnailPath": "/products/thumbnails/erynext.webp",
+      "thumbnailExists": true
+    },
+    {
+      "index": 79,
+      "filename": "erynext_125.webp",
+      "slug": "erynext_125",
+      "normalizedSlug": "erynext-125",
+      "imagePath": "/products/images/erynext_125.webp",
+      "thumbnailPath": "/products/thumbnails/erynext_125.webp",
+      "thumbnailExists": true
+    },
+    {
+      "index": 80,
+      "filename": "escopolamina.webp",
+      "slug": "escopolamina",
+      "normalizedSlug": "escopolamina",
+      "imagePath": "/products/images/escopolamina.webp",
+      "thumbnailPath": "/products/thumbnails/escopolamina.webp",
+      "thumbnailExists": true
+    },
+    {
+      "index": 81,
+      "filename": "espironolactona.webp",
+      "slug": "espironolactona",
+      "normalizedSlug": "espironolactona",
+      "imagePath": "/products/images/espironolactona.webp",
+      "thumbnailPath": "/products/thumbnails/espironolactona.webp",
+      "thumbnailExists": true
+    },
+    {
+      "index": 82,
+      "filename": "essential_balm.webp",
+      "slug": "essential_balm",
+      "normalizedSlug": "essential-balm",
+      "imagePath": "/products/images/essential_balm.webp",
+      "thumbnailPath": "/products/thumbnails/essential_balm.webp",
+      "thumbnailExists": true
+    },
+    {
+      "index": 83,
+      "filename": "februx_200.webp",
+      "slug": "februx_200",
+      "normalizedSlug": "februx-200",
+      "imagePath": "/products/images/februx_200.webp",
+      "thumbnailPath": "/products/thumbnails/februx_200.webp",
+      "thumbnailExists": true
+    },
+    {
+      "index": 84,
+      "filename": "feromol.webp",
+      "slug": "feromol",
+      "normalizedSlug": "feromol",
+      "imagePath": "/products/images/feromol.webp",
+      "thumbnailPath": "/products/thumbnails/feromol.webp",
+      "thumbnailExists": true
+    },
+    {
+      "index": 85,
+      "filename": "flixin.webp",
+      "slug": "flixin",
+      "normalizedSlug": "flixin",
+      "imagePath": "/products/images/flixin.webp",
+      "thumbnailPath": "/products/thumbnails/flixin.webp",
+      "thumbnailExists": true
+    },
+    {
+      "index": 86,
+      "filename": "furosemida.webp",
+      "slug": "furosemida",
+      "normalizedSlug": "furosemida",
+      "imagePath": "/products/images/furosemida.webp",
+      "thumbnailPath": "/products/thumbnails/furosemida.webp",
+      "thumbnailExists": true
+    },
+    {
+      "index": 87,
+      "filename": "fusosprin.webp",
+      "slug": "fusosprin",
+      "normalizedSlug": "fusosprin",
+      "imagePath": "/products/images/fusosprin.webp",
+      "thumbnailPath": "/products/thumbnails/fusosprin.webp",
+      "thumbnailExists": true
+    },
+    {
+      "index": 88,
+      "filename": "fusotam.webp",
+      "slug": "fusotam",
+      "normalizedSlug": "fusotam",
+      "imagePath": "/products/images/fusotam.webp",
+      "thumbnailPath": "/products/thumbnails/fusotam.webp",
+      "thumbnailExists": true
+    },
+    {
+      "index": 89,
+      "filename": "gentamicina.webp",
+      "slug": "gentamicina",
+      "normalizedSlug": "gentamicina",
+      "imagePath": "/products/images/gentamicina.webp",
+      "thumbnailPath": "/products/thumbnails/gentamicina.webp",
+      "thumbnailExists": true
+    },
+    {
+      "index": 90,
+      "filename": "glowfin.webp",
+      "slug": "glowfin",
+      "normalizedSlug": "glowfin",
+      "imagePath": "/products/images/glowfin.webp",
+      "thumbnailPath": "/products/thumbnails/glowfin.webp",
+      "thumbnailExists": true
+    },
+    {
+      "index": 91,
+      "filename": "gogynax.webp",
+      "slug": "gogynax",
+      "normalizedSlug": "gogynax",
+      "imagePath": "/products/images/gogynax.webp",
+      "thumbnailPath": "/products/thumbnails/gogynax.webp",
+      "thumbnailExists": true
+    },
+    {
+      "index": 92,
+      "filename": "gravi_plano.webp",
+      "slug": "gravi_plano",
+      "normalizedSlug": "gravi-plano",
+      "imagePath": "/products/images/gravi_plano.webp",
+      "thumbnailPath": "/products/thumbnails/gravi_plano.webp",
+      "thumbnailExists": true
+    },
+    {
+      "index": 93,
+      "filename": "halibut.webp",
+      "slug": "halibut",
+      "normalizedSlug": "halibut",
+      "imagePath": "/products/images/halibut.webp",
+      "thumbnailPath": "/products/thumbnails/halibut.webp",
+      "thumbnailExists": true
+    },
+    {
+      "index": 94,
+      "filename": "hemerona.webp",
+      "slug": "hemerona",
+      "normalizedSlug": "hemerona",
+      "imagePath": "/products/images/hemerona.webp",
+      "thumbnailPath": "/products/thumbnails/hemerona.webp",
+      "thumbnailExists": true
+    },
+    {
+      "index": 95,
+      "filename": "hidrocortisona-5.webp",
+      "slug": "hidrocortisona-5",
+      "normalizedSlug": "hidrocortisona-5",
+      "imagePath": "/products/images/hidrocortisona-5.webp",
+      "thumbnailPath": "/products/thumbnails/hidrocortisona-5.webp",
+      "thumbnailExists": true
+    },
+    {
+      "index": 96,
+      "filename": "hidrocortisona.webp",
+      "slug": "hidrocortisona",
+      "normalizedSlug": "hidrocortisona",
+      "imagePath": "/products/images/hidrocortisona.webp",
+      "thumbnailPath": "/products/thumbnails/hidrocortisona.webp",
+      "thumbnailExists": true
+    },
+    {
+      "index": 97,
+      "filename": "hidrocortisona_inj.webp",
+      "slug": "hidrocortisona_inj",
+      "normalizedSlug": "hidrocortisona-inj",
+      "imagePath": "/products/images/hidrocortisona_inj.webp",
+      "thumbnailPath": "/products/thumbnails/hidrocortisona_inj.webp",
+      "thumbnailExists": true
+    },
+    {
+      "index": 98,
+      "filename": "hidromia.webp",
+      "slug": "hidromia",
+      "normalizedSlug": "hidromia",
+      "imagePath": "/products/images/hidromia.webp",
+      "thumbnailPath": "/products/thumbnails/hidromia.webp",
+      "thumbnailExists": true
+    },
+    {
+      "index": 99,
+      "filename": "ibucap-forte.webp",
+      "slug": "ibucap-forte",
+      "normalizedSlug": "ibucap-forte",
+      "imagePath": "/products/images/ibucap-forte.webp",
+      "thumbnailPath": "/products/thumbnails/ibucap-forte.webp",
+      "thumbnailExists": true
+    },
+    {
+      "index": 100,
+      "filename": "ibucap-night.webp",
+      "slug": "ibucap-night",
+      "normalizedSlug": "ibucap-night",
+      "imagePath": "/products/images/ibucap-night.webp",
+      "thumbnailPath": "/products/thumbnails/ibucap-night.webp",
+      "thumbnailExists": true
+    },
+    {
+      "index": 101,
+      "filename": "ibufast.webp",
+      "slug": "ibufast",
+      "normalizedSlug": "ibufast",
+      "imagePath": "/products/images/ibufast.webp",
+      "thumbnailPath": "/products/thumbnails/ibufast.webp",
+      "thumbnailExists": true
+    },
+    {
+      "index": 102,
+      "filename": "ibumod_400.webp",
+      "slug": "ibumod_400",
+      "normalizedSlug": "ibumod-400",
+      "imagePath": "/products/images/ibumod_400.webp",
+      "thumbnailPath": "/products/thumbnails/ibumod_400.webp",
+      "thumbnailExists": true
+    },
+    {
+      "index": 103,
+      "filename": "iv_set.webp",
+      "slug": "iv_set",
+      "normalizedSlug": "iv-set",
+      "imagePath": "/products/images/iv_set.webp",
+      "thumbnailPath": "/products/thumbnails/iv_set.webp",
+      "thumbnailExists": true
+    },
+    {
+      "index": 104,
+      "filename": "kaka-forte.webp",
+      "slug": "kaka-forte",
+      "normalizedSlug": "kaka-forte",
+      "imagePath": "/products/images/kaka-forte.webp",
+      "thumbnailPath": "/products/thumbnails/kaka-forte.webp",
+      "thumbnailExists": true
+    },
+    {
+      "index": 105,
+      "filename": "ketazol-comprimidos-200.webp",
+      "slug": "ketazol-comprimidos-200",
+      "normalizedSlug": "ketazol-comprimidos-200",
+      "imagePath": "/products/images/ketazol-comprimidos-200.webp",
+      "thumbnailPath": "/products/thumbnails/ketazol-comprimidos-200.webp",
+      "thumbnailExists": true
+    },
+    {
+      "index": 106,
+      "filename": "ketazol-creme-15g.webp",
+      "slug": "ketazol-creme-15g",
+      "normalizedSlug": "ketazol-creme-15g",
+      "imagePath": "/products/images/ketazol-creme-15g.webp",
+      "thumbnailPath": "/products/thumbnails/ketazol-creme-15g.webp",
+      "thumbnailExists": true
+    },
+    {
+      "index": 107,
+      "filename": "largactil.webp",
+      "slug": "largactil",
+      "normalizedSlug": "largactil",
+      "imagePath": "/products/images/largactil.webp",
+      "thumbnailPath": "/products/thumbnails/largactil.webp",
+      "thumbnailExists": true
+    },
+    {
+      "index": 108,
+      "filename": "laxonext-5.webp",
+      "slug": "laxonext-5",
+      "normalizedSlug": "laxonext-5",
+      "imagePath": "/products/images/laxonext-5.webp",
+      "thumbnailPath": "/products/thumbnails/laxonext-5.webp",
+      "thumbnailExists": true
+    },
+    {
+      "index": 109,
+      "filename": "leao.webp",
+      "slug": "leao",
+      "normalizedSlug": "leao",
+      "imagePath": "/products/images/leao.webp",
+      "thumbnailPath": "/products/thumbnails/leao.webp",
+      "thumbnailExists": true
+    },
+    {
+      "index": 110,
+      "filename": "levasol-150.webp",
+      "slug": "levasol-150",
+      "normalizedSlug": "levasol-150",
+      "imagePath": "/products/images/levasol-150.webp",
+      "thumbnailPath": "/products/thumbnails/levasol-150.webp",
+      "thumbnailExists": true
+    },
+    {
+      "index": 111,
+      "filename": "ligadura_gaze_20cm_10m.webp",
+      "slug": "ligadura_gaze_20cm_10m",
+      "normalizedSlug": "ligadura-gaze-20cm-10m",
+      "imagePath": "/products/images/ligadura_gaze_20cm_10m.webp",
+      "thumbnailPath": "/products/thumbnails/ligadura_gaze_20cm_10m.webp",
+      "thumbnailExists": true
+    },
+    {
+      "index": 112,
+      "filename": "loprade.webp",
+      "slug": "loprade",
+      "normalizedSlug": "loprade",
+      "imagePath": "/products/images/loprade.webp",
+      "thumbnailPath": "/products/thumbnails/loprade.webp",
+      "thumbnailExists": true
+    },
+    {
+      "index": 113,
+      "filename": "lorsat-plus.webp",
+      "slug": "lorsat-plus",
+      "normalizedSlug": "lorsat-plus",
+      "imagePath": "/products/images/lorsat-plus.webp",
+      "thumbnailPath": "/products/thumbnails/lorsat-plus.webp",
+      "thumbnailExists": true
+    },
+    {
+      "index": 114,
+      "filename": "losartan-hctz.webp",
+      "slug": "losartan-hctz",
+      "normalizedSlug": "losartan-hctz",
+      "imagePath": "/products/images/losartan-hctz.webp",
+      "thumbnailPath": "/products/thumbnails/losartan-hctz.webp",
+      "thumbnailExists": true
+    },
+    {
+      "index": 115,
+      "filename": "lumartem.webp",
+      "slug": "lumartem",
+      "normalizedSlug": "lumartem",
+      "imagePath": "/products/images/lumartem.webp",
+      "thumbnailPath": "/products/thumbnails/lumartem.webp",
+      "thumbnailExists": true
+    },
+    {
+      "index": 116,
+      "filename": "lumatriz.webp",
+      "slug": "lumatriz",
+      "normalizedSlug": "lumatriz",
+      "imagePath": "/products/images/lumatriz.webp",
+      "thumbnailPath": "/products/thumbnails/lumatriz.webp",
+      "thumbnailExists": true
+    },
+    {
+      "index": 117,
+      "filename": "lumatriz_adulto.webp",
+      "slug": "lumatriz_adulto",
+      "normalizedSlug": "lumatriz-adulto",
+      "imagePath": "/products/images/lumatriz_adulto.webp",
+      "thumbnailPath": "/products/thumbnails/lumatriz_adulto.webp",
+      "thumbnailExists": true
+    },
+    {
+      "index": 118,
+      "filename": "luvas.webp",
+      "slug": "luvas",
+      "normalizedSlug": "luvas",
+      "imagePath": "/products/images/luvas.webp",
+      "thumbnailPath": "/products/thumbnails/luvas.webp",
+      "thumbnailExists": true
+    },
+    {
+      "index": 119,
+      "filename": "mebox.webp",
+      "slug": "mebox",
+      "normalizedSlug": "mebox",
+      "imagePath": "/products/images/mebox.webp",
+      "thumbnailPath": "/products/thumbnails/mebox.webp",
+      "thumbnailExists": true
+    },
+    {
+      "index": 120,
+      "filename": "med-scorpion-balm-4g.webp",
+      "slug": "med-scorpion-balm-4g",
+      "normalizedSlug": "med-scorpion-balm-4g",
+      "imagePath": "/products/images/med-scorpion-balm-4g.webp",
+      "thumbnailPath": "/products/thumbnails/med-scorpion-balm-4g.webp",
+      "thumbnailExists": true
+    },
+    {
+      "index": 121,
+      "filename": "med-xunhu-balm.webp",
+      "slug": "med-xunhu-balm",
+      "normalizedSlug": "med-xunhu-balm",
+      "imagePath": "/products/images/med-xunhu-balm.webp",
+      "thumbnailPath": "/products/thumbnails/med-xunhu-balm.webp",
+      "thumbnailExists": true
+    },
+    {
+      "index": 122,
+      "filename": "med_b_plex.webp",
+      "slug": "med_b_plex",
+      "normalizedSlug": "med-b-plex",
+      "imagePath": "/products/images/med_b_plex.webp",
+      "thumbnailPath": "/products/thumbnails/med_b_plex.webp",
+      "thumbnailExists": true
+    },
+    {
+      "index": 123,
+      "filename": "megafer.webp",
+      "slug": "megafer",
+      "normalizedSlug": "megafer",
+      "imagePath": "/products/images/megafer.webp",
+      "thumbnailPath": "/products/thumbnails/megafer.webp",
+      "thumbnailExists": true
+    },
+    {
+      "index": 124,
+      "filename": "menthylon.webp",
+      "slug": "menthylon",
+      "normalizedSlug": "menthylon",
+      "imagePath": "/products/images/menthylon.webp",
+      "thumbnailPath": "/products/thumbnails/menthylon.webp",
+      "thumbnailExists": true
+    },
+    {
+      "index": 125,
+      "filename": "metformina.webp",
+      "slug": "metformina",
+      "normalizedSlug": "metformina",
+      "imagePath": "/products/images/metformina.webp",
+      "thumbnailPath": "/products/thumbnails/metformina.webp",
+      "thumbnailExists": true
+    },
+    {
+      "index": 126,
+      "filename": "metnext-250.webp",
+      "slug": "metnext-250",
+      "normalizedSlug": "metnext-250",
+      "imagePath": "/products/images/metnext-250.webp",
+      "thumbnailPath": "/products/thumbnails/metnext-250.webp",
+      "thumbnailExists": true
+    },
+    {
+      "index": 127,
+      "filename": "microscope_slides_7101.webp",
+      "slug": "microscope_slides_7101",
+      "normalizedSlug": "microscope-slides-7101",
+      "imagePath": "/products/images/microscope_slides_7101.webp",
+      "thumbnailPath": "/products/thumbnails/microscope_slides_7101.webp",
+      "thumbnailExists": true
+    },
+    {
+      "index": 128,
+      "filename": "modvit_c.webp",
+      "slug": "modvit_c",
+      "normalizedSlug": "modvit-c",
+      "imagePath": "/products/images/modvit_c.webp",
+      "thumbnailPath": "/products/thumbnails/modvit_c.webp",
+      "thumbnailExists": true
+    },
+    {
+      "index": 129,
+      "filename": "molicid.webp",
+      "slug": "molicid",
+      "normalizedSlug": "molicid",
+      "imagePath": "/products/images/molicid.webp",
+      "thumbnailPath": "/products/thumbnails/molicid.webp",
+      "thumbnailExists": true
+    },
+    {
+      "index": 130,
+      "filename": "mucoril.webp",
+      "slug": "mucoril",
+      "normalizedSlug": "mucoril",
+      "imagePath": "/products/images/mucoril.webp",
+      "thumbnailPath": "/products/thumbnails/mucoril.webp",
+      "thumbnailExists": true
+    },
+    {
+      "index": 131,
+      "filename": "my-beauty-charcoal-soap.webp",
+      "slug": "my-beauty-charcoal-soap",
+      "normalizedSlug": "my-beauty-charcoal-soap",
+      "imagePath": "/products/images/my-beauty-charcoal-soap.webp",
+      "thumbnailPath": "/products/thumbnails/my-beauty-charcoal-soap.webp",
+      "thumbnailExists": true
+    },
+    {
+      "index": 132,
+      "filename": "my-beauty-glycerin-soap.webp",
+      "slug": "my-beauty-glycerin-soap",
+      "normalizedSlug": "my-beauty-glycerin-soap",
+      "imagePath": "/products/images/my-beauty-glycerin-soap.webp",
+      "thumbnailPath": "/products/thumbnails/my-beauty-glycerin-soap.webp",
+      "thumbnailExists": true
+    },
+    {
+      "index": 133,
+      "filename": "my-beauty-sulfur-soap.webp",
+      "slug": "my-beauty-sulfur-soap",
+      "normalizedSlug": "my-beauty-sulfur-soap",
+      "imagePath": "/products/images/my-beauty-sulfur-soap.webp",
+      "thumbnailPath": "/products/thumbnails/my-beauty-sulfur-soap.webp",
+      "thumbnailExists": true
+    },
+    {
+      "index": 134,
+      "filename": "mycozema-soap.webp",
+      "slug": "mycozema-soap",
+      "normalizedSlug": "mycozema-soap",
+      "imagePath": "/products/images/mycozema-soap.webp",
+      "thumbnailPath": "/products/thumbnails/mycozema-soap.webp",
+      "thumbnailExists": true
+    },
+    {
+      "index": 135,
+      "filename": "mycozema.webp",
+      "slug": "mycozema",
+      "normalizedSlug": "mycozema",
+      "imagePath": "/products/images/mycozema.webp",
+      "thumbnailPath": "/products/thumbnails/mycozema.webp",
+      "thumbnailExists": true
+    },
+    {
+      "index": 136,
+      "filename": "neocin.webp",
+      "slug": "neocin",
+      "normalizedSlug": "neocin",
+      "imagePath": "/products/images/neocin.webp",
+      "thumbnailPath": "/products/thumbnails/neocin.webp",
+      "thumbnailExists": true
+    },
+    {
+      "index": 137,
+      "filename": "neotos_xarope.webp",
+      "slug": "neotos_xarope",
+      "normalizedSlug": "neotos-xarope",
+      "imagePath": "/products/images/neotos_xarope.webp",
+      "thumbnailPath": "/products/thumbnails/neotos_xarope.webp",
+      "thumbnailExists": true
+    },
+    {
+      "index": 138,
+      "filename": "neurobbion.webp",
+      "slug": "neurobbion",
+      "normalizedSlug": "neurobbion",
+      "imagePath": "/products/images/neurobbion.webp",
+      "thumbnailPath": "/products/thumbnails/neurobbion.webp",
+      "thumbnailExists": true
+    },
+    {
+      "index": 139,
+      "filename": "nexflam.webp",
+      "slug": "nexflam",
+      "normalizedSlug": "nexflam",
+      "imagePath": "/products/images/nexflam.webp",
+      "thumbnailPath": "/products/thumbnails/nexflam.webp",
+      "thumbnailExists": true
+    },
+    {
+      "index": 140,
+      "filename": "nexplex.webp",
+      "slug": "nexplex",
+      "normalizedSlug": "nexplex",
+      "imagePath": "/products/images/nexplex.webp",
+      "thumbnailPath": "/products/thumbnails/nexplex.webp",
+      "thumbnailExists": true
+    },
+    {
+      "index": 141,
+      "filename": "next-o-zinc.webp",
+      "slug": "next-o-zinc",
+      "normalizedSlug": "next-o-zinc",
+      "imagePath": "/products/images/next-o-zinc.webp",
+      "thumbnailPath": "/products/thumbnails/next-o-zinc.webp",
+      "thumbnailExists": true
+    },
+    {
+      "index": 142,
+      "filename": "next72.webp",
+      "slug": "next72",
+      "normalizedSlug": "next72",
+      "imagePath": "/products/images/next72.webp",
+      "thumbnailPath": "/products/thumbnails/next72.webp",
+      "thumbnailExists": true
+    },
+    {
+      "index": 143,
+      "filename": "nextrim-forte.webp",
+      "slug": "nextrim-forte",
+      "normalizedSlug": "nextrim-forte",
+      "imagePath": "/products/images/nextrim-forte.webp",
+      "thumbnailPath": "/products/thumbnails/nextrim-forte.webp",
+      "thumbnailExists": true
+    },
+    {
+      "index": 144,
+      "filename": "nextrim.webp",
+      "slug": "nextrim",
+      "normalizedSlug": "nextrim",
+      "imagePath": "/products/images/nextrim.webp",
+      "thumbnailPath": "/products/thumbnails/nextrim.webp",
+      "thumbnailExists": true
+    },
+    {
+      "index": 145,
+      "filename": "nifedipine-30.webp",
+      "slug": "nifedipine-30",
+      "normalizedSlug": "nifedipine-30",
+      "imagePath": "/products/images/nifedipine-30.webp",
+      "thumbnailPath": "/products/thumbnails/nifedipine-30.webp",
+      "thumbnailExists": true
+    },
+    {
+      "index": 146,
+      "filename": "nutriline-4.webp",
+      "slug": "nutriline-4",
+      "normalizedSlug": "nutriline-4",
+      "imagePath": "/products/images/nutriline-4.webp",
+      "thumbnailPath": "/products/thumbnails/nutriline-4.webp",
+      "thumbnailExists": true
+    },
+    {
+      "index": 147,
+      "filename": "nutriline.webp",
+      "slug": "nutriline",
+      "normalizedSlug": "nutriline",
+      "imagePath": "/products/images/nutriline.webp",
+      "thumbnailPath": "/products/thumbnails/nutriline.webp",
+      "thumbnailExists": true
+    },
+    {
+      "index": 148,
+      "filename": "nystatine.webp",
+      "slug": "nystatine",
+      "normalizedSlug": "nystatine",
+      "imagePath": "/products/images/nystatine.webp",
+      "thumbnailPath": "/products/thumbnails/nystatine.webp",
+      "thumbnailExists": true
+    },
+    {
+      "index": 149,
+      "filename": "ofloxt-oz.webp",
+      "slug": "ofloxt-oz",
+      "normalizedSlug": "ofloxt-oz",
+      "imagePath": "/products/images/ofloxt-oz.webp",
+      "thumbnailPath": "/products/thumbnails/ofloxt-oz.webp",
+      "thumbnailExists": true
+    },
+    {
+      "index": 150,
+      "filename": "ofloxt_oz.webp",
+      "slug": "ofloxt_oz",
+      "normalizedSlug": "ofloxt-oz",
+      "imagePath": "/products/images/ofloxt_oz.webp",
+      "thumbnailPath": "/products/thumbnails/ofloxt_oz.webp",
+      "thumbnailExists": true
+    },
+    {
+      "index": 151,
+      "filename": "onegloves_latex_m_100.webp",
+      "slug": "onegloves_latex_m_100",
+      "normalizedSlug": "onegloves-latex-m-100",
+      "imagePath": "/products/images/onegloves_latex_m_100.webp",
+      "thumbnailPath": "/products/thumbnails/onegloves_latex_m_100.webp",
+      "thumbnailExists": true
+    },
+    {
+      "index": 152,
+      "filename": "oxitocina.webp",
+      "slug": "oxitocina",
+      "normalizedSlug": "oxitocina",
+      "imagePath": "/products/images/oxitocina.webp",
+      "thumbnailPath": "/products/thumbnails/oxitocina.webp",
+      "thumbnailExists": true
+    },
+    {
+      "index": 153,
+      "filename": "oyodex-300.webp",
+      "slug": "oyodex-300",
+      "normalizedSlug": "oyodex-300",
+      "imagePath": "/products/images/oyodex-300.webp",
+      "thumbnailPath": "/products/thumbnails/oyodex-300.webp",
+      "thumbnailExists": true
+    },
+    {
+      "index": 154,
+      "filename": "p1_a42.webp",
+      "slug": "p1_a42",
+      "normalizedSlug": "p1-a42",
+      "imagePath": "/products/images/p1_a42.webp",
+      "thumbnailPath": "/products/thumbnails/p1_a42.webp",
+      "thumbnailExists": true
+    },
+    {
+      "index": 155,
+      "filename": "pain-low.webp",
+      "slug": "pain-low",
+      "normalizedSlug": "pain-low",
+      "imagePath": "/products/images/pain-low.webp",
+      "thumbnailPath": "/products/thumbnails/pain-low.webp",
+      "thumbnailExists": true
+    },
+    {
+      "index": 156,
+      "filename": "paradon-500.webp",
+      "slug": "paradon-500",
+      "normalizedSlug": "paradon-500",
+      "imagePath": "/products/images/paradon-500.webp",
+      "thumbnailPath": "/products/thumbnails/paradon-500.webp",
+      "thumbnailExists": true
+    },
+    {
+      "index": 157,
+      "filename": "paradons.webp",
+      "slug": "paradons",
+      "normalizedSlug": "paradons",
+      "imagePath": "/products/images/paradons.webp",
+      "thumbnailPath": "/products/thumbnails/paradons.webp",
+      "thumbnailExists": true
+    },
+    {
+      "index": 158,
+      "filename": "parafresh.webp",
+      "slug": "parafresh",
+      "normalizedSlug": "parafresh",
+      "imagePath": "/products/images/parafresh.webp",
+      "thumbnailPath": "/products/thumbnails/parafresh.webp",
+      "thumbnailExists": true
+    },
+    {
+      "index": 159,
+      "filename": "pearieactin.webp",
+      "slug": "pearieactin",
+      "normalizedSlug": "pearieactin",
+      "imagePath": "/products/images/pearieactin.webp",
+      "thumbnailPath": "/products/thumbnails/pearieactin.webp",
+      "thumbnailExists": true
+    },
+    {
+      "index": 160,
+      "filename": "peninext.webp",
+      "slug": "peninext",
+      "normalizedSlug": "peninext",
+      "imagePath": "/products/images/peninext.webp",
+      "thumbnailPath": "/products/thumbnails/peninext.webp",
+      "thumbnailExists": true
+    },
+    {
+      "index": 161,
+      "filename": "peninext_125.webp",
+      "slug": "peninext_125",
+      "normalizedSlug": "peninext-125",
+      "imagePath": "/products/images/peninext_125.webp",
+      "thumbnailPath": "/products/thumbnails/peninext_125.webp",
+      "thumbnailExists": true
+    },
+    {
+      "index": 162,
+      "filename": "peninext_250mg_60ml.webp",
+      "slug": "peninext_250mg_60ml",
+      "normalizedSlug": "peninext-250mg-60ml",
+      "imagePath": "/products/images/peninext_250mg_60ml.webp",
+      "thumbnailPath": "/products/thumbnails/peninext_250mg_60ml.webp",
+      "thumbnailExists": true
+    },
+    {
+      "index": 163,
+      "filename": "perfect-shape-cream.webp",
+      "slug": "perfect-shape-cream",
+      "normalizedSlug": "perfect-shape-cream",
+      "imagePath": "/products/images/perfect-shape-cream.webp",
+      "thumbnailPath": "/products/thumbnails/perfect-shape-cream.webp",
+      "thumbnailExists": true
+    },
+    {
+      "index": 164,
+      "filename": "perfect-vita.webp",
+      "slug": "perfect-vita",
+      "normalizedSlug": "perfect-vita",
+      "imagePath": "/products/images/perfect-vita.webp",
+      "thumbnailPath": "/products/thumbnails/perfect-vita.webp",
+      "thumbnailExists": true
+    },
+    {
+      "index": 165,
+      "filename": "perfect_vita.webp",
+      "slug": "perfect_vita",
+      "normalizedSlug": "perfect-vita",
+      "imagePath": "/products/images/perfect_vita.webp",
+      "thumbnailPath": "/products/thumbnails/perfect_vita.webp",
+      "thumbnailExists": true
+    },
+    {
+      "index": 166,
+      "filename": "perfect_vita100.webp",
+      "slug": "perfect_vita100",
+      "normalizedSlug": "perfect-vita100",
+      "imagePath": "/products/images/perfect_vita100.webp",
+      "thumbnailPath": "/products/thumbnails/perfect_vita100.webp",
+      "thumbnailExists": true
+    },
+    {
+      "index": 167,
+      "filename": "predone-20.webp",
+      "slug": "predone-20",
+      "normalizedSlug": "predone-20",
+      "imagePath": "/products/images/predone-20.webp",
+      "thumbnailPath": "/products/thumbnails/predone-20.webp",
+      "thumbnailExists": true
+    },
+    {
+      "index": 168,
+      "filename": "preservativo-latex.webp",
+      "slug": "preservativo-latex",
+      "normalizedSlug": "preservativo-latex",
+      "imagePath": "/products/images/preservativo-latex.webp",
+      "thumbnailPath": "/products/thumbnails/preservativo-latex.webp",
+      "thumbnailExists": true
+    },
+    {
+      "index": 169,
+      "filename": "progesterona.webp",
+      "slug": "progesterona",
+      "normalizedSlug": "progesterona",
+      "imagePath": "/products/images/progesterona.webp",
+      "thumbnailPath": "/products/thumbnails/progesterona.webp",
+      "thumbnailExists": true
+    },
+    {
+      "index": 170,
+      "filename": "proteza.webp",
+      "slug": "proteza",
+      "normalizedSlug": "proteza",
+      "imagePath": "/products/images/proteza.webp",
+      "thumbnailPath": "/products/thumbnails/proteza.webp",
+      "thumbnailExists": true
+    },
+    {
+      "index": 171,
+      "filename": "pyroxen.webp",
+      "slug": "pyroxen",
+      "normalizedSlug": "pyroxen",
+      "imagePath": "/products/images/pyroxen.webp",
+      "thumbnailPath": "/products/thumbnails/pyroxen.webp",
+      "thumbnailExists": true
+    },
+    {
+      "index": 172,
+      "filename": "quick-action.webp",
+      "slug": "quick-action",
+      "normalizedSlug": "quick-action",
+      "imagePath": "/products/images/quick-action.webp",
+      "thumbnailPath": "/products/thumbnails/quick-action.webp",
+      "thumbnailExists": true
+    },
+    {
+      "index": 173,
+      "filename": "quinina.webp",
+      "slug": "quinina",
+      "normalizedSlug": "quinina",
+      "imagePath": "/products/images/quinina.webp",
+      "thumbnailPath": "/products/thumbnails/quinina.webp",
+      "thumbnailExists": true
+    },
+    {
+      "index": 174,
+      "filename": "rapidol_c.webp",
+      "slug": "rapidol_c",
+      "normalizedSlug": "rapidol-c",
+      "imagePath": "/products/images/rapidol_c.webp",
+      "thumbnailPath": "/products/thumbnails/rapidol_c.webp",
+      "thumbnailExists": true
+    },
+    {
+      "index": 175,
+      "filename": "react-extra-gel.webp",
+      "slug": "react-extra-gel",
+      "normalizedSlug": "react-extra-gel",
+      "imagePath": "/products/images/react-extra-gel.webp",
+      "thumbnailPath": "/products/thumbnails/react-extra-gel.webp",
+      "thumbnailExists": true
+    },
+    {
+      "index": 176,
+      "filename": "relax-limao.webp",
+      "slug": "relax-limao",
+      "normalizedSlug": "relax-limao",
+      "imagePath": "/products/images/relax-limao.webp",
+      "thumbnailPath": "/products/thumbnails/relax-limao.webp",
+      "thumbnailExists": true
+    },
+    {
+      "index": 177,
+      "filename": "relax.webp",
+      "slug": "relax",
+      "normalizedSlug": "relax",
+      "imagePath": "/products/images/relax.webp",
+      "thumbnailPath": "/products/thumbnails/relax.webp",
+      "thumbnailExists": true
+    },
+    {
+      "index": 178,
+      "filename": "reservativo-chocolate.webp",
+      "slug": "reservativo-chocolate",
+      "normalizedSlug": "reservativo-chocolate",
+      "imagePath": "/products/images/reservativo-chocolate.webp",
+      "thumbnailPath": "/products/thumbnails/reservativo-chocolate.webp",
+      "thumbnailExists": true
+    },
+    {
+      "index": 179,
+      "filename": "rifampicina-300.webp",
+      "slug": "rifampicina-300",
+      "normalizedSlug": "rifampicina-300",
+      "imagePath": "/products/images/rifampicina-300.webp",
+      "thumbnailPath": "/products/thumbnails/rifampicina-300.webp",
+      "thumbnailExists": true
+    },
+    {
+      "index": 180,
+      "filename": "rosuvastatina.webp",
+      "slug": "rosuvastatina",
+      "normalizedSlug": "rosuvastatina",
+      "imagePath": "/products/images/rosuvastatina.webp",
+      "thumbnailPath": "/products/thumbnails/rosuvastatina.webp",
+      "thumbnailExists": true
+    },
+    {
+      "index": 181,
+      "filename": "salbutamol.webp",
+      "slug": "salbutamol",
+      "normalizedSlug": "salbutamol",
+      "imagePath": "/products/images/salbutamol.webp",
+      "thumbnailPath": "/products/thumbnails/salbutamol.webp",
+      "thumbnailExists": true
+    },
+    {
+      "index": 182,
+      "filename": "salnext-4.webp",
+      "slug": "salnext-4",
+      "normalizedSlug": "salnext-4",
+      "imagePath": "/products/images/salnext-4.webp",
+      "thumbnailPath": "/products/thumbnails/salnext-4.webp",
+      "thumbnailExists": true
+    },
+    {
+      "index": 183,
+      "filename": "scalp_21g.webp",
+      "slug": "scalp_21g",
+      "normalizedSlug": "scalp-21g",
+      "imagePath": "/products/images/scalp_21g.webp",
+      "thumbnailPath": "/products/thumbnails/scalp_21g.webp",
+      "thumbnailExists": true
+    },
+    {
+      "index": 184,
+      "filename": "seringa_05ml_auto.webp",
+      "slug": "seringa_05ml_auto",
+      "normalizedSlug": "seringa-05ml-auto",
+      "imagePath": "/products/images/seringa_05ml_auto.webp",
+      "thumbnailPath": "/products/thumbnails/seringa_05ml_auto.webp",
+      "thumbnailExists": true
+    },
+    {
+      "index": 185,
+      "filename": "seringa_10ml.webp",
+      "slug": "seringa_10ml",
+      "normalizedSlug": "seringa-10ml",
+      "imagePath": "/products/images/seringa_10ml.webp",
+      "thumbnailPath": "/products/thumbnails/seringa_10ml.webp",
+      "thumbnailExists": true
+    },
+    {
+      "index": 186,
+      "filename": "seringa_2ml.webp",
+      "slug": "seringa_2ml",
+      "normalizedSlug": "seringa-2ml",
+      "imagePath": "/products/images/seringa_2ml.webp",
+      "thumbnailPath": "/products/thumbnails/seringa_2ml.webp",
+      "thumbnailExists": true
+    },
+    {
+      "index": 187,
+      "filename": "seringa_5ml_100.webp",
+      "slug": "seringa_5ml_100",
+      "normalizedSlug": "seringa-5ml-100",
+      "imagePath": "/products/images/seringa_5ml_100.webp",
+      "thumbnailPath": "/products/thumbnails/seringa_5ml_100.webp",
+      "thumbnailExists": true
+    },
+    {
+      "index": 188,
+      "filename": "shalcip_iv.webp",
+      "slug": "shalcip_iv",
+      "normalizedSlug": "shalcip-iv",
+      "imagePath": "/products/images/shalcip_iv.webp",
+      "thumbnailPath": "/products/thumbnails/shalcip_iv.webp",
+      "thumbnailExists": true
+    },
+    {
+      "index": 189,
+      "filename": "shaldex.webp",
+      "slug": "shaldex",
+      "normalizedSlug": "shaldex",
+      "imagePath": "/products/images/shaldex.webp",
+      "thumbnailPath": "/products/thumbnails/shaldex.webp",
+      "thumbnailExists": true
+    },
+    {
+      "index": 190,
+      "filename": "shaltoux.webp",
+      "slug": "shaltoux",
+      "normalizedSlug": "shaltoux",
+      "imagePath": "/products/images/shaltoux.webp",
+      "thumbnailPath": "/products/thumbnails/shaltoux.webp",
+      "thumbnailExists": true
+    },
+    {
+      "index": 191,
+      "filename": "socomol.webp",
+      "slug": "socomol",
+      "normalizedSlug": "socomol",
+      "imagePath": "/products/images/socomol.webp",
+      "thumbnailPath": "/products/thumbnails/socomol.webp",
+      "thumbnailExists": true
+    },
+    {
+      "index": 192,
+      "filename": "solotone.webp",
+      "slug": "solotone",
+      "normalizedSlug": "solotone",
+      "imagePath": "/products/images/solotone.webp",
+      "thumbnailPath": "/products/thumbnails/solotone.webp",
+      "thumbnailExists": true
+    },
+    {
+      "index": 193,
+      "filename": "soluto_dakin_500ml.webp",
+      "slug": "soluto_dakin_500ml",
+      "normalizedSlug": "soluto-dakin-500ml",
+      "imagePath": "/products/images/soluto_dakin_500ml.webp",
+      "thumbnailPath": "/products/thumbnails/soluto_dakin_500ml.webp",
+      "thumbnailExists": true
+    },
+    {
+      "index": 194,
+      "filename": "soro_09.webp",
+      "slug": "soro_09",
+      "normalizedSlug": "soro-09",
+      "imagePath": "/products/images/soro_09.webp",
+      "thumbnailPath": "/products/thumbnails/soro_09.webp",
+      "thumbnailExists": true
+    },
+    {
+      "index": 195,
+      "filename": "soro_manitol.webp",
+      "slug": "soro_manitol",
+      "normalizedSlug": "soro-manitol",
+      "imagePath": "/products/images/soro_manitol.webp",
+      "thumbnailPath": "/products/thumbnails/soro_manitol.webp",
+      "thumbnailExists": true
+    },
+    {
+      "index": 196,
+      "filename": "starmol.webp",
+      "slug": "starmol",
+      "normalizedSlug": "starmol",
+      "imagePath": "/products/images/starmol.webp",
+      "thumbnailPath": "/products/thumbnails/starmol.webp",
+      "thumbnailExists": true
+    },
+    {
+      "index": 197,
+      "filename": "stethoscope.webp",
+      "slug": "stethoscope",
+      "normalizedSlug": "stethoscope",
+      "imagePath": "/products/images/stethoscope.webp",
+      "thumbnailPath": "/products/thumbnails/stethoscope.webp",
+      "thumbnailExists": true
+    },
+    {
+      "index": 198,
+      "filename": "stopdor-500.webp",
+      "slug": "stopdor-500",
+      "normalizedSlug": "stopdor-500",
+      "imagePath": "/products/images/stopdor-500.webp",
+      "thumbnailPath": "/products/thumbnails/stopdor-500.webp",
+      "thumbnailExists": true
+    },
+    {
+      "index": 199,
+      "filename": "stopdor-syrup.webp",
+      "slug": "stopdor-syrup",
+      "normalizedSlug": "stopdor-syrup",
+      "imagePath": "/products/images/stopdor-syrup.webp",
+      "thumbnailPath": "/products/thumbnails/stopdor-syrup.webp",
+      "thumbnailExists": true
+    },
+    {
+      "index": 200,
+      "filename": "sulfatrim.webp",
+      "slug": "sulfatrim",
+      "normalizedSlug": "sulfatrim",
+      "imagePath": "/products/images/sulfatrim.webp",
+      "thumbnailPath": "/products/thumbnails/sulfatrim.webp",
+      "thumbnailExists": true
+    },
+    {
+      "index": 201,
+      "filename": "super-grande.webp",
+      "slug": "super-grande",
+      "normalizedSlug": "super-grande",
+      "imagePath": "/products/images/super-grande.webp",
+      "thumbnailPath": "/products/thumbnails/super-grande.webp",
+      "thumbnailExists": true
+    },
+    {
+      "index": 202,
+      "filename": "super_apeti.webp",
+      "slug": "super_apeti",
+      "normalizedSlug": "super-apeti",
+      "imagePath": "/products/images/super_apeti.webp",
+      "thumbnailPath": "/products/thumbnails/super_apeti.webp",
+      "thumbnailExists": true
+    },
+    {
+      "index": 203,
+      "filename": "swfi.webp",
+      "slug": "swfi",
+      "normalizedSlug": "swfi",
+      "imagePath": "/products/images/swfi.webp",
+      "thumbnailPath": "/products/thumbnails/swfi.webp",
+      "thumbnailExists": true
+    },
+    {
+      "index": 204,
+      "filename": "termometro.webp",
+      "slug": "termometro",
+      "normalizedSlug": "termometro",
+      "imagePath": "/products/images/termometro.webp",
+      "thumbnailPath": "/products/thumbnails/termometro.webp",
+      "thumbnailExists": true
+    },
+    {
+      "index": 205,
+      "filename": "tetramin.webp",
+      "slug": "tetramin",
+      "normalizedSlug": "tetramin",
+      "imagePath": "/products/images/tetramin.webp",
+      "thumbnailPath": "/products/thumbnails/tetramin.webp",
+      "thumbnailExists": true
+    },
+    {
+      "index": 206,
+      "filename": "tetranext-250.webp",
+      "slug": "tetranext-250",
+      "normalizedSlug": "tetranext-250",
+      "imagePath": "/products/images/tetranext-250.webp",
+      "thumbnailPath": "/products/thumbnails/tetranext-250.webp",
+      "thumbnailExists": true
+    },
+    {
+      "index": 207,
+      "filename": "trancozema-soap.webp",
+      "slug": "trancozema-soap",
+      "normalizedSlug": "trancozema-soap",
+      "imagePath": "/products/images/trancozema-soap.webp",
+      "thumbnailPath": "/products/thumbnails/trancozema-soap.webp",
+      "thumbnailExists": true
+    },
+    {
+      "index": 208,
+      "filename": "trancozema.webp",
+      "slug": "trancozema",
+      "normalizedSlug": "trancozema",
+      "imagePath": "/products/images/trancozema.webp",
+      "thumbnailPath": "/products/thumbnails/trancozema.webp",
+      "thumbnailExists": true
+    },
+    {
+      "index": 209,
+      "filename": "tresplext.webp",
+      "slug": "tresplext",
+      "normalizedSlug": "tresplext",
+      "imagePath": "/products/images/tresplext.webp",
+      "thumbnailPath": "/products/thumbnails/tresplext.webp",
+      "thumbnailExists": true
+    },
+    {
+      "index": 210,
+      "filename": "trobisen.webp",
+      "slug": "trobisen",
+      "normalizedSlug": "trobisen",
+      "imagePath": "/products/images/trobisen.webp",
+      "thumbnailPath": "/products/thumbnails/trobisen.webp",
+      "thumbnailExists": true
+    },
+    {
+      "index": 211,
+      "filename": "tuma_tuma.webp",
+      "slug": "tuma_tuma",
+      "normalizedSlug": "tuma-tuma",
+      "imagePath": "/products/images/tuma_tuma.webp",
+      "thumbnailPath": "/products/thumbnails/tuma_tuma.webp",
+      "thumbnailExists": true
+    },
+    {
+      "index": 212,
+      "filename": "ultrax.webp",
+      "slug": "ultrax",
+      "normalizedSlug": "ultrax",
+      "imagePath": "/products/images/ultrax.webp",
+      "thumbnailPath": "/products/thumbnails/ultrax.webp",
+      "thumbnailExists": true
+    },
+    {
+      "index": 213,
+      "filename": "uroflox.webp",
+      "slug": "uroflox",
+      "normalizedSlug": "uroflox",
+      "imagePath": "/products/images/uroflox.webp",
+      "thumbnailPath": "/products/thumbnails/uroflox.webp",
+      "thumbnailExists": true
+    },
+    {
+      "index": 214,
+      "filename": "venegra-100.webp",
+      "slug": "venegra-100",
+      "normalizedSlug": "venegra-100",
+      "imagePath": "/products/images/venegra-100.webp",
+      "thumbnailPath": "/products/thumbnails/venegra-100.webp",
+      "thumbnailExists": true
+    },
+    {
+      "index": 215,
+      "filename": "vitamin-b6.webp",
+      "slug": "vitamin-b6",
+      "normalizedSlug": "vitamin-b6",
+      "imagePath": "/products/images/vitamin-b6.webp",
+      "thumbnailPath": "/products/thumbnails/vitamin-b6.webp",
+      "thumbnailExists": true
+    },
+    {
+      "index": 216,
+      "filename": "vitamina-a.webp",
+      "slug": "vitamina-a",
+      "normalizedSlug": "vitamina-a",
+      "imagePath": "/products/images/vitamina-a.webp",
+      "thumbnailPath": "/products/thumbnails/vitamina-a.webp",
+      "thumbnailExists": true
+    },
+    {
+      "index": 217,
+      "filename": "vitamina-e.webp",
+      "slug": "vitamina-e",
+      "normalizedSlug": "vitamina-e",
+      "imagePath": "/products/images/vitamina-e.webp",
+      "thumbnailPath": "/products/thumbnails/vitamina-e.webp",
+      "thumbnailExists": true
+    },
+    {
+      "index": 218,
+      "filename": "vitamina_b12.webp",
+      "slug": "vitamina_b12",
+      "normalizedSlug": "vitamina-b12",
+      "imagePath": "/products/images/vitamina_b12.webp",
+      "thumbnailPath": "/products/thumbnails/vitamina_b12.webp",
+      "thumbnailExists": true
+    },
+    {
+      "index": 219,
+      "filename": "vitamina_b6.webp",
+      "slug": "vitamina_b6",
+      "normalizedSlug": "vitamina-b6",
+      "imagePath": "/products/images/vitamina_b6.webp",
+      "thumbnailPath": "/products/thumbnails/vitamina_b6.webp",
+      "thumbnailExists": true
+    },
+    {
+      "index": 220,
+      "filename": "wilzaar.webp",
+      "slug": "wilzaar",
+      "normalizedSlug": "wilzaar",
+      "imagePath": "/products/images/wilzaar.webp",
+      "thumbnailPath": "/products/thumbnails/wilzaar.webp",
+      "thumbnailExists": true
+    },
+    {
+      "index": 221,
+      "filename": "wormex_30ml.webp",
+      "slug": "wormex_30ml",
+      "normalizedSlug": "wormex-30ml",
+      "imagePath": "/products/images/wormex_30ml.webp",
+      "thumbnailPath": "/products/thumbnails/wormex_30ml.webp",
+      "thumbnailExists": true
+    },
+    {
+      "index": 222,
+      "filename": "zenkof.webp",
+      "slug": "zenkof",
+      "normalizedSlug": "zenkof",
+      "imagePath": "/products/images/zenkof.webp",
+      "thumbnailPath": "/products/thumbnails/zenkof.webp",
+      "thumbnailExists": true
+    },
+    {
+      "index": 223,
+      "filename": "zibu-plus.webp",
+      "slug": "zibu-plus",
+      "normalizedSlug": "zibu-plus",
+      "imagePath": "/products/images/zibu-plus.webp",
+      "thumbnailPath": "/products/thumbnails/zibu-plus.webp",
+      "thumbnailExists": true
+    },
+    {
+      "index": 224,
+      "filename": "zibu.webp",
+      "slug": "zibu",
+      "normalizedSlug": "zibu",
+      "imagePath": "/products/images/zibu.webp",
+      "thumbnailPath": "/products/thumbnails/zibu.webp",
+      "thumbnailExists": true
+    },
+    {
+      "index": 225,
+      "filename": "zibu_grip.webp",
+      "slug": "zibu_grip",
+      "normalizedSlug": "zibu-grip",
+      "imagePath": "/products/images/zibu_grip.webp",
+      "thumbnailPath": "/products/thumbnails/zibu_grip.webp",
+      "thumbnailExists": true
+    }
+  ]
+}
