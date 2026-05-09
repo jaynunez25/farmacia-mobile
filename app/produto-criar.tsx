@@ -37,6 +37,18 @@ function normalizeProductListResponse(data: unknown): Product[] {
   return [];
 }
 
+/** Format a total-blisters count as "X caixas + Y lâminas" using `bpp` (blisters per box). */
+function formatBoxesLamina(total: number, bpp: number): string {
+  const t = Math.max(0, Math.floor(Number(total) || 0));
+  if (bpp <= 1) return String(t);
+  const boxes = Math.floor(t / bpp);
+  const lam = t % bpp;
+  if (boxes === 0 && lam === 0) return '0 lâminas';
+  if (lam === 0) return `${boxes} caixa${boxes === 1 ? '' : 's'}`;
+  if (boxes === 0) return `${lam} lâmina${lam === 1 ? '' : 's'}`;
+  return `${boxes} caixa${boxes === 1 ? '' : 's'} + ${lam} lâmina${lam === 1 ? '' : 's'}`;
+}
+
 const defaultForm = {
   sku: '',
   barcode: '',
@@ -50,6 +62,9 @@ const defaultForm = {
   can_sell_by_unit: false,
   pack_name: '',
   unit_name: '',
+  /** Source of truth for blister-stock model: number of blisters/lâminas per full box. */
+  blisters_per_box: '' as string | number,
+  /** Legacy: kept only for backward compatibility (mirrored from blisters_per_box on save). */
   units_per_pack: '' as string | number,
   units_per_box: '' as string | number,
   units_per_blister: '' as string | number,
@@ -60,7 +75,6 @@ const defaultForm = {
   batch_number: '',
   expiry_date: '',
   location: '',
-  initial_stock: 0,
 };
 
 export default function ProdutoCriarScreen() {
@@ -79,6 +93,41 @@ export default function ProdutoCriarScreen() {
   const [error, setError] = useState<string | null>(null);
   const [categories, setCategories] = useState<string[]>([]);
   const [categoryDropdownVisible, setCategoryDropdownVisible] = useState(false);
+
+  // Local UI state for the boxes + loose-blisters inputs (only when product is in blister-stock
+  // mode). The form's shelf_stock_quantity / warehouse_stock_quantity remain the source of truth
+  // (total blisters); these inputs recompute and write back on every change.
+  const [shelfBoxes, setShelfBoxes] = useState<number>(0);
+  const [shelfLoose, setShelfLoose] = useState<number>(0);
+  const [storageBoxes, setStorageBoxes] = useState<number>(0);
+  const [storageLoose, setStorageLoose] = useState<number>(0);
+
+  // Blister-stock model: blisters_per_box is the source of truth. units_per_pack is legacy and
+  // is only mirrored at payload time for backward compatibility — it never drives this UI.
+  const blistersPerBoxNum = Number(form.blisters_per_box);
+  const useBlisterStock =
+    !!form.can_sell_by_unit && Number.isFinite(blistersPerBoxNum) && blistersPerBoxNum > 1;
+  const blistersPerBox = useBlisterStock ? Math.floor(blistersPerBoxNum) : 0;
+  const shelfTotal = Math.max(0, Math.floor(Number(form.shelf_stock_quantity) || 0));
+  const warehouseTotal = Math.max(0, Math.floor(Number(form.warehouse_stock_quantity) || 0));
+
+  // Re-seed boxes/loose state when the blister mode flips on or when totals change externally
+  // (e.g. user toggled can_sell_by_unit). Avoid disrupting in-flight keystrokes by only re-seeding
+  // when local state does not already match the total.
+  useEffect(() => {
+    if (!useBlisterStock) return;
+    if (shelfBoxes * blistersPerBox + shelfLoose !== shelfTotal) {
+      setShelfBoxes(Math.floor(shelfTotal / blistersPerBox));
+      setShelfLoose(shelfTotal % blistersPerBox);
+    }
+    if (storageBoxes * blistersPerBox + storageLoose !== warehouseTotal) {
+      setStorageBoxes(Math.floor(warehouseTotal / blistersPerBox));
+      setStorageLoose(warehouseTotal % blistersPerBox);
+    }
+    // Only re-seed when blister mode/parameters or totals change; intentionally exclude local
+    // shelf/storage box/loose state to avoid clobbering user input mid-typing.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [useBlisterStock, blistersPerBox, shelfTotal, warehouseTotal]);
 
   useEffect(() => {
     let mounted = true;
@@ -110,7 +159,7 @@ export default function ProdutoCriarScreen() {
   const setBlistersPerBox = (t: string) => {
     const v =
       t === '' ? ('' as const) : Number.parseInt(t.replace(/[^0-9]/g, ''), 10) || ('' as const);
-    setForm((prev) => ({ ...prev, units_per_pack: v }));
+    setForm((prev) => ({ ...prev, blisters_per_box: v }));
     setError(null);
   };
 
@@ -210,17 +259,20 @@ export default function ProdutoCriarScreen() {
       return;
     }
 
+    // blisters_per_box is the source of truth. units_per_pack is legacy fallback only.
     const blistersPerBoxForRule =
-      Number(form.units_per_pack) >= 1
-        ? Number(form.units_per_pack)
-        : 0;
+      Number(form.blisters_per_box) >= 1
+        ? Number(form.blisters_per_box)
+        : Number(form.units_per_pack) >= 1
+          ? Number(form.units_per_pack)
+          : 0;
     const unitsPerBlisterForRule =
       Number(form.units_per_blister) >= 1
         ? Number(form.units_per_blister)
         : 0;
     const liquidForm = isLiquidPharmaceuticalForm(String(form.form ?? '').trim());
     if (form.can_sell_by_unit && !liquidForm && blistersPerBoxForRule < 1) {
-      setError('Indica o número de lâminas por caixa (>= 1) quando vendes por lâmina.');
+      setError('Indica lâminas por caixa (>= 1) quando vendes por lâmina.');
       return;
     }
     if (form.can_sell_by_unit && !liquidForm && unitsPerBlisterForRule < 1) {
@@ -249,11 +301,14 @@ export default function ProdutoCriarScreen() {
       setCheckingDuplicates(false);
     }
 
-    const initialStock = Number.parseInt(String(form.initial_stock), 10) || 0;
+    // Prefer the dedicated blisters_per_box field; fall back to legacy units_per_pack only when
+    // the new field is empty so existing forms/imports continue to work.
     const blistersPerBox =
-      form.units_per_pack === '' || form.units_per_pack == null
-        ? null
-        : Number(form.units_per_pack);
+      form.blisters_per_box !== '' && form.blisters_per_box != null
+        ? Number(form.blisters_per_box)
+        : form.units_per_pack !== '' && form.units_per_pack != null
+          ? Number(form.units_per_pack)
+          : null;
     const unitsPerBoxRaw =
       form.units_per_box === '' || form.units_per_box == null ? null : Number(form.units_per_box);
     const unitsPerBlister =
@@ -336,6 +391,16 @@ export default function ProdutoCriarScreen() {
     if (blistersOut != null && blistersOut >= 1 && (liquidForm || form.can_sell_by_unit)) {
       payload.units_per_pack = blistersOut;
     }
+    // Engage the new blister-stock model: when can_sell_by_unit is on and lâminas-por-caixa > 1,
+    // backend treats stock_quantity as total blisters and POS subtracts blisters_per_box per box sale.
+    if (
+      !liquidForm &&
+      form.can_sell_by_unit &&
+      blistersOut != null &&
+      blistersOut >= 1
+    ) {
+      payload.blisters_per_box = blistersOut;
+    }
     if (unitsPerBlisterOut != null && unitsPerBlisterOut >= 1 && form.can_sell_by_unit && !liquidForm) {
       payload.units_per_blister = unitsPerBlisterOut;
     }
@@ -379,6 +444,14 @@ export default function ProdutoCriarScreen() {
     }
     if (blistersOut != null && blistersOut >= 1 && (liquidForm || form.can_sell_by_unit)) {
       fallbackPayload.units_per_pack = blistersOut;
+    }
+    if (
+      !liquidForm &&
+      form.can_sell_by_unit &&
+      blistersOut != null &&
+      blistersOut >= 1
+    ) {
+      fallbackPayload.blisters_per_box = blistersOut;
     }
     if (unitsPerBlisterOut != null && unitsPerBlisterOut >= 1 && form.can_sell_by_unit && !liquidForm) {
       fallbackPayload.units_per_blister = unitsPerBlisterOut;
@@ -458,25 +531,15 @@ export default function ProdutoCriarScreen() {
         throw lastCreateErr ?? new Error('Falha ao criar produto.');
       }
 
-      if (initialStock > 0) {
-        const today = new Date();
-        const dateStr = today.toLocaleDateString('pt-PT', {
-          day: '2-digit',
-          month: '2-digit',
-          year: 'numeric',
-        });
-        await api.stockMovements.addStock({
-          product_id: created.id,
-          quantity: initialStock,
-          movement_type: 'purchase',
-          reason: `Stock inicial (adicionado no dia ${dateStr})`,
-        });
-      }
-
+      const initialTotal =
+        (Number(form.shelf_stock_quantity) || 0) + (Number(form.warehouse_stock_quantity) || 0);
+      const bppForMsg = blistersPerBox != null && blistersPerBox >= 1 ? blistersPerBox : 0;
       Alert.alert(
         'Produto criado',
-        initialStock > 0
-          ? `Produto criado e registadas ${initialStock} unidades em stock inicial.`
+        initialTotal > 0
+          ? useBlisterStock
+            ? `Produto criado com ${formatBoxesLamina(initialTotal, bppForMsg)} (${initialTotal} lâminas) em stock.`
+            : `Produto criado com ${initialTotal} unidades em stock.`
           : 'Produto criado com sucesso.',
         [
           {
@@ -486,7 +549,13 @@ export default function ProdutoCriarScreen() {
           },
           {
             text: 'Continuar a adicionar',
-            onPress: () => setForm(defaultForm),
+            onPress: () => {
+              setForm(defaultForm);
+              setShelfBoxes(0);
+              setShelfLoose(0);
+              setStorageBoxes(0);
+              setStorageLoose(0);
+            },
           },
         ],
       );
@@ -759,28 +828,158 @@ export default function ProdutoCriarScreen() {
             </View>
           </View>
 
-          {/* Stock inicial (auditable) */}
+          {/* Stock atual (gravado directamente em shelf/warehouse no create) */}
           <View style={styles.section}>
-            <Text style={styles.sectionTitle}>Stock inicial</Text>
+            <Text style={styles.sectionTitle}>Stock</Text>
             <Text style={styles.hint}>
-              Se preenchido, o stock é registado como movimento de compra (auditável). Deixar 0 para
-              criar apenas o produto.
+              Dois saldos: prateleira (à frente) e armazém. Nas vendas retira-se primeiro da prateleira;
+              o total na base de dados é a soma dos dois.
             </Text>
+
+            {useBlisterStock ? (
+              <>
+                <Text style={[styles.label, { marginTop: 4 }]}>Prateleira</Text>
+                <View style={styles.row}>
+                  <View style={[styles.field, { flex: 1 }]}>
+                    <Text style={styles.label}>Caixas na prateleira</Text>
+                    <TextInput
+                      style={styles.input}
+                      keyboardType="number-pad"
+                      value={String(shelfBoxes)}
+                      onChangeText={(t) => {
+                        const n = Math.max(
+                          0,
+                          Number.parseInt(t.replace(/[^0-9]/g, ''), 10) || 0,
+                        );
+                        setShelfBoxes(n);
+                        update('shelf_stock_quantity', n * blistersPerBox + shelfLoose);
+                      }}
+                    />
+                  </View>
+                  <View style={[styles.field, { flex: 1 }]}>
+                    <Text style={styles.label}>Lâminas soltas na prateleira</Text>
+                    <TextInput
+                      style={styles.input}
+                      keyboardType="number-pad"
+                      value={String(shelfLoose)}
+                      onChangeText={(t) => {
+                        const n = Math.max(
+                          0,
+                          Number.parseInt(t.replace(/[^0-9]/g, ''), 10) || 0,
+                        );
+                        setShelfLoose(n);
+                        update('shelf_stock_quantity', shelfBoxes * blistersPerBox + n);
+                      }}
+                      onEndEditing={() => {
+                        const extra = Math.floor(shelfLoose / blistersPerBox);
+                        if (extra > 0) {
+                          const remainder = shelfLoose % blistersPerBox;
+                          const newBoxes = shelfBoxes + extra;
+                          setShelfBoxes(newBoxes);
+                          setShelfLoose(remainder);
+                          update(
+                            'shelf_stock_quantity',
+                            newBoxes * blistersPerBox + remainder,
+                          );
+                        }
+                      }}
+                    />
+                  </View>
+                </View>
+                <Text style={styles.hint}>
+                  Total prateleira: {formatBoxesLamina(shelfTotal, blistersPerBox)} ({shelfTotal} lâminas)
+                </Text>
+
+                <Text style={[styles.label, { marginTop: 8 }]}>Storage</Text>
+                <View style={styles.row}>
+                  <View style={[styles.field, { flex: 1 }]}>
+                    <Text style={styles.label}>Caixas no storage</Text>
+                    <TextInput
+                      style={styles.input}
+                      keyboardType="number-pad"
+                      value={String(storageBoxes)}
+                      onChangeText={(t) => {
+                        const n = Math.max(
+                          0,
+                          Number.parseInt(t.replace(/[^0-9]/g, ''), 10) || 0,
+                        );
+                        setStorageBoxes(n);
+                        update('warehouse_stock_quantity', n * blistersPerBox + storageLoose);
+                      }}
+                    />
+                  </View>
+                  <View style={[styles.field, { flex: 1 }]}>
+                    <Text style={styles.label}>Lâminas soltas no storage</Text>
+                    <TextInput
+                      style={styles.input}
+                      keyboardType="number-pad"
+                      value={String(storageLoose)}
+                      onChangeText={(t) => {
+                        const n = Math.max(
+                          0,
+                          Number.parseInt(t.replace(/[^0-9]/g, ''), 10) || 0,
+                        );
+                        setStorageLoose(n);
+                        update(
+                          'warehouse_stock_quantity',
+                          storageBoxes * blistersPerBox + n,
+                        );
+                      }}
+                      onEndEditing={() => {
+                        const extra = Math.floor(storageLoose / blistersPerBox);
+                        if (extra > 0) {
+                          const remainder = storageLoose % blistersPerBox;
+                          const newBoxes = storageBoxes + extra;
+                          setStorageBoxes(newBoxes);
+                          setStorageLoose(remainder);
+                          update(
+                            'warehouse_stock_quantity',
+                            newBoxes * blistersPerBox + remainder,
+                          );
+                        }
+                      }}
+                    />
+                  </View>
+                </View>
+                <Text style={styles.hint}>
+                  Total storage: {formatBoxesLamina(warehouseTotal, blistersPerBox)} ({warehouseTotal} lâminas)
+                </Text>
+              </>
+            ) : (
+              <View style={styles.row}>
+                <View style={[styles.field, { flex: 1 }]}>
+                  <Text style={styles.label}>Stock prateleira</Text>
+                  <TextInput
+                    style={styles.input}
+                    keyboardType="number-pad"
+                    value={String(form.shelf_stock_quantity ?? 0)}
+                    onChangeText={(t) =>
+                      update(
+                        'shelf_stock_quantity',
+                        Number.parseInt(t.replace(/[^0-9]/g, ''), 10) || 0,
+                      )
+                    }
+                  />
+                </View>
+                <View style={[styles.field, { flex: 1 }]}>
+                  <Text style={styles.label}>Stock no storage</Text>
+                  <TextInput
+                    style={styles.input}
+                    keyboardType="number-pad"
+                    value={String(form.warehouse_stock_quantity ?? 0)}
+                    onChangeText={(t) =>
+                      update(
+                        'warehouse_stock_quantity',
+                        Number.parseInt(t.replace(/[^0-9]/g, ''), 10) || 0,
+                      )
+                    }
+                  />
+                </View>
+              </View>
+            )}
+
             <View style={styles.field}>
-              <Text style={styles.label}>Quantidade inicial</Text>
-              <TextInput
-                style={styles.input}
-                keyboardType="number-pad"
-                value={form.initial_stock === 0 ? '' : String(form.initial_stock)}
-                onChangeText={(t) =>
-                  update('initial_stock', Number.parseInt(t.replace(/[^0-9]/g, ''), 10) || 0)
-                }
-                placeholder="0"
-                placeholderTextColor="#6b7280"
-              />
-            </View>
-            <View style={styles.field}>
-              <Text style={styles.label}>Stock no storage</Text>
+              <Text style={styles.label}>Stock mínimo (alertas)</Text>
               <TextInput
                 style={styles.input}
                 keyboardType="number-pad"
@@ -790,6 +989,11 @@ export default function ProdutoCriarScreen() {
                 }
               />
             </View>
+            <Text style={styles.hint}>
+              {useBlisterStock
+                ? `Total geral: ${formatBoxesLamina(shelfTotal + warehouseTotal, blistersPerBox)} (${shelfTotal + warehouseTotal} lâminas)`
+                : `Total: ${shelfTotal + warehouseTotal} unidades`}
+            </Text>
           </View>
 
           {/* Venda por unidade (opcional); preço da caixa = Preço de venda acima */}
@@ -838,15 +1042,23 @@ export default function ProdutoCriarScreen() {
             </View>
 
             <View style={styles.field}>
-              <Text style={styles.label}>Número de lâminas por caixa</Text>
+              <Text style={styles.label}>Lâminas por caixa</Text>
               <TextInput
                 style={styles.input}
                 keyboardType="number-pad"
-                value={form.units_per_pack !== '' && form.units_per_pack != null ? String(form.units_per_pack) : ''}
+                value={
+                  form.blisters_per_box !== '' && form.blisters_per_box != null
+                    ? String(form.blisters_per_box)
+                    : ''
+                }
                 onChangeText={setBlistersPerBox}
-                placeholder={form.can_sell_by_unit ? 'Obrigatório se vendes por lâmina' : 'ex.: 5'}
+                placeholder={form.can_sell_by_unit ? 'Obrigatório se vendes por lâmina (ex.: 5)' : 'ex.: 5'}
                 placeholderTextColor="#6b7280"
               />
+              <Text style={styles.hint}>
+                Define o modelo de stock por lâmina: stock_quantity passa a contar lâminas e cada caixa
+                vendida desconta este número.
+              </Text>
             </View>
 
             <View style={styles.field}>
