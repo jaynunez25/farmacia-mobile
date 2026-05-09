@@ -28,6 +28,7 @@ const IMPORT_JSON_KEYS = new Set<string>([
   'brand',
   'manufacturer',
   'units_per_box',
+  'blisters_per_box',
   'units_per_blister',
   'shelf_location',
   'location',
@@ -78,6 +79,7 @@ export function baseProductCreateDefaults(): ProductCreateBody {
     unit_name: null,
     units_per_pack: null,
     units_per_box: null,
+    blisters_per_box: null,
     box_selling_price: null,
     unit_selling_price: null,
     stock_quantity: 0,
@@ -166,6 +168,7 @@ export function mergeJsonImportRow(row: Record<string, unknown>): ProductCreateB
         o[key] = toNonNegativeInt(v, 0);
         break;
       case 'units_per_box':
+      case 'blisters_per_box':
       case 'units_per_blister':
       case 'units_per_pack':
         o[key] = toOptionalIntGe1(v);

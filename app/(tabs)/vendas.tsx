@@ -57,14 +57,27 @@ function cartLineSellHint(displayName: string, sell_as: CartItem['sell_as'], pro
   return '';
 }
 
-/** Same truthiness as `isPackProduct` (pack / lâmina no modal); `units_per_box` counts like web. */
+/** Same truthiness as `isPackProduct` (pack / lâmina no modal); blister-per-box model uses `blisters_per_box`. */
 function isPackProductForSellModal(p: Product): boolean {
-  return Boolean((p.can_sell_by_box && getUnitsPerBox(p) > 0) || (p.can_sell_by_unit && getUnitsPerBlister(p) > 0));
+  const useBlisterStock = usesBlistersPerBoxStock(p);
+  return Boolean(
+    (p.can_sell_by_box && (getUnitsPerBox(p) > 0 || useBlisterStock)) ||
+      (p.can_sell_by_unit && (getUnitsPerBlister(p) > 0 || useBlisterStock)),
+  );
 }
 
 function getUnitsPerBox(p: Product): number {
   const raw = p.units_per_box ?? 0;
   return Math.max(0, Math.floor(Number(raw) || 0));
+}
+
+function getBlistersPerBox(p: Product): number {
+  const raw = p.blisters_per_box ?? 0;
+  return Math.max(0, Math.floor(Number(raw) || 0));
+}
+
+function usesBlistersPerBoxStock(p: Product): boolean {
+  return Boolean(p.can_sell_by_unit && getBlistersPerBox(p) > 1);
 }
 
 function getUnitsPerBlister(p: Product): number {
@@ -78,7 +91,7 @@ function getBlisterPriceAmount(p: Product): number {
     const n = Number(rawBlister);
     if (Number.isFinite(n)) return n;
   }
-  const units = getUnitsPerBlister(p);
+  const units = usesBlistersPerBoxStock(p) ? getBlistersPerBox(p) : getUnitsPerBlister(p);
   const box = getDisplayBoxPriceAmount(p);
   return units > 0 ? box / units : Number(p.selling_price ?? 0);
 }
@@ -101,8 +114,10 @@ function inferSaleOptions(p: Product): SaleOption[] {
   const isLiquid = /(xarope|suspensao|solution|solucao|liquid|bottle|frasco)/.test(text);
   const isAmpoule = /(ampola|ampoule|injectable|injection|injecao|injeccao)/.test(text);
   const isTabletCapsule = /(comprimido|capsula|tablet|capsule)/.test(text);
-  const canBox = !!p.can_sell_by_box && getUnitsPerBox(p) > 0;
-  const canBlister = !!p.can_sell_by_unit && getUnitsPerBlister(p) > 0 && getBlisterPriceAmount(p) > 0;
+  const useBlisterStock = usesBlistersPerBoxStock(p);
+  const canBox = !!p.can_sell_by_box && (getUnitsPerBox(p) > 0 || useBlisterStock);
+  const canBlister =
+    !!p.can_sell_by_unit && (getUnitsPerBlister(p) > 0 || useBlisterStock) && getBlisterPriceAmount(p) > 0;
 
   if (isLiquid) return canBox && getUnitsPerBox(p) > 1 ? ['box', 'bottle'] : ['bottle'];
   if (isAmpoule) return canBox && getUnitsPerBox(p) > 1 ? ['box', 'ampoule'] : ['ampoule'];
@@ -143,6 +158,8 @@ function computePosSellModalStock(p: Product): {
 } {
   const total = Math.max(0, Math.floor(Number(p.stock_quantity) || 0));
   const pack = isPackProductForSellModal(p);
+  const bpp = getBlistersPerBox(p);
+  const useBlisterStock = usesBlistersPerBoxStock(p);
   const unitsPerBox = getUnitsPerBox(p);
   const unitsPerBlister = getUnitsPerBlister(p);
 
@@ -152,6 +169,9 @@ function computePosSellModalStock(p: Product): {
     if (p.stock_display_pack) {
       boxes = Math.max(0, Math.floor(p.stock_display_pack.full_boxes));
       laminae = Math.max(0, Math.floor(p.stock_display_pack.loose_units));
+    } else if (useBlisterStock && bpp > 1) {
+      boxes = Math.floor(total / bpp);
+      laminae = total % bpp;
     } else {
       const boxDivisor = Math.max(1, unitsPerBox || packUnitsPerBox(p));
       const blisterDivisor = Math.max(1, unitsPerBlister || boxDivisor);
@@ -167,10 +187,18 @@ function computePosSellModalStock(p: Product): {
   const minStock = Math.max(0, Math.floor(Number(p.minimum_stock) || 0));
   const isLowStock = total > 0 && minStock > 0 && total <= minStock;
 
-  const boxButtonDisabled = isOutOfStock || (pack && (!p.can_sell_by_box || !unitsPerBox || boxes < 1));
+  const boxButtonDisabled =
+    isOutOfStock ||
+    (pack &&
+      (!p.can_sell_by_box ||
+        boxes < 1 ||
+        (!useBlisterStock && unitsPerBox <= 0)));
   const unitButtonDisabled =
     isOutOfStock ||
-    (pack && (!p.can_sell_by_unit || !unitsPerBlister || getBlisterPriceAmount(p) <= 0));
+    (pack &&
+      (!p.can_sell_by_unit ||
+        getBlisterPriceAmount(p) <= 0 ||
+        (!useBlisterStock && unitsPerBlister <= 0)));
 
   return {
     total,
@@ -512,12 +540,21 @@ export default function VendasScreen() {
 
   const getUnitPrice = (p: Product) => getDisplayUnitPriceAmount(p);
 
-  const baseUnitsRequired = (item: CartItem) =>
-    item.sell_as === 'box'
-      ? item.quantity * Math.max(1, getUnitsPerBox(item.product))
-      : item.sell_as === 'blister'
-        ? item.quantity * Math.max(1, getUnitsPerBlister(item.product))
-        : item.quantity;
+  const baseUnitsRequired = (item: CartItem) => {
+    if (item.sell_as === 'box') {
+      if (usesBlistersPerBoxStock(item.product)) {
+        return item.quantity * getBlistersPerBox(item.product);
+      }
+      return item.quantity * Math.max(1, getUnitsPerBox(item.product));
+    }
+    if (item.sell_as === 'blister') {
+      if (usesBlistersPerBoxStock(item.product)) {
+        return item.quantity;
+      }
+      return item.quantity * Math.max(1, getUnitsPerBlister(item.product));
+    }
+    return item.quantity;
+  };
 
   const lineUnitPrice = useCallback((item: CartItem) => {
     if (item.sell_as === 'box') {
@@ -548,13 +585,20 @@ export default function VendasScreen() {
     const available = inferSaleOptions(product);
     const desired = options?.sellAs ?? (mode === 'manual' ? sellAsChoice : undefined);
     const sellAs = desired && available.includes(desired) ? desired : available[0];
+    const useBlister = usesBlistersPerBoxStock(product);
     const required =
       sellAs === 'box'
-        ? qty * Math.max(1, getUnitsPerBox(product))
+        ? useBlister
+          ? qty * getBlistersPerBox(product)
+          : qty * Math.max(1, getUnitsPerBox(product))
         : sellAs === 'blister'
-          ? qty * Math.max(1, getUnitsPerBlister(product))
+          ? useBlister
+            ? qty
+            : qty * Math.max(1, getUnitsPerBlister(product))
           : qty;
-    if (sellAs === 'blister' && (!product.can_sell_by_unit || getUnitsPerBlister(product) <= 0 || getBlisterPriceAmount(product) <= 0)) {
+    const blisterPriceOk = getBlisterPriceAmount(product) > 0;
+    const blisterUnitsOk = useBlister || getUnitsPerBlister(product) > 0;
+    if (sellAs === 'blister' && (!product.can_sell_by_unit || !blisterUnitsOk || !blisterPriceOk)) {
       setError('Produto sem configuração válida para venda por lâmina.');
       return;
     }
@@ -570,9 +614,13 @@ export default function VendasScreen() {
         const newQty = next[idx].quantity + qty;
         const need =
           sellAs === 'box'
-            ? newQty * Math.max(1, getUnitsPerBox(product))
+            ? useBlister
+              ? newQty * getBlistersPerBox(product)
+              : newQty * Math.max(1, getUnitsPerBox(product))
             : sellAs === 'blister'
-              ? newQty * Math.max(1, getUnitsPerBlister(product))
+              ? useBlister
+                ? newQty
+                : newQty * Math.max(1, getUnitsPerBlister(product))
               : newQty;
         if (need > product.stock_quantity) {
           setError(saleOptionStockError(sellAs));

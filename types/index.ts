@@ -22,6 +22,8 @@ export interface Product {
   presentation?: string | null;
   manufacturer?: string | null;
   units_per_box?: number | null;
+  /** When set with can_sell_by_unit (>1): stock counts blisters; one box sale removes this many. */
+  blisters_per_box?: number | null;
   units_per_blister?: number | null;
   selling_price: string;
   cost_price: string | null;

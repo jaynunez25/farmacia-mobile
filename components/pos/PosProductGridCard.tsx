@@ -5,6 +5,18 @@ import { resolveApiMediaUrl } from '@/services/api';
 import type { Product } from '@/types';
 import { formatCurrency } from '@/utils/currency';
 
+function formatPosGridStockLine(p: Product): string {
+  const total = Math.max(0, Math.floor(Number(p.stock_quantity) || 0));
+  if (!p.can_sell_by_unit) return String(total);
+  const bpp = Math.max(0, Math.floor(Number(p.blisters_per_box) || 0));
+  if (bpp <= 1) return String(total);
+  const boxes = Math.floor(total / bpp);
+  const lam = total % bpp;
+  if (lam === 0) return `${boxes} caixa${boxes === 1 ? '' : 's'}`;
+  if (boxes === 0) return `${lam} lâmina${lam === 1 ? '' : 's'}`;
+  return `${boxes} caixa${boxes === 1 ? '' : 's'} + ${lam} lâmina${lam === 1 ? '' : 's'}`;
+}
+
 function shelfLine(p: Product): string {
   const s = (p.shelf_display || p.shelf_location || p.location || '').trim();
   return s.length > 0 ? s : '—';
@@ -45,7 +57,7 @@ export const PosProductGridCard = memo(function PosProductGridCard({
   const dosage = (product.dosage || '').trim();
   const form = (product.form || '').trim();
   const shelf = shelfLine(product);
-  const stockN = Math.max(0, Math.floor(Number(product.stock_quantity) || 0));
+  const stockLabel = formatPosGridStockLine(product);
   const handleImgError = useCallback(() => setImgFailed(true), []);
 
   return (
@@ -98,7 +110,7 @@ export const PosProductGridCard = memo(function PosProductGridCard({
           </Text>
         </View>
         <Text style={styles.meta} numberOfLines={1}>
-          {`${formatCurrency(Number(product.selling_price))} · Stock ${stockN}`}
+          {`${formatCurrency(Number(product.selling_price))} · Stock ${stockLabel}`}
         </Text>
       </View>
     </Pressable>
