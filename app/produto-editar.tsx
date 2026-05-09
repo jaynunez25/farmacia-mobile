@@ -23,6 +23,25 @@ import { isAdminRole } from '@/utils/roles';
 
 type EditableProduct = Product;
 
+/** Default sale-unit label for the box, derived from pharmaceutical form. Preserves a non-empty
+ * `currentPackName`. Used only as a save-side fallback so `pack_name` is not edited as text in the UI. */
+function defaultPackNameForForm(
+  formValue: string | null | undefined,
+  currentPackName: string | null | undefined,
+): string {
+  const cur = (currentPackName ?? '').toString().trim();
+  if (cur) return cur;
+  const folded = String(formValue ?? '')
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '')
+    .toLowerCase();
+  if (/(xarope|suspens|solucao oral|gotas|frasco)/.test(folded)) return 'Frasco';
+  if (/(creme|gel|pomada)/.test(folded)) return 'Tubo';
+  if (/(ampola|injec|injet)/.test(folded)) return 'Ampola';
+  if (/(termometro|luva|dispositivo)/.test(folded)) return 'Unidade';
+  return 'Caixa';
+}
+
 export default function ProdutoEditarScreen() {
   const router = useRouter();
   const { id } = useLocalSearchParams<{ id?: string }>();
@@ -109,34 +128,18 @@ export default function ProdutoEditarScreen() {
     setProduct((prev) => (prev ? { ...prev, [key]: value } : prev));
   };
 
-  const setUnitsPerBoxSynced = (t: string) => {
-    const trimmed = t.trim();
-    if (trimmed === '') {
-      setProduct((prev) => (prev ? { ...prev, units_per_box: null } : prev));
-      return;
-    }
-    const n = Math.max(1, Number.parseInt(trimmed.replace(/[^0-9]/g, ''), 10) || 1);
-    setProduct((prev) => (prev ? { ...prev, units_per_box: n } : prev));
-  };
-
   const setBlistersPerBox = (t: string) => {
     const trimmed = t.trim();
     if (trimmed === '') {
-      setProduct((prev) => (prev ? { ...prev, units_per_pack: null } : prev));
+      setProduct((prev) =>
+        prev ? { ...prev, blisters_per_box: null, units_per_pack: null } : prev,
+      );
       return;
     }
     const n = Math.max(1, Number.parseInt(trimmed.replace(/[^0-9]/g, ''), 10) || 1);
-    setProduct((prev) => (prev ? { ...prev, units_per_pack: n } : prev));
-  };
-
-  const setUnitsPerBlister = (t: string) => {
-    const trimmed = t.trim();
-    if (trimmed === '') {
-      setProduct((prev) => (prev ? { ...prev, units_per_blister: null } : prev));
-      return;
-    }
-    const n = Math.max(1, Number.parseInt(trimmed.replace(/[^0-9]/g, ''), 10) || 1);
-    setProduct((prev) => (prev ? { ...prev, units_per_blister: n } : prev));
+    setProduct((prev) =>
+      prev ? { ...prev, blisters_per_box: n, units_per_pack: n } : prev,
+    );
   };
 
   const handleSave = async () => {
@@ -167,26 +170,17 @@ export default function ProdutoEditarScreen() {
     }
 
     const blistersPerBox =
-      product.units_per_pack != null && Number(product.units_per_pack) >= 1
-        ? Number(product.units_per_pack)
-        : null;
-    const unitsPerBlisterRule =
-      product.units_per_blister != null && Number(product.units_per_blister) >= 1
-        ? Number(product.units_per_blister)
-        : null;
+      product.blisters_per_box != null && Number(product.blisters_per_box) >= 1
+        ? Number(product.blisters_per_box)
+        : product.units_per_pack != null && Number(product.units_per_pack) >= 1
+          ? Number(product.units_per_pack)
+          : null;
     const pharmForm = String(product.form ?? '').trim();
     const liquidForm = isLiquidPharmaceuticalForm(pharmForm);
     if (product.can_sell_by_unit && !liquidForm && (blistersPerBox == null || blistersPerBox < 1)) {
       Alert.alert(
         'Configuração inválida',
-        'Número de lâminas por caixa é obrigatório quando a venda por lâmina está activa.',
-      );
-      return;
-    }
-    if (product.can_sell_by_unit && !liquidForm && (unitsPerBlisterRule == null || unitsPerBlisterRule < 1)) {
-      Alert.alert(
-        'Configuração inválida',
-        'Comprimidos por lâmina é obrigatório quando a venda por lâmina está activa.',
+        'Lâminas por caixa é obrigatório quando a venda por lâmina está activa.',
       );
       return;
     }
@@ -234,7 +228,20 @@ export default function ProdutoEditarScreen() {
       }
 
       const packNameRaw = toNullableTrimmed(product.pack_name);
-      const liquidPackName = liquidForm ? packNameRaw || 'Frasco' : packNameRaw;
+      const resolvedPackName = liquidForm
+        ? packNameRaw || 'Frasco'
+        : product.can_sell_by_unit
+          ? packNameRaw || 'Caixa'
+          : defaultPackNameForForm(product.form, packNameRaw);
+      const resolvedUnitName = liquidForm
+        ? null
+        : product.can_sell_by_unit
+          ? toNullableTrimmed(product.unit_name) || 'Lâmina'
+          : null;
+      const blistersPerBoxOut =
+        product.blisters_per_box != null && Number(product.blisters_per_box) >= 1
+          ? Number(product.blisters_per_box)
+          : blistersPerBox;
       const unitsForPayloadResolved = liquidForm
         ? unitsForPayload != null &&
             !Number.isNaN(Number(unitsForPayload)) &&
@@ -255,10 +262,11 @@ export default function ProdutoEditarScreen() {
         is_verified: Boolean(product.is_verified),
         can_sell_by_box: true,
         can_sell_by_unit: liquidForm ? false : Boolean(product.can_sell_by_unit),
-        pack_name: liquidPackName,
-        unit_name: liquidForm ? null : toNullableTrimmed(product.unit_name),
+        pack_name: resolvedPackName,
+        unit_name: resolvedUnitName,
         units_per_pack: unitsForPayloadResolved,
         units_per_box: liquidForm ? 1 : unitsPerBoxSynced,
+        blisters_per_box: liquidForm ? null : blistersPerBoxOut,
         box_selling_price: String(sellingNum),
         sale_price_box: String(sellingNum),
         unit_selling_price: liquidForm ? null : unitPriceStr,
@@ -459,108 +467,88 @@ export default function ProdutoEditarScreen() {
               </Text>
             </View>
 
-            {/* Venda por unidade (opcional); preço da caixa = preço de venda */}
+            {/* Venda por lâmina: nomes da caixa/lâmina são automáticos; só configuras o necessário. */}
             <View style={styles.section}>
-              <Text style={styles.sectionTitle}>Venda por lâmina (opcional)</Text>
+              <Text style={styles.sectionTitle}>Venda por lâmina</Text>
               <Text style={styles.stockHint}>
-                O preço da caixa é o <Text style={{ fontWeight: '700', color: '#e5e7eb' }}>Preço de venda</Text> acima.
+                Os nomes da caixa e da lâmina são definidos automaticamente a partir da forma farmacêutica.
                 A venda por caixa fica sempre activa no POS.
               </Text>
               <View style={styles.toggleRow}>
-                <Text style={styles.label}>Pode vender por lâmina</Text>
+                <Text style={styles.label}>Permitir venda por lâmina</Text>
                 <Switch
                   value={!!product.can_sell_by_unit}
                   onValueChange={(v) => update('can_sell_by_unit', v)}
                 />
               </View>
 
-              <View style={styles.row}>
-                <View style={[styles.field, { flex: 1 }]}>
-                  <Text style={styles.label}>Nome da caixa</Text>
-                  <TextInput
-                    style={styles.input}
-                    value={product.pack_name ?? ''}
-                    onChangeText={(t) => update('pack_name', t || null)}
-                    placeholder="Caixa"
-                    placeholderTextColor="#6b7280"
-                  />
-                </View>
-                <View style={[styles.field, { flex: 1 }]}>
-                  <Text style={styles.label}>Nome da lâmina</Text>
-                  <TextInput
-                    style={styles.input}
-                    value={product.unit_name ?? ''}
-                    onChangeText={(t) => update('unit_name', t || null)}
-                    placeholder="Lâmina"
-                    placeholderTextColor="#6b7280"
-                  />
-                </View>
-              </View>
-
-              <View style={styles.field}>
-                <Text style={styles.label}>Número de lâminas por caixa</Text>
-                <TextInput
-                  style={styles.input}
-                  keyboardType="number-pad"
-                  value={
-                    product.units_per_pack != null && Number(product.units_per_pack) >= 1
-                      ? String(product.units_per_pack)
-                      : ''
-                  }
-                  onChangeText={setBlistersPerBox}
-                  placeholder={product.can_sell_by_unit ? 'Obrigatório se vendes por lâmina' : 'ex.: 5'}
-                  placeholderTextColor="#6b7280"
-                />
-              </View>
-
-              <View style={styles.field}>
-                <Text style={styles.label}>Comprimidos por lâmina</Text>
-                <TextInput
-                  style={styles.input}
-                  keyboardType="number-pad"
-                  value={
-                    product.units_per_blister != null && Number(product.units_per_blister) >= 1
-                      ? String(product.units_per_blister)
-                      : ''
-                  }
-                  onChangeText={setUnitsPerBlister}
-                  placeholder={product.can_sell_by_unit ? 'Obrigatório se vendes por lâmina' : 'ex.: 10'}
-                  placeholderTextColor="#6b7280"
-                />
-              </View>
-
-              <View style={styles.field}>
-                <Text style={styles.label}>Unidades por caixa</Text>
-                <TextInput
-                  style={styles.input}
-                  keyboardType="number-pad"
-                  value={
-                    product.units_per_box != null && Number(product.units_per_box) >= 1
-                      ? String(product.units_per_box)
-                      : ''
-                  }
-                  onChangeText={setUnitsPerBoxSynced}
-                  placeholder={product.can_sell_by_unit ? 'Opcional (auto = lâminas x comprimidos)' : 'ex.: 50'}
-                  placeholderTextColor="#6b7280"
-                />
-                <Text style={styles.stockHint}>Exemplo: 5x10 = 5 lâminas por caixa, 10 comprimidos por lâmina, 50 por caixa.</Text>
-              </View>
-
               {product.can_sell_by_unit ? (
-                <View style={styles.field}>
-                  <Text style={styles.label}>Preço da lâmina (Kz)</Text>
-                  <TextInput
-                    style={styles.input}
-                    keyboardType="decimal-pad"
-                    value={product.unit_selling_price ? String(product.unit_selling_price) : ''}
-                    onChangeText={(t) => {
-                      const value = (t === '' ? null : t) as any;
-                      update('unit_selling_price', value);
-                    }}
-                    placeholder="Vazio = preço da caixa ÷ número de lâminas"
-                    placeholderTextColor="#6b7280"
-                  />
-                </View>
+                <>
+                  <View style={styles.field}>
+                    <Text style={styles.label}>Lâminas por caixa</Text>
+                    <TextInput
+                      style={styles.input}
+                      keyboardType="number-pad"
+                      value={
+                        product.blisters_per_box != null && Number(product.blisters_per_box) >= 1
+                          ? String(product.blisters_per_box)
+                          : product.units_per_pack != null && Number(product.units_per_pack) >= 1
+                            ? String(product.units_per_pack)
+                            : ''
+                      }
+                      onChangeText={setBlistersPerBox}
+                      placeholder="ex.: 5"
+                      placeholderTextColor="#6b7280"
+                    />
+                  </View>
+
+                  <View style={styles.row}>
+                    <View style={[styles.field, { flex: 1 }]}>
+                      <Text style={styles.label}>Preço da caixa (Kz)</Text>
+                      <TextInput
+                        style={styles.input}
+                        keyboardType="decimal-pad"
+                        value={
+                          product.sale_price_box
+                            ? String(product.sale_price_box)
+                            : product.selling_price != null
+                              ? String(product.selling_price)
+                              : ''
+                        }
+                        onChangeText={(t) => {
+                          const value = t as unknown as Product['sale_price_box'];
+                          update('sale_price_box', value);
+                          update('selling_price', (t === '' ? '0' : t) as unknown as Product['selling_price']);
+                          update('box_selling_price', (t === '' ? null : t) as unknown as Product['box_selling_price']);
+                        }}
+                      />
+                    </View>
+                    <View style={[styles.field, { flex: 1 }]}>
+                      <Text style={styles.label}>Preço da lâmina (Kz)</Text>
+                      <TextInput
+                        style={styles.input}
+                        keyboardType="decimal-pad"
+                        value={
+                          product.sale_price_blister
+                            ? String(product.sale_price_blister)
+                            : product.unit_selling_price != null
+                              ? String(product.unit_selling_price)
+                              : ''
+                        }
+                        onChangeText={(t) => {
+                          update(
+                            'sale_price_blister',
+                            (t === '' ? '0' : t) as unknown as Product['sale_price_blister'],
+                          );
+                          update(
+                            'unit_selling_price',
+                            (t === '' ? null : t) as unknown as Product['unit_selling_price'],
+                          );
+                        }}
+                      />
+                    </View>
+                  </View>
+                </>
               ) : null}
             </View>
 
