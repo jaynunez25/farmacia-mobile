@@ -7,17 +7,18 @@ import { useAuth } from '@/contexts/AuthContext';
 import type { Product } from '@/types';
 import { api } from '@/services/api';
 import { getErrorMessage } from '@/utils/errorMessage';
-import { isAdminRole } from '@/utils/roles';
+import { isAdminRole, isStockAuditorRole } from '@/utils/roles';
 
 export default function ProdutoDetailScreen() {
   const router = useRouter();
   const { user } = useAuth();
-  const canManageProducts = isAdminRole(user?.role);
+  const canEditProduct = isAdminRole(user?.role);
+  const canDeleteProduct = isAdminRole(user?.role) || isStockAuditorRole(user?.role);
   const { id } = useLocalSearchParams<{ id?: string }>();
 
   const [product, setProduct] = useState<Product | null>(null);
   const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
+  const [loadError, setLoadError] = useState<string | null>(null);
   const [deleting, setDeleting] = useState(false);
 
   useEffect(() => {
@@ -29,14 +30,14 @@ export default function ProdutoDetailScreen() {
         return;
       }
       setLoading(true);
-      setError(null);
+      setLoadError(null);
       try {
         const data = await api.products.get(Number(id));
         if (!isMounted) return;
         setProduct(data);
       } catch (err) {
         if (!isMounted) return;
-        setError(getErrorMessage(err));
+        setLoadError(getErrorMessage(err));
       } finally {
         if (isMounted) setLoading(false);
       }
@@ -68,18 +69,16 @@ export default function ProdutoDetailScreen() {
   const handleDelete = async () => {
     if (!id) return;
     setDeleting(true);
-    setError(null);
     try {
       await api.products.delete(Number(id));
-      Alert.alert('Produto apagado', 'O produto foi removido do stock.', [
+      Alert.alert('Produto apagado', 'O produto foi removido ou desactivado no stock.', [
         {
           text: 'OK',
           onPress: () => router.replace('/(tabs)/stock'),
         },
       ]);
-      router.replace('/(tabs)/stock');
     } catch (err) {
-      setError(getErrorMessage(err));
+      Alert.alert('Não foi possível apagar', getErrorMessage(err));
     } finally {
       setDeleting(false);
     }
@@ -93,14 +92,14 @@ export default function ProdutoDetailScreen() {
         </View>
       )}
 
-      {error && (
+      {loadError && (
         <View style={styles.errorBox}>
           <Text style={styles.errorTitle}>Não foi possível carregar o produto</Text>
-          <Text style={styles.errorText}>{error}</Text>
+          <Text style={styles.errorText}>{loadError}</Text>
         </View>
       )}
 
-      {!loading && !error && product && (
+      {!loading && !loadError && product && (
         <>
           <View style={styles.content}>
             <Text style={styles.title}>{product.name}</Text>
@@ -127,33 +126,34 @@ export default function ProdutoDetailScreen() {
             ) : null}
           </View>
 
-          {canManageProducts ? (
+          {canEditProduct || canDeleteProduct ? (
             <View style={styles.actionsRow}>
-              <Pressable
-                style={({ pressed }) => [
-                  styles.button,
-                  pressed && styles.buttonPressed,
-                ]}
-                onPress={() =>
-                  router.push({
-                    pathname: '/produto-editar',
-                    params: { id: String(product.id) },
-                  })
-                }>
-                <Text style={styles.buttonText}>Editar</Text>
-              </Pressable>
+              {canEditProduct ? (
+                <Pressable
+                  style={({ pressed }) => [styles.button, pressed && styles.buttonPressed]}
+                  onPress={() =>
+                    router.push({
+                      pathname: '/produto-editar',
+                      params: { id: String(product.id) },
+                    })
+                  }>
+                  <Text style={styles.buttonText}>Editar</Text>
+                </Pressable>
+              ) : null}
 
-              <Pressable
-                style={({ pressed }) => [
-                  styles.buttonDelete,
-                  (pressed || deleting) && styles.buttonDeletePressed,
-                ]}
-                disabled={deleting}
-                onPress={confirmDelete}>
-                <Text style={styles.buttonDeleteText}>
-                  {deleting ? 'A apagar...' : 'Apagar produto'}
-                </Text>
-              </Pressable>
+              {canDeleteProduct ? (
+                <Pressable
+                  style={({ pressed }) => [
+                    styles.buttonDelete,
+                    (pressed || deleting) && styles.buttonDeletePressed,
+                  ]}
+                  disabled={deleting}
+                  onPress={confirmDelete}>
+                  <Text style={styles.buttonDeleteText}>
+                    {deleting ? 'A apagar...' : 'Apagar produto'}
+                  </Text>
+                </Pressable>
+              ) : null}
             </View>
           ) : null}
         </>

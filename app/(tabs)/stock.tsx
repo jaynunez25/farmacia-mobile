@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import {
   ActivityIndicator,
   FlatList,
@@ -14,6 +14,7 @@ import {
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useRouter } from 'expo-router';
+import { useFocusEffect } from '@react-navigation/native';
 
 import { useAuth } from '@/contexts/AuthContext';
 import { api } from '@/services/api';
@@ -49,8 +50,10 @@ export default function StockScreen() {
   const [importJsonBusy, setImportJsonBusy] = useState(false);
   const [importJsonParseError, setImportJsonParseError] = useState<string | null>(null);
   const [importJsonResults, setImportJsonResults] = useState<JsonImportRowResult[]>([]);
+  const skipFocusRefreshOnce = useRef(true);
 
-  const loadProducts = async (opts?: { refresh?: boolean }) => {
+  const loadProducts = useCallback(
+    async (opts?: { refresh?: boolean }) => {
     if (opts?.refresh) {
       setRefreshing(true);
     } else {
@@ -79,7 +82,9 @@ export default function StockScreen() {
         setLoading(false);
       }
     }
-  };
+  },
+    [search, selectedCategory],
+  );
 
   useEffect(() => {
     let mounted = true;
@@ -96,17 +101,18 @@ export default function StockScreen() {
   }, []);
 
   useEffect(() => {
-    let isMounted = true;
+    void loadProducts();
+  }, [loadProducts]);
 
-    const run = async () => {
-      await loadProducts();
-    };
-    run();
-
-    return () => {
-      isMounted = false;
-    };
-  }, [search, selectedCategory]);
+  useFocusEffect(
+    useCallback(() => {
+      if (skipFocusRefreshOnce.current) {
+        skipFocusRefreshOnce.current = false;
+        return;
+      }
+      void loadProducts({ refresh: true });
+    }, [loadProducts]),
+  );
 
   const renderItem = ({ item }: { item: Product }) => {
     const isLowStock = item.stock_quantity <= item.minimum_stock;
