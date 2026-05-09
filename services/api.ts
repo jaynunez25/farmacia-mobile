@@ -516,8 +516,9 @@ export const api = {
       }),
     auditCount: (data: {
       product_id: number;
-      full_boxes: number;
-      loose_units: number;
+      full_boxes?: number;
+      loose_units?: number;
+      counted_quantity?: number;
       reason?: string;
       performed_by?: number;
     }) =>
