@@ -2,6 +2,7 @@ import { useCallback, useEffect, useMemo, useRef, useState, type Dispatch, type 
 import {
   ActivityIndicator,
   FlatList,
+  Image,
   KeyboardAvoidingView,
   Modal,
   Platform,
@@ -23,7 +24,7 @@ import {
 } from '@/components/pos/NumericKeypad';
 import { PosProductGridCard } from '@/components/pos/PosProductGridCard';
 import { PosVirtualKeyboard, type PosKeyboardAction, type PosKeyboardMode } from '@/components/pos/PosVirtualKeyboard';
-import { api } from '@/services/api';
+import { api, resolveApiMediaUrl } from '@/services/api';
 import type { Product } from '@/types';
 import { formatCurrency } from '@/utils/currency';
 import { fetchAllProducts } from '@/utils/fetchAllProducts';
@@ -482,6 +483,8 @@ export default function VendasScreen() {
   const [sellModeModalVisible, setSellModeModalVisible] = useState(false);
   const [sellModeProduct, setSellModeProduct] = useState<Product | null>(null);
   const [sellModeProductLoading, setSellModeProductLoading] = useState(false);
+  const [sellModeImageZoomVisible, setSellModeImageZoomVisible] = useState(false);
+  const [sellModeInlineImgFailed, setSellModeInlineImgFailed] = useState(false);
   const sellModeDetailFetchGen = useRef(0);
   const [unitSellQty, setUnitSellQty] = useState('1');
   const [keyboardVisible, setKeyboardVisible] = useState(false);
@@ -792,6 +795,7 @@ export default function VendasScreen() {
   const closeSellModeModal = () => {
     sellModeDetailFetchGen.current += 1;
     setSellModeModalVisible(false);
+    setSellModeImageZoomVisible(false);
     setSellModeProduct(null);
     setSellModeProductLoading(false);
     setUnitSellQty('1');
@@ -818,6 +822,21 @@ export default function VendasScreen() {
       }
     })();
   }, [sellModeModalVisible, sellModeProduct?.id]);
+
+  useEffect(() => {
+    setSellModeInlineImgFailed(false);
+  }, [sellModeProduct?.id]);
+
+  const sellModeMediaUris = useMemo(() => {
+    if (!sellModeProduct) return { inline: null as string | null, zoom: null as string | null };
+    const thumbRaw = (sellModeProduct.thumbnail_url ?? '').trim();
+    const imageRaw = (sellModeProduct.image_url ?? '').trim();
+    const thumbUri = thumbRaw ? resolveApiMediaUrl(thumbRaw) : null;
+    const imageUri = imageRaw ? resolveApiMediaUrl(imageRaw) : null;
+    const inline = thumbUri || imageUri;
+    const zoom = imageUri || thumbUri;
+    return { inline, zoom };
+  }, [sellModeProduct?.thumbnail_url, sellModeProduct?.image_url]);
 
   const getSellModePrices = () => {
     if (!sellModeProduct) return { box: null as number | null, blister: null as number | null, bottle: null as number | null, ampoule: null as number | null };
@@ -1051,6 +1070,34 @@ export default function VendasScreen() {
                     <Text style={styles.sellModeSubtitle} numberOfLines={2} ellipsizeMode="tail">
                       {sellModeProduct?.name ?? ''}
                     </Text>
+                    {sellModeProduct && sellModeMediaUris.inline && !sellModeInlineImgFailed ? (
+                      <View style={styles.sellModeImageBlock}>
+                        <Pressable
+                          style={({ pressed }) => [
+                            styles.sellModeImageTap,
+                            pressed && styles.sellModeImageTapPressed,
+                          ]}
+                          onPress={() => setSellModeImageZoomVisible(true)}
+                          accessibilityRole="button"
+                          accessibilityLabel="Ampliar imagem do produto">
+                          <View style={styles.sellModeImageFrame}>
+                            <Image
+                              key={sellModeMediaUris.inline}
+                              source={{ uri: sellModeMediaUris.inline }}
+                              style={styles.sellModeImage}
+                              resizeMode="contain"
+                              onError={() => setSellModeInlineImgFailed(true)}
+                            />
+                          </View>
+                        </Pressable>
+                        <Text style={styles.sellModeImageHint}>Toque na imagem para ampliar</Text>
+                      </View>
+                    ) : sellModeProduct && (!sellModeMediaUris.inline || sellModeInlineImgFailed) ? (
+                      <View style={styles.sellModeImagePlaceholderRow}>
+                        <View style={styles.sellModeImagePlaceholderBox} />
+                        <Text style={styles.sellModeImagePlaceholderText}>Sem foto do produto</Text>
+                      </View>
+                    ) : null}
                     {sellModeProductLoading && (
                       <View style={styles.sellModeFetchRow}>
                         <ActivityIndicator size="small" color="#2563eb" />
@@ -1188,6 +1235,47 @@ export default function VendasScreen() {
                       </Pressable>
                     </View>
                   </View>
+                </View>
+              </Modal>
+
+              <Modal
+                visible={sellModeImageZoomVisible && Boolean(sellModeMediaUris.zoom)}
+                transparent
+                animationType="fade"
+                onRequestClose={() => setSellModeImageZoomVisible(false)}>
+                <View style={styles.sellModeZoomRoot}>
+                  <Pressable
+                    style={styles.sellModeZoomDismissArea}
+                    onPress={() => setSellModeImageZoomVisible(false)}
+                    accessibilityRole="button"
+                    accessibilityLabel="Fechar ampliação"
+                  />
+                  <View
+                    style={[
+                      styles.sellModeZoomImageWrap,
+                      {
+                        width: Math.min(width - 32, 560),
+                        height: Math.min(height * 0.68, 520),
+                      },
+                    ]}>
+                    {sellModeMediaUris.zoom ? (
+                      <View style={styles.sellModeZoomImageInner} pointerEvents="none">
+                        <Image
+                          key={sellModeMediaUris.zoom}
+                          source={{ uri: sellModeMediaUris.zoom }}
+                          style={styles.sellModeZoomImage}
+                          resizeMode="contain"
+                        />
+                      </View>
+                    ) : null}
+                  </View>
+                  <Pressable
+                    style={styles.sellModeZoomCloseFab}
+                    onPress={() => setSellModeImageZoomVisible(false)}
+                    accessibilityRole="button"
+                    accessibilityLabel="Fechar">
+                    <Text style={styles.sellModeZoomCloseFabText}>✕</Text>
+                  </Pressable>
                 </View>
               </Modal>
 
@@ -2057,6 +2145,103 @@ const styles = StyleSheet.create({
     color: '#111827',
     fontWeight: '800',
     lineHeight: 20,
+  },
+  sellModeImageBlock: {
+    width: '100%',
+    gap: 4,
+    alignItems: 'center',
+  },
+  sellModeImageTap: {
+    width: '100%',
+    borderRadius: 6,
+    borderWidth: 1,
+    borderColor: '#e2e8f0',
+    backgroundColor: '#f8fafc',
+    overflow: 'hidden',
+  },
+  sellModeImageTapPressed: {
+    opacity: 0.92,
+  },
+  sellModeImageFrame: {
+    width: '100%',
+    height: 176,
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: '#ffffff',
+  },
+  sellModeImage: {
+    width: '100%',
+    height: '100%',
+  },
+  sellModeImageHint: {
+    fontSize: 11,
+    color: '#64748b',
+    fontWeight: '600',
+    textAlign: 'center',
+  },
+  sellModeImagePlaceholderRow: {
+    width: '100%',
+    alignItems: 'center',
+    gap: 6,
+    paddingVertical: 2,
+  },
+  sellModeImagePlaceholderBox: {
+    width: '100%',
+    height: 120,
+    borderRadius: 6,
+    borderWidth: 1,
+    borderColor: '#e5e7eb',
+    backgroundColor: '#f3f4f6',
+  },
+  sellModeImagePlaceholderText: {
+    fontSize: 11,
+    color: '#94a3b8',
+    fontWeight: '600',
+  },
+  sellModeZoomRoot: {
+    flex: 1,
+    backgroundColor: 'rgba(2, 6, 23, 0.88)',
+    justifyContent: 'center',
+    alignItems: 'center',
+    padding: 16,
+  },
+  sellModeZoomDismissArea: {
+    ...StyleSheet.absoluteFillObject,
+  },
+  sellModeZoomImageWrap: {
+    zIndex: 1,
+    borderRadius: 8,
+    overflow: 'hidden',
+    backgroundColor: '#ffffff',
+    borderWidth: 1,
+    borderColor: 'rgba(255,255,255,0.2)',
+  },
+  sellModeZoomImageInner: {
+    width: '100%',
+    height: '100%',
+  },
+  sellModeZoomImage: {
+    width: '100%',
+    height: '100%',
+  },
+  sellModeZoomCloseFab: {
+    position: 'absolute',
+    top: Platform.OS === 'ios' ? 52 : 28,
+    right: 20,
+    zIndex: 10,
+    width: 44,
+    height: 44,
+    borderRadius: 22,
+    backgroundColor: 'rgba(255,255,255,0.14)',
+    alignItems: 'center',
+    justifyContent: 'center',
+    borderWidth: 1,
+    borderColor: 'rgba(255,255,255,0.35)',
+  },
+  sellModeZoomCloseFabText: {
+    color: '#f8fafc',
+    fontSize: 20,
+    fontWeight: '800',
   },
   sellModeFetchRow: {
     flexDirection: 'row',
