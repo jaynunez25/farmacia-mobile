@@ -838,6 +838,10 @@ export default function ProdutoCriarScreen() {
 
             {useBlisterStock ? (
               <>
+                <Text style={styles.hint}>
+                  Modo blister activo: <Text style={{ fontWeight: '700' }}>{blistersPerBox} lâminas por caixa</Text>.
+                  Para alterar, edita Lâminas por caixa em &quot;Venda por lâmina&quot; abaixo.
+                </Text>
                 <Text style={[styles.label, { marginTop: 4 }]}>Prateleira</Text>
                 <View style={styles.row}>
                   <View style={[styles.field, { flex: 1 }]}>
@@ -946,36 +950,78 @@ export default function ProdutoCriarScreen() {
                 </Text>
               </>
             ) : (
-              <View style={styles.row}>
-                <View style={[styles.field, { flex: 1 }]}>
-                  <Text style={styles.label}>Stock prateleira</Text>
-                  <TextInput
-                    style={styles.input}
-                    keyboardType="number-pad"
-                    value={String(form.shelf_stock_quantity ?? 0)}
-                    onChangeText={(t) =>
-                      update(
-                        'shelf_stock_quantity',
-                        Number.parseInt(t.replace(/[^0-9]/g, ''), 10) || 0,
-                      )
-                    }
-                  />
+              <>
+                {form.can_sell_by_unit ? (
+                  <View style={styles.field}>
+                    <Text style={styles.label}>
+                      Lâminas por caixa <Text style={{ color: '#dc2626' }}>*</Text>
+                    </Text>
+                    <TextInput
+                      style={styles.input}
+                      keyboardType="number-pad"
+                      value={
+                        form.blisters_per_box != null && form.blisters_per_box !== ''
+                          ? String(form.blisters_per_box)
+                          : ''
+                      }
+                      placeholder="Ex.: 10"
+                      placeholderTextColor="#6b7280"
+                      onChangeText={(t) => {
+                        const cleaned = t.replace(/[^0-9]/g, '');
+                        if (cleaned === '') {
+                          update('blisters_per_box', '');
+                        } else {
+                          const n = Math.max(1, Number.parseInt(cleaned, 10) || 1);
+                          update('blisters_per_box', n);
+                        }
+                      }}
+                    />
+                    <Text style={styles.hint}>
+                      Define quantas lâminas tem cada caixa para introduzir o stock como{' '}
+                      <Text style={{ fontWeight: '700' }}>caixas + lâminas soltas</Text>. Os campos
+                      abaixo mudam automaticamente quando o valor for maior que 1.
+                    </Text>
+                  </View>
+                ) : (
+                  <Text style={styles.hint}>
+                    Para introduzir stock como{' '}
+                    <Text style={{ fontWeight: '700' }}>caixas + lâminas soltas</Text>, ativa{' '}
+                    <Text style={{ fontStyle: 'italic' }}>Pode vender por lâmina</Text> em{' '}
+                    <Text style={{ fontStyle: 'italic' }}>Venda por lâmina</Text> abaixo e define{' '}
+                    <Text style={{ fontStyle: 'italic' }}>Lâminas por caixa</Text>.
+                  </Text>
+                )}
+                <View style={styles.row}>
+                  <View style={[styles.field, { flex: 1 }]}>
+                    <Text style={styles.label}>Stock prateleira</Text>
+                    <TextInput
+                      style={styles.input}
+                      keyboardType="number-pad"
+                      value={String(form.shelf_stock_quantity ?? 0)}
+                      onChangeText={(t) =>
+                        update(
+                          'shelf_stock_quantity',
+                          Number.parseInt(t.replace(/[^0-9]/g, ''), 10) || 0,
+                        )
+                      }
+                    />
+                  </View>
+                  <View style={[styles.field, { flex: 1 }]}>
+                    <Text style={styles.label}>Stock no storage</Text>
+                    <TextInput
+                      style={styles.input}
+                      keyboardType="number-pad"
+                      value={String(form.warehouse_stock_quantity ?? 0)}
+                      onChangeText={(t) =>
+                        update(
+                          'warehouse_stock_quantity',
+                          Number.parseInt(t.replace(/[^0-9]/g, ''), 10) || 0,
+                        )
+                      }
+                    />
+                  </View>
                 </View>
-                <View style={[styles.field, { flex: 1 }]}>
-                  <Text style={styles.label}>Stock no storage</Text>
-                  <TextInput
-                    style={styles.input}
-                    keyboardType="number-pad"
-                    value={String(form.warehouse_stock_quantity ?? 0)}
-                    onChangeText={(t) =>
-                      update(
-                        'warehouse_stock_quantity',
-                        Number.parseInt(t.replace(/[^0-9]/g, ''), 10) || 0,
-                      )
-                    }
-                  />
-                </View>
-              </View>
+              </>
             )}
 
             <View style={styles.field}>
