@@ -17,6 +17,7 @@ type UnitKind =
   | 'suppository'
   | 'lozenge'
   | 'sachet'
+  | 'discrete'
   | 'blister';
 
 const KIND_LABELS: Record<
@@ -33,6 +34,7 @@ const KIND_LABELS: Record<
   },
   lozenge: { singularTitle: 'Pastilha', singularLower: 'pastilha', pluralLower: 'pastilhas' },
   sachet: { singularTitle: 'Sobre', singularLower: 'sobre', pluralLower: 'sobres' },
+  discrete: { singularTitle: 'Unidade', singularLower: 'unidade', pluralLower: 'unidades' },
   blister: { singularTitle: 'Lâmina', singularLower: 'lâmina', pluralLower: 'lâminas' },
 };
 
@@ -49,8 +51,13 @@ export function isComprimidoTabletShape(p: RetailUnitLabelSource): boolean {
   return /(comprimido|tablet)/.test(text);
 }
 
+export function isDiscreteLooseUnitShape(p: RetailUnitLabelSource): boolean {
+  const text = `${foldPackagingText(p.form)} ${foldPackagingText(p.name)} ${foldPackagingText(p.category ?? '')}`;
+  return /(preservativo|preservatives|condom|condoms|capote|capotes|camisinha|camisinhas)/.test(text);
+}
+
 function packText(p: RetailUnitLabelSource): string {
-  return `${foldPackagingText(p.form)} ${foldPackagingText(p.name)} ${foldPackagingText(p.category)}`;
+  return `${foldPackagingText(p.form)} ${foldPackagingText(p.name)} ${foldPackagingText(p.category ?? '')}`;
 }
 
 function inferKind(p: RetailUnitLabelSource): UnitKind {
@@ -59,6 +66,7 @@ function inferKind(p: RetailUnitLabelSource): UnitKind {
   if (/(supositorio|suppository)/.test(text)) return 'suppository';
   if (/(drageia|dragee)/.test(text)) return 'dragee';
   if (/(pastilha|lozenge|gargant)/.test(text)) return 'lozenge';
+  if (/(preservativo|preservatives|condom|condoms|capote|capotes|camisinha|camisinhas)/.test(text)) return 'discrete';
   if (/(capsula|capsule)/.test(text)) return 'capsule';
   if (/(comprimido|tablet|\bpill\b)/.test(text)) return 'tablet';
   return 'blister';

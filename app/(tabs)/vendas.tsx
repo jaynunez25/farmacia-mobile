@@ -35,6 +35,7 @@ import {
   getRetailUnitPluralTitle,
   getRetailUnitSingularLower,
   isComprimidoTabletShape,
+  isDiscreteLooseUnitShape,
   stockInsufficientRetailMessage,
 } from '@/utils/inferRetailUnitLabel';
 
@@ -70,7 +71,8 @@ function isPackProductForSellModal(p: Product): boolean {
   return Boolean(
     (p.can_sell_by_box && (getUnitsPerBox(p) > 0 || useBlisterStock)) ||
       (p.can_sell_by_unit && (getUnitsPerBlister(p) > 0 || useBlisterStock)) ||
-      isComprimidoTabletShape(p),
+      isComprimidoTabletShape(p) ||
+      isDiscreteLooseUnitShape(p),
   );
 }
 
@@ -132,11 +134,14 @@ function inferSaleOptions(p: Product): SaleOption[] {
   const useBlisterStock = usesBlistersPerBoxStock(p);
   const canBox = !!p.can_sell_by_box && (getUnitsPerBox(p) > 0 || useBlisterStock);
   const canBlister =
-    isComprimidoTabletShape(p) || (!!p.can_sell_by_unit && (getUnitsPerBlister(p) > 0 || useBlisterStock));
+    isComprimidoTabletShape(p) ||
+    isDiscreteLooseUnitShape(p) ||
+    (!!p.can_sell_by_unit && (getUnitsPerBlister(p) > 0 || useBlisterStock));
 
   if (isLiquid) return canBox && getUnitsPerBox(p) > 1 ? ['box', 'bottle'] : ['bottle'];
   if (isAmpoule) return canBox && getUnitsPerBox(p) > 1 ? ['box', 'ampoule'] : ['ampoule'];
   if (isTabletCapsule && canBlister) return canBox ? ['box', 'blister'] : ['blister'];
+  if (isDiscreteLooseUnitShape(p)) return canBox ? ['box', 'blister'] : ['blister'];
   return ['box'];
 }
 
@@ -210,7 +215,7 @@ function computePosSellModalStock(p: Product): {
   }
 
   const showBoxLine = pack && !!p.can_sell_by_box;
-  const showLaminaLine = pack && (!!p.can_sell_by_unit || isComprimidoTabletShape(p));
+  const showLaminaLine = pack && (!!p.can_sell_by_unit || isComprimidoTabletShape(p) || isDiscreteLooseUnitShape(p));
 
   const isOutOfStock = total <= 0;
   const minStock = Math.max(0, Math.floor(Number(p.minimum_stock) || 0));
@@ -626,6 +631,7 @@ export default function VendasScreen() {
     if (
       sellAs === 'blister' &&
       !isComprimidoTabletShape(product) &&
+      !isDiscreteLooseUnitShape(product) &&
       (!product.can_sell_by_unit || !blisterUnitsOk)
     ) {
       setError(`Produto sem configuração válida para venda por ${getRetailUnitSingularLower(product)}.`);
