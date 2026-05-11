@@ -30,6 +30,12 @@ import { formatCurrency } from '@/utils/currency';
 import { fetchAllProducts } from '@/utils/fetchAllProducts';
 import { getErrorMessage } from '@/utils/errorMessage';
 import { isLiquidPharmaceuticalForm } from '@/utils/liquidPharmaceuticalForm';
+import {
+  getRetailUnitLabelSingularTitle,
+  getRetailUnitPluralTitle,
+  getRetailUnitSingularLower,
+  stockInsufficientRetailMessage,
+} from '@/utils/inferRetailUnitLabel';
 
 type CartItem = {
   product: Product;
@@ -50,7 +56,7 @@ function cartLineSellHint(displayName: string, sell_as: CartItem['sell_as'], pro
   if (sell_as === 'blister') {
     const u = (product.unit_name || '').trim();
     if (u && u.toLowerCase() !== dn) return u;
-    return 'Por lâmina';
+    return `Por ${getRetailUnitSingularLower(product)}`;
   }
   if (sell_as === 'bottle') return 'Por frasco';
   if (sell_as === 'ampoule') return 'Por ampola';
@@ -89,11 +95,18 @@ function getBlisterPriceAmount(p: Product): number {
   const rawBlister = p.sale_price_blister ?? p.price_unit ?? p.unit_selling_price;
   if (rawBlister != null && String(rawBlister).trim() !== '') {
     const n = Number(rawBlister);
-    if (Number.isFinite(n)) return n;
+    if (Number.isFinite(n) && n > 0) return n;
   }
-  const units = usesBlistersPerBoxStock(p) ? getBlistersPerBox(p) : getUnitsPerBlister(p);
   const box = getDisplayBoxPriceAmount(p);
-  return units > 0 ? box / units : Number(p.selling_price ?? 0);
+  if (usesBlistersPerBoxStock(p)) {
+    const bpp = getBlistersPerBox(p);
+    return bpp > 0 ? box / bpp : 0;
+  }
+  const upb = getUnitsPerBox(p);
+  const upbl = getUnitsPerBlister(p);
+  if (upb > 0 && upbl > 0) return (box * upbl) / upb;
+  if (upbl > 0) return box / upbl;
+  return 0;
 }
 
 function getAmpoulePriceAmount(p: Product): number {
@@ -116,8 +129,7 @@ function inferSaleOptions(p: Product): SaleOption[] {
   const isTabletCapsule = /(comprimido|capsula|tablet|capsule)/.test(text);
   const useBlisterStock = usesBlistersPerBoxStock(p);
   const canBox = !!p.can_sell_by_box && (getUnitsPerBox(p) > 0 || useBlisterStock);
-  const canBlister =
-    !!p.can_sell_by_unit && (getUnitsPerBlister(p) > 0 || useBlisterStock) && getBlisterPriceAmount(p) > 0;
+  const canBlister = !!p.can_sell_by_unit && (getUnitsPerBlister(p) > 0 || useBlisterStock);
 
   if (isLiquid) return canBox && getUnitsPerBox(p) > 1 ? ['box', 'bottle'] : ['bottle'];
   if (isAmpoule) return canBox && getUnitsPerBox(p) > 1 ? ['box', 'ampoule'] : ['ampoule'];
@@ -125,18 +137,32 @@ function inferSaleOptions(p: Product): SaleOption[] {
   return ['box'];
 }
 
+function getDefaultSellAs(p: Product): SaleOption {
+  const opts = inferSaleOptions(p);
+  if (opts.length === 0) return 'box';
+  if (!opts.includes('blister')) return opts[0] ?? 'box';
+  const total = Math.max(0, Math.floor(Number(p.stock_quantity) || 0));
+  if (total <= 0) return opts[0] ?? 'box';
+  if (usesBlistersPerBoxStock(p)) {
+    const bpp = getBlistersPerBox(p);
+    if (bpp > 1 && Math.floor(total / bpp) < 1) return 'blister';
+  } else {
+    const upb = Math.max(1, getUnitsPerBox(p));
+    if (Math.floor(total / upb) < 1) return 'blister';
+  }
+  return opts[0] ?? 'box';
+}
+
 function saleOptionLabel(option: SaleOption, product?: Product | null): string {
   if (option === 'box') return (product?.pack_name || '').trim() || 'Caixa';
-  if (option === 'blister') return (product?.unit_name || '').trim() || 'Lâmina';
+  if (option === 'blister')
+    return product ? getRetailUnitLabelSingularTitle(product) : 'Lâmina';
   if (option === 'bottle') return 'Frasco';
   return 'Ampola';
 }
 
-function saleOptionStockError(option: SaleOption): string {
-  if (option === 'box') return 'Stock insuficiente para vender esta quantidade de caixas.';
-  if (option === 'blister') return 'Stock insuficiente para vender esta quantidade de lâminas.';
-  if (option === 'bottle') return 'Stock insuficiente para vender esta quantidade de frascos.';
-  return 'Stock insuficiente para vender esta quantidade de ampolas.';
+function saleOptionStockError(option: SaleOption, product: Product): string {
+  return stockInsufficientRetailMessage(option, product);
 }
 
 function packUnitsPerBox(p: Product): number {
@@ -195,10 +221,7 @@ function computePosSellModalStock(p: Product): {
         (!useBlisterStock && unitsPerBox <= 0)));
   const unitButtonDisabled =
     isOutOfStock ||
-    (pack &&
-      (!p.can_sell_by_unit ||
-        getBlisterPriceAmount(p) <= 0 ||
-        (!useBlisterStock && unitsPerBlister <= 0)));
+    (pack && (!p.can_sell_by_unit || (!useBlisterStock && unitsPerBlister <= 0)));
 
   return {
     total,
@@ -596,14 +619,13 @@ export default function VendasScreen() {
             ? qty
             : qty * Math.max(1, getUnitsPerBlister(product))
           : qty;
-    const blisterPriceOk = getBlisterPriceAmount(product) > 0;
     const blisterUnitsOk = useBlister || getUnitsPerBlister(product) > 0;
-    if (sellAs === 'blister' && (!product.can_sell_by_unit || !blisterUnitsOk || !blisterPriceOk)) {
-      setError('Produto sem configuração válida para venda por lâmina.');
+    if (sellAs === 'blister' && (!product.can_sell_by_unit || !blisterUnitsOk)) {
+      setError(`Produto sem configuração válida para venda por ${getRetailUnitSingularLower(product)}.`);
       return;
     }
     if (required > product.stock_quantity) {
-      setError(saleOptionStockError(sellAs));
+      setError(saleOptionStockError(sellAs, product));
       return;
     }
     setError(null);
@@ -623,7 +645,7 @@ export default function VendasScreen() {
                 : newQty * Math.max(1, getUnitsPerBlister(product))
               : newQty;
         if (need > product.stock_quantity) {
-          setError(saleOptionStockError(sellAs));
+          setError(saleOptionStockError(sellAs, product));
           return prev;
         }
         next[idx] = { ...next[idx], quantity: newQty };
@@ -835,7 +857,7 @@ export default function VendasScreen() {
   const onProductPress = (product: Product) => {
     // POS requirement: always ask how to sell on product tap.
     setSellModeProduct(product);
-    setSellAsChoice(inferSaleOptions(product)[0] ?? 'box');
+    setSellAsChoice(getDefaultSellAs(product));
     setUnitSellQty('1');
     setSellModeModalVisible(true);
   };
@@ -1199,7 +1221,7 @@ export default function VendasScreen() {
                         )}
                         {sellModeStockInfo.showLaminaLine && sellModeOptions.includes('blister') && (
                           <Text style={styles.sellModeStockRow}>
-                            Lâmina(s) restantes: {sellModeStockInfo.laminae}
+                            {`${getRetailUnitPluralTitle(sellModeProduct)} restantes: ${sellModeStockInfo.laminae}`}
                           </Text>
                         )}
                         <Text style={styles.sellModeStockRowTotal}>Stock total (unidades): {sellModeStockInfo.total}</Text>
@@ -1411,7 +1433,8 @@ export default function VendasScreen() {
                             {Math.max(0, Math.floor(Number(selectedProduct.stock_quantity) || 0))}
                           </Text>
                           <Text style={styles.manualProductMeta}>
-                            Preço caixa: {formatCurrency(getDisplayBoxPriceAmount(selectedProduct))} · Preço lâmina:{' '}
+                            Preço caixa: {formatCurrency(getDisplayBoxPriceAmount(selectedProduct))} · Preço por{' '}
+                            {getRetailUnitSingularLower(selectedProduct)}:{' '}
                             {formatCurrency(getDisplayUnitPriceAmount(selectedProduct))}
                           </Text>
 
@@ -1624,7 +1647,8 @@ export default function VendasScreen() {
                           {Math.max(0, Math.floor(Number(selectedProduct.stock_quantity) || 0))}
                         </Text>
                         <Text style={styles.manualProductMeta}>
-                          Preço caixa: {formatCurrency(getDisplayBoxPriceAmount(selectedProduct))} · Preço lâmina:{' '}
+                          Preço caixa: {formatCurrency(getDisplayBoxPriceAmount(selectedProduct))} · Preço por{' '}
+                          {getRetailUnitSingularLower(selectedProduct)}:{' '}
                           {formatCurrency(getDisplayUnitPriceAmount(selectedProduct))}
                         </Text>
 
@@ -1877,7 +1901,8 @@ export default function VendasScreen() {
                           {Math.max(0, Math.floor(Number(selectedProduct.stock_quantity) || 0))}
                         </Text>
                         <Text style={styles.manualProductMeta}>
-                          Preço caixa: {formatCurrency(getDisplayBoxPriceAmount(selectedProduct))} · Preço lâmina:{' '}
+                          Preço caixa: {formatCurrency(getDisplayBoxPriceAmount(selectedProduct))} · Preço por{' '}
+                          {getRetailUnitSingularLower(selectedProduct)}:{' '}
                           {formatCurrency(getDisplayUnitPriceAmount(selectedProduct))}
                         </Text>
 

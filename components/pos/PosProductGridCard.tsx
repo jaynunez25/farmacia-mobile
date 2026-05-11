@@ -4,6 +4,7 @@ import { Image, Pressable, StyleSheet, Text, View } from 'react-native';
 import { resolveApiMediaUrl } from '@/services/api';
 import type { Product } from '@/types';
 import { formatCurrency } from '@/utils/currency';
+import { getRetailUnitWordForCount } from '@/utils/inferRetailUnitLabel';
 
 function formatPosGridStockLine(p: Product): string {
   const total = Math.max(0, Math.floor(Number(p.stock_quantity) || 0));
@@ -13,8 +14,8 @@ function formatPosGridStockLine(p: Product): string {
   const boxes = Math.floor(total / bpp);
   const lam = total % bpp;
   if (lam === 0) return `${boxes} caixa${boxes === 1 ? '' : 's'}`;
-  if (boxes === 0) return `${lam} lâmina${lam === 1 ? '' : 's'}`;
-  return `${boxes} caixa${boxes === 1 ? '' : 's'} + ${lam} lâmina${lam === 1 ? '' : 's'}`;
+  if (boxes === 0) return `${lam} ${getRetailUnitWordForCount(lam, p)}`;
+  return `${boxes} caixa${boxes === 1 ? '' : 's'} + ${lam} ${getRetailUnitWordForCount(lam, p)}`;
 }
 
 function shelfLine(p: Product): string {
