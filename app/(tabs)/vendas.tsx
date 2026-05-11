@@ -244,17 +244,17 @@ function formatStockCountLabel(n: number | null | undefined): string {
   return String(Math.trunc(Number(n)));
 }
 
-/** Stock loja: API `front_stock_quantity` ou último inventário frente. */
+/** Stock loja: API `shelf_stock_quantity` (ou alias `front_stock_quantity`) ou inventário inicial. */
 function getProductFrontStockDisplay(p: Product): number | null {
-  const raw = p.front_stock_quantity ?? p.initial_front_count;
+  const raw = p.shelf_stock_quantity ?? p.front_stock_quantity ?? p.initial_front_count;
   if (raw == null) return null;
   const n = Number(raw);
   return Number.isFinite(n) ? Math.trunc(n) : null;
 }
 
-/** Stock armazém: API `back_stock_quantity` ou último inventário trás. */
+/** Stock armazém: API `warehouse_stock_quantity` (ou alias `back_stock_quantity`) ou inventário inicial. */
 function getProductBackStockDisplay(p: Product): number | null {
-  const raw = p.back_stock_quantity ?? p.initial_back_count;
+  const raw = p.warehouse_stock_quantity ?? p.back_stock_quantity ?? p.initial_back_count;
   if (raw == null) return null;
   const n = Number(raw);
   return Number.isFinite(n) ? Math.trunc(n) : null;
