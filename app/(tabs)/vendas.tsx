@@ -34,6 +34,7 @@ import {
   getRetailUnitLabelSingularTitle,
   getRetailUnitPluralTitle,
   getRetailUnitSingularLower,
+  isComprimidoTabletShape,
   stockInsufficientRetailMessage,
 } from '@/utils/inferRetailUnitLabel';
 
@@ -68,7 +69,8 @@ function isPackProductForSellModal(p: Product): boolean {
   const useBlisterStock = usesBlistersPerBoxStock(p);
   return Boolean(
     (p.can_sell_by_box && (getUnitsPerBox(p) > 0 || useBlisterStock)) ||
-      (p.can_sell_by_unit && (getUnitsPerBlister(p) > 0 || useBlisterStock)),
+      (p.can_sell_by_unit && (getUnitsPerBlister(p) > 0 || useBlisterStock)) ||
+      isComprimidoTabletShape(p),
   );
 }
 
@@ -129,7 +131,8 @@ function inferSaleOptions(p: Product): SaleOption[] {
   const isTabletCapsule = /(comprimido|capsula|tablet|capsule)/.test(text);
   const useBlisterStock = usesBlistersPerBoxStock(p);
   const canBox = !!p.can_sell_by_box && (getUnitsPerBox(p) > 0 || useBlisterStock);
-  const canBlister = !!p.can_sell_by_unit && (getUnitsPerBlister(p) > 0 || useBlisterStock);
+  const canBlister =
+    isComprimidoTabletShape(p) || (!!p.can_sell_by_unit && (getUnitsPerBlister(p) > 0 || useBlisterStock));
 
   if (isLiquid) return canBox && getUnitsPerBox(p) > 1 ? ['box', 'bottle'] : ['bottle'];
   if (isAmpoule) return canBox && getUnitsPerBox(p) > 1 ? ['box', 'ampoule'] : ['ampoule'];
@@ -207,7 +210,7 @@ function computePosSellModalStock(p: Product): {
   }
 
   const showBoxLine = pack && !!p.can_sell_by_box;
-  const showLaminaLine = pack && !!p.can_sell_by_unit;
+  const showLaminaLine = pack && (!!p.can_sell_by_unit || isComprimidoTabletShape(p));
 
   const isOutOfStock = total <= 0;
   const minStock = Math.max(0, Math.floor(Number(p.minimum_stock) || 0));
@@ -620,7 +623,11 @@ export default function VendasScreen() {
             : qty * Math.max(1, getUnitsPerBlister(product))
           : qty;
     const blisterUnitsOk = useBlister || getUnitsPerBlister(product) > 0;
-    if (sellAs === 'blister' && (!product.can_sell_by_unit || !blisterUnitsOk)) {
+    if (
+      sellAs === 'blister' &&
+      !isComprimidoTabletShape(product) &&
+      (!product.can_sell_by_unit || !blisterUnitsOk)
+    ) {
       setError(`Produto sem configuração válida para venda por ${getRetailUnitSingularLower(product)}.`);
       return;
     }

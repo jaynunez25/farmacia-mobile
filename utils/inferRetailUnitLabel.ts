@@ -43,6 +43,12 @@ function foldPackagingText(v: string | null | undefined): string {
     .toLowerCase();
 }
 
+/** Comprimidos (ou "tablet" no texto): elegíveis para venda por lâmina mesmo sem flags de blister. */
+export function isComprimidoTabletShape(p: RetailUnitLabelSource): boolean {
+  const text = `${foldPackagingText(p.form)} ${foldPackagingText(p.name)} ${foldPackagingText(p.category ?? '')}`;
+  return /(comprimido|tablet)/.test(text);
+}
+
 function packText(p: RetailUnitLabelSource): string {
   return `${foldPackagingText(p.form)} ${foldPackagingText(p.name)} ${foldPackagingText(p.category)}`;
 }
