@@ -16,6 +16,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { useRouter } from 'expo-router';
 import { useFocusEffect } from '@react-navigation/native';
 
+import { StockProductThumb } from '@/components/stock/StockProductThumb';
 import { useAuth } from '@/contexts/AuthContext';
 import { api } from '@/services/api';
 import type { Product } from '@/types';
@@ -196,17 +197,22 @@ export default function StockScreen() {
             params: { id: String(item.id) },
           })
         }>
-        <View style={styles.cardHeader}>
-          <Text style={styles.cardTitle} numberOfLines={2}>
-            {item.name}
-          </Text>
-          <Text style={styles.cardStock}>{item.stock_quantity}</Text>
-        </View>
-        <View style={styles.cardMetaRow}>
-          <Text style={styles.cardMeta}>
-            SKU: {item.sku}{' '}
-            {item.barcode ? ` • Código: ${item.barcode}` : ''}
-          </Text>
+        <View style={styles.cardTopRow}>
+          <StockProductThumb product={item} />
+          <View style={styles.cardMain}>
+            <View style={styles.cardHeader}>
+              <Text style={styles.cardTitle} numberOfLines={2}>
+                {item.name}
+              </Text>
+              <Text style={styles.cardStock}>{item.stock_quantity}</Text>
+            </View>
+            <View style={styles.cardMetaRow}>
+              <Text style={styles.cardMeta}>
+                SKU: {item.sku}
+                {item.barcode ? ` • Código: ${item.barcode}` : ''}
+              </Text>
+            </View>
+          </View>
         </View>
         <View style={styles.initialCountsRow} onStartShouldSetResponder={() => true}>
           <View style={styles.initialColumn}>
@@ -828,11 +834,20 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderColor: '#f97316',
   },
+  cardTopRow: {
+    flexDirection: 'row',
+    alignItems: 'flex-start',
+    gap: 10,
+    marginBottom: 4,
+  },
+  cardMain: {
+    flex: 1,
+    minWidth: 0,
+  },
   cardHeader: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'flex-start',
-    marginBottom: 4,
   },
   cardTitle: {
     flex: 1,
