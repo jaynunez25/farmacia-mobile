@@ -48,6 +48,8 @@ export default function LoginScreen() {
   const [password, setPassword] = useState('');
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [connectionHint, setConnectionHint] = useState<string | null>(null);
+  const [testingConnection, setTestingConnection] = useState(false);
   const [focusedField, setFocusedField] = useState<'user' | 'pass' | null>(null);
 
   const loading = isLoading || submitting;
@@ -174,6 +176,17 @@ export default function LoginScreen() {
 
           <View style={styles.bottomSpacer} />
 
+          <Pressable
+            onPress={() => void handleTestConnection()}
+            disabled={testingConnection}
+            style={styles.testConnectionBtn}>
+            <Text style={styles.testConnectionText}>
+              {testingConnection ? 'A testar ligação…' : 'Testar ligação ao servidor'}
+            </Text>
+          </Pressable>
+          {connectionHint ? (
+            <Text style={styles.connectionHint}>{connectionHint}</Text>
+          ) : null}
           <Text style={styles.footerHint}>Uso exclusivo de equipas autorizadas.</Text>
         </ScrollView>
       </KeyboardAvoidingView>
@@ -310,6 +323,25 @@ const styles = StyleSheet.create({
     color: TEXT_MUTED,
     textAlign: 'center',
     lineHeight: 18,
+  },
+  testConnectionBtn: {
+    alignSelf: 'center',
+    paddingVertical: 10,
+    marginTop: 8,
+  },
+  testConnectionText: {
+    color: BRAND_BLUE,
+    fontSize: 14,
+    fontWeight: '600',
+  },
+  connectionHint: {
+    color: TEXT_MUTED,
+    fontSize: 13,
+    lineHeight: 18,
+    textAlign: 'center',
+    marginTop: 4,
+    marginBottom: 8,
+    paddingHorizontal: 8,
   },
   footerHint: {
     marginTop: 24,

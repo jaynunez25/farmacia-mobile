@@ -22,12 +22,22 @@ Não usar:
 
 A API está no **Railway** (servidores fora de Angola). Com **3G/4G fraco** pode demorar 30–60 s no primeiro login. Espera ou usa **Wi‑Fi**.
 
+## Teste no telemóvel (2 minutos)
+
+1. Abrir no Chrome: https://farmacia-stock-production.up.railway.app/health  
+   - Deve mostrar: `{"status":"ok"}`  
+   - Se **não abrir** → problema de internet/DNS no telemónel (não é a app).
+
+2. Abrir a app: https://farmacia-mobile-opal.vercel.app  
+3. No login, tocar **«Testar ligação ao servidor»**  
+   - **Ligação OK** → problema é utilizador/palavra-passe.  
+   - **Sem ligação** → rede lenta ou bloqueio; mudar para Wi‑Fi ou outra operadora.
+
 ## Se não funcionar
 
-1. Chrome → menu → **Histórico** → apagar dados do site `vercel.app` (ou abrir **janela anónima**).
-2. Voltar a abrir: https://farmacia-mobile-opal.vercel.app
-3. Confirmar no ecrã de erro (se aparecer) que o servidor é: `farmacia-stock-production.up.railway.app`
-4. Se mostrar outro servidor ou estiver vazio → app desactualizada; esperar novo deploy Vercel ou usar Chrome com o link acima.
+1. Chrome → **janela anónima** → colar o link Vercel exacto acima.
+2. Confirmar no erro: servidor = `farmacia-stock-production.up.railway.app`
+3. Palavra-passe: a de **produção** (pode não ser `admin` se já foi alterada em Portugal).
 
 ## App Play Store
 
