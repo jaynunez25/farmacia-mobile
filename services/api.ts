@@ -72,7 +72,8 @@ export function resolveApiMediaUrl(pathOrUrl: string | null | undefined): string
   if (!base) return null;
   return `${base}${path}`;
 }
-const REQUEST_TIMEOUT_MS = 15000;
+/** Redes móveis (ex. Angola) podem ser lentas até ao Railway (EUA/EU). */
+const REQUEST_TIMEOUT_MS = 45000;
 
 /** True when the web/production bundle was built without EXPO_PUBLIC_API_URL (shows setup screen instead of crashing). */
 export const isProductionApiUrlMissing = IS_PRODUCTION && !API_BASE_URL;
@@ -150,7 +151,12 @@ async function request<T>(path: string, options?: RequestInit): Promise<T> {
   } catch (error) {
     if (error instanceof Error && error.name === 'AbortError') {
       throw new Error(
-        'O servidor da API não respondeu a tempo. O backend no Railway pode estar em baixo — abre railway.app, serviço farmacia-stock, e faz Redeploy. Se persistir, vê os logs (STARTUP ERROR).',
+        'A ligação demorou demasiado. Verifica internet móvel/Wi‑Fi e tenta outra vez (a API fica nos EUA).',
+      );
+    }
+    if (error instanceof Error && !(error.message || '').trim()) {
+      throw new Error(
+        `Sem ligação ao servidor (${API_BASE_URL}). Usa https://farmacia-mobile-opal.vercel.app ou a app da Play Store actualizada.`,
       );
     }
     throw error;

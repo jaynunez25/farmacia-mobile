@@ -16,6 +16,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { StatusBar } from 'expo-status-bar';
 
 import { useAuth } from '@/contexts/AuthContext';
+import { getApiBaseUrl } from '@/services/api';
 import { getErrorMessage } from '@/utils/errorMessage';
 import { redirectAfterAuthentication } from '@/utils/postLoginRedirect';
 
@@ -134,6 +135,11 @@ export default function LoginScreen() {
             {error ? (
               <View style={styles.errorBox} accessibilityRole="alert">
                 <Text style={styles.errorText}>{error}</Text>
+                {getApiBaseUrl() ? (
+                  <Text style={styles.errorHint}>
+                    Servidor: {getApiBaseUrl().replace(/^https:\/\//, '')}
+                  </Text>
+                ) : null}
               </View>
             ) : null}
 
@@ -267,6 +273,13 @@ const styles = StyleSheet.create({
     color: ERROR_TEXT,
     fontSize: 14,
     lineHeight: 20,
+  },
+  errorHint: {
+    color: ERROR_TEXT,
+    fontSize: 12,
+    lineHeight: 16,
+    marginTop: 6,
+    opacity: 0.85,
   },
   primaryButton: {
     marginTop: 4,
