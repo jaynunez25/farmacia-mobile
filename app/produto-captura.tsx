@@ -49,29 +49,18 @@ export default function ProdutoCapturaScreen() {
   useEffect(() => () => stopPoll(), [stopPoll]);
 
   const finishWithJob = async (jobId: number) => {
-    setStatusText('A ler embalagem…');
-    pollRef.current = setInterval(async () => {
+    setStatusText('A analisar embalagem…');
+    const poll = async () => {
       try {
         const job = await getCaptureJob(jobId);
+        if (job.status === 'processing') {
+          setStatusText('A preparar imagem e a ler texto…');
+        }
         if (job.status === 'completed') {
           stopPoll();
-          const previewPath = (job.cleaned_image_path ?? job.thumbnail_path)?.trim();
-          if (previewPath) {
-            setProcessedThumbUri(resolveApiMediaUrl(previewPath));
-          }
           const formPartial = mapCaptureJobToFormDraft(job);
-          let sku = '';
-          try {
-            const suggested = await api.products.suggestSku({
-              category: formPartial.category || undefined,
-              name: formPartial.name || undefined,
-            });
-            sku = suggested.sku;
-          } catch {
-            /* optional */
-          }
           await saveCaptureDraft({
-            form: { ...formPartial, sku },
+            form: formPartial,
             needsReview: job.needs_review,
             overallConfidence: job.overall_confidence,
             ocrPreview: job.ocr_raw_text,
@@ -90,7 +79,9 @@ export default function ProdutoCapturaScreen() {
         setError(getErrorMessage(e));
         setStep('pick');
       }
-    }, 1500);
+    };
+    void poll();
+    pollRef.current = setInterval(() => void poll(), 700);
   };
 
   const processUri = async (uri: string, mimeType?: string) => {
