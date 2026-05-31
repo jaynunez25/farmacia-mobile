@@ -33,12 +33,16 @@ if (missingThumb.length || missingImage.length) {
   process.exit(1);
 }
 
-const dirty = execSync('git status --porcelain public/products', { encoding: 'utf8' }).trim();
-if (dirty) {
-  console.error('[MEDIA CHECK] Uncommitted media changes detected in public/products:');
-  console.error(dirty);
-  console.error('Commit + push these files so Vercel serves them.');
-  process.exit(1);
+// Vercel/CI: shallow clone — git status pode dar falso positivo; só exigimos no dev local.
+const onCi = process.env.VERCEL === '1' || process.env.CI === 'true';
+if (!onCi) {
+  const dirty = execSync('git status --porcelain public/products', { encoding: 'utf8' }).trim();
+  if (dirty) {
+    console.error('[MEDIA CHECK] Uncommitted media changes detected in public/products:');
+    console.error(dirty);
+    console.error('Commit + push these files so Vercel serves them.');
+    process.exit(1);
+  }
 }
 
-console.log('[MEDIA CHECK] OK: media pairs aligned and committed.');
+console.log('[MEDIA CHECK] OK: media pairs aligned' + (onCi ? ' (CI).' : ' and committed.'));
