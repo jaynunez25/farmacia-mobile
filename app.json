@@ -1,6 +1,6 @@
 {
   "expo": {
-    "name": "farmacia-mobile",
+    "name": "Pharmaos",
     "slug": "farmacia-mobile",
     "version": "1.0.0",
     "orientation": "portrait",
@@ -13,6 +13,7 @@
     },
     "android": {
       "package": "com.farmacianunes.mobile",
+      "versionCode": 1,
       "adaptiveIcon": {
         "backgroundColor": "#E6F4FE",
         "foregroundImage": "./assets/images/android-icon-foreground.png",

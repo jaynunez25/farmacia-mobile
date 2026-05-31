@@ -10,6 +10,8 @@
     "web": "expo start --web",
     "verify:media": "node ./scripts/check_media_sync.mjs",
     "build:web": "npm run verify:media && expo export --platform web",
+    "build:android:preview": "eas build --platform android --profile preview --non-interactive",
+    "build:android:production": "eas build --platform android --profile production --non-interactive",
     "lint": "expo lint"
   },
   "dependencies": {
