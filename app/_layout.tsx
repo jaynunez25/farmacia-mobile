@@ -54,6 +54,7 @@ function RootNavigator() {
         <Stack.Screen name="produtos" options={{ title: 'Produtos' }} />
         <Stack.Screen name="produto" options={{ title: 'Produto' }} />
         <Stack.Screen name="produto-criar" options={{ title: 'Novo produto' }} />
+        <Stack.Screen name="produto-captura" options={{ title: 'Captura AI' }} />
         <Stack.Screen name="produto-editar" options={{ title: 'Editar produto' }} />
         <Stack.Screen name="utilizadores" options={{ title: 'Utilizadores' }} />
         <Stack.Screen name="utilizador-criar" options={{ title: 'Novo utilizador' }} />

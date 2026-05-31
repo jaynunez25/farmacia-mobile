@@ -1,4 +1,4 @@
-const LIQUID_FORM_SUBSTRINGS = ['xarope', 'suspensao', 'solucao oral', 'gotas', 'frasco'] as const;
+const LIQUID_FORM_SUBSTRINGS = ['xarope', 'suspensao', 'solucao oral', 'gotas', 'frasco', 'liquido'] as const;
 
 function foldPharmaceuticalForm(s: string): string {
   return s

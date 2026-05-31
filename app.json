@@ -32,6 +32,13 @@
     "plugins": [
       "expo-router",
       [
+        "expo-image-picker",
+        {
+          "cameraPermission": "Permitir fotografar embalagens de produtos para o inventário.",
+          "photosPermission": "Permitir escolher fotos de produtos da galeria."
+        }
+      ],
+      [
         "expo-splash-screen",
         {
           "image": "./assets/images/pharmaos-logo.png",

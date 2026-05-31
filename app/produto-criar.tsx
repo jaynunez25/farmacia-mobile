@@ -1,7 +1,8 @@
-import { useEffect, useState } from 'react';
-import { useRouter } from 'expo-router';
+import { useCallback, useEffect, useState } from 'react';
+import { useFocusEffect, useRouter } from 'expo-router';
 import {
   Alert,
+  Image,
   KeyboardAvoidingView,
   Modal,
   Platform,
@@ -18,6 +19,8 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { useAuth } from '@/contexts/AuthContext';
 import type { Product } from '@/types';
 import { api } from '@/services/api';
+import { resolveApiMediaUrl } from '@/services/aiCapture';
+import { clearCaptureDraft, loadCaptureDraft } from '@/utils/captureDraft';
 import { getErrorMessage } from '@/utils/errorMessage';
 import { isLiquidPharmaceuticalForm } from '@/utils/liquidPharmaceuticalForm';
 import { isAdminRole } from '@/utils/roles';
@@ -75,6 +78,9 @@ const defaultForm = {
   batch_number: '',
   expiry_date: '',
   location: '',
+  image_url: '',
+  thumbnail_url: '',
+  notes: '',
 };
 
 export default function ProdutoCriarScreen() {
@@ -88,6 +94,8 @@ export default function ProdutoCriarScreen() {
   }, [user, router]);
 
   const [form, setForm] = useState(defaultForm);
+  const [fromAiCapture, setFromAiCapture] = useState(false);
+  const [aiCaptureHint, setAiCaptureHint] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
   const [checkingDuplicates, setCheckingDuplicates] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -105,9 +113,12 @@ export default function ProdutoCriarScreen() {
   // Blister-stock model: blisters_per_box is the source of truth. units_per_pack is legacy and
   // is only mirrored at payload time for backward compatibility — it never drives this UI.
   const blistersPerBoxNum = Number(form.blisters_per_box);
-  const useBlisterStock =
-    !!form.can_sell_by_unit && Number.isFinite(blistersPerBoxNum) && blistersPerBoxNum > 1;
-  const blistersPerBox = useBlisterStock ? Math.floor(blistersPerBoxNum) : 0;
+  const liquidFormUi = isLiquidPharmaceuticalForm(String(form.form ?? '').trim());
+  const sellByUnit = !!form.can_sell_by_unit && !liquidFormUi;
+  const blistersPerBox = sellByUnit && Number.isFinite(blistersPerBoxNum) && blistersPerBoxNum >= 1
+    ? Math.floor(blistersPerBoxNum)
+    : 0;
+  const useBlisterStock = sellByUnit && blistersPerBox >= 1;
   const shelfTotal = Math.max(0, Math.floor(Number(form.shelf_stock_quantity) || 0));
   const warehouseTotal = Math.max(0, Math.floor(Number(form.warehouse_stock_quantity) || 0));
 
@@ -128,6 +139,45 @@ export default function ProdutoCriarScreen() {
     // shelf/storage box/loose state to avoid clobbering user input mid-typing.
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [useBlisterStock, blistersPerBox, shelfTotal, warehouseTotal]);
+
+  useFocusEffect(
+    useCallback(() => {
+      let active = true;
+      (async () => {
+        const draft = await loadCaptureDraft();
+        if (!active || !draft) return;
+        await clearCaptureDraft();
+        setForm((prev) => ({
+          ...prev,
+          ...draft.form,
+          selling_price: prev.selling_price,
+          cost_price: prev.cost_price,
+          shelf_stock_quantity: prev.shelf_stock_quantity,
+          warehouse_stock_quantity: prev.warehouse_stock_quantity,
+          minimum_stock: prev.minimum_stock,
+          batch_number: prev.batch_number,
+          expiry_date: prev.expiry_date,
+          location: prev.location,
+        }));
+        setFromAiCapture(true);
+        const conf =
+          draft.overallConfidence != null
+            ? ` Confiança: ${Math.round(draft.overallConfidence * 100)}%.`
+            : '';
+        setAiCaptureHint(
+          (draft.needsReview
+            ? 'Reveja nome, categoria, ficha técnica, lâminas e preços antes de gravar.'
+            : 'Ficha técnica e campos sugeridos a partir da embalagem (confirme tudo).') + conf,
+        );
+        if (__DEV__) {
+          console.log('[produto-criar] AI capture draft applied', draft.form);
+        }
+      })();
+      return () => {
+        active = false;
+      };
+    }, []),
+  );
 
   useEffect(() => {
     let mounted = true;
@@ -266,17 +316,9 @@ export default function ProdutoCriarScreen() {
         : Number(form.units_per_pack) >= 1
           ? Number(form.units_per_pack)
           : 0;
-    const unitsPerBlisterForRule =
-      Number(form.units_per_blister) >= 1
-        ? Number(form.units_per_blister)
-        : 0;
     const liquidForm = isLiquidPharmaceuticalForm(String(form.form ?? '').trim());
     if (form.can_sell_by_unit && !liquidForm && blistersPerBoxForRule < 1) {
-      setError('Indica lâminas por caixa (>= 1) quando vendes por lâmina.');
-      return;
-    }
-    if (form.can_sell_by_unit && !liquidForm && unitsPerBlisterForRule < 1) {
-      setError('Indica comprimidos por lâmina (>= 1) quando vendes por lâmina.');
+      setError('Indica quantas lâminas vêm em cada caixa (>= 1).');
       return;
     }
 
@@ -333,25 +375,29 @@ export default function ProdutoCriarScreen() {
     }
 
     const formTrim = String(form.form ?? '').trim();
-    const packNameOut = liquidForm ? (form.pack_name?.trim() || 'Frasco') : form.pack_name?.trim() || '';
+    const packNameOut = liquidForm
+      ? form.pack_name?.trim() || 'Frasco'
+      : form.can_sell_by_unit
+        ? 'Caixa'
+        : form.pack_name?.trim() || '';
     const blistersOut =
       liquidForm && (blistersPerBox == null || blistersPerBox < 1)
         ? 1
         : blistersPerBox != null && blistersPerBox >= 1
           ? blistersPerBox
           : null;
-    const unitsPerBlisterOut =
-      liquidForm
-        ? null
-        : unitsPerBlister != null && unitsPerBlister >= 1
-          ? unitsPerBlister
-          : null;
+    // Stock/POS por lâmina: não gravamos comprimidos por lâmina.
+    const unitsPerBlisterOut = null;
     const unitsPerBoxOut =
       liquidForm
         ? 1
         : unitsPerBoxComputed != null && unitsPerBoxComputed >= 1
           ? unitsPerBoxComputed
           : null;
+
+    const expiryTrimmed = form.expiry_date?.trim() || '';
+    const batchTrimmed = form.batch_number?.trim() || '';
+    const locationTrimmed = form.location?.trim() || '';
 
     // Venda por caixa: sempre activa; preço da caixa = selling_price (sem campo duplicado no formulário).
     const payload: Record<string, unknown> = {
@@ -375,11 +421,18 @@ export default function ProdutoCriarScreen() {
           : String(Number.parseFloat(String(form.cost_price).replace(',', '.')) || 0),
       pack_name: packNameOut,
       unit_name: liquidForm ? null : form.unit_name?.trim() || '',
-      batch_number: form.batch_number?.trim() || '',
-      expiry_date: form.expiry_date?.trim() || '',
-      location: form.location?.trim() || '',
+      ...(batchTrimmed ? { batch_number: batchTrimmed } : {}),
+      ...(expiryTrimmed ? { expiry_date: expiryTrimmed } : {}),
+      ...(locationTrimmed ? { location: locationTrimmed } : {}),
     };
     if (formTrim) payload.form = formTrim;
+    const imageUrl = String(form.image_url ?? '').trim();
+    const thumbUrl = String(form.thumbnail_url ?? '').trim();
+    if (imageUrl) payload.image_url = imageUrl;
+    if (thumbUrl) payload.thumbnail_url = thumbUrl;
+    if (fromAiCapture) payload.source_type = 'ai_capture';
+    const notesTrimmed = form.notes?.trim() || '';
+    if (notesTrimmed) payload.notes = notesTrimmed;
     if (liquidForm) {
       payload.units_per_blister = null;
       payload.unit_selling_price = null;
@@ -401,8 +454,8 @@ export default function ProdutoCriarScreen() {
     ) {
       payload.blisters_per_box = blistersOut;
     }
-    if (unitsPerBlisterOut != null && unitsPerBlisterOut >= 1 && form.can_sell_by_unit && !liquidForm) {
-      payload.units_per_blister = unitsPerBlisterOut;
+    if (form.can_sell_by_unit && !liquidForm) {
+      payload.units_per_blister = null;
     }
     if (unitPrice != null && !Number.isNaN(unitPrice) && !liquidForm) {
       payload.unit_selling_price = String(unitPrice);
@@ -429,11 +482,15 @@ export default function ProdutoCriarScreen() {
           : String(Number.parseFloat(String(form.cost_price).replace(',', '.')) || 0),
       pack_name: packNameOut,
       unit_name: liquidForm ? null : form.unit_name?.trim() || '',
-      batch_number: form.batch_number?.trim() || '',
-      expiry_date: form.expiry_date?.trim() || '',
-      location: form.location?.trim() || '',
+      ...(batchTrimmed ? { batch_number: batchTrimmed } : {}),
+      ...(expiryTrimmed ? { expiry_date: expiryTrimmed } : {}),
+      ...(locationTrimmed ? { location: locationTrimmed } : {}),
     };
     if (formTrim) fallbackPayload.form = formTrim;
+    if (imageUrl) fallbackPayload.image_url = imageUrl;
+    if (thumbUrl) fallbackPayload.thumbnail_url = thumbUrl;
+    if (fromAiCapture) fallbackPayload.source_type = 'ai_capture';
+    if (notesTrimmed) fallbackPayload.notes = notesTrimmed;
     if (liquidForm) {
       fallbackPayload.units_per_blister = null;
       fallbackPayload.unit_selling_price = null;
@@ -453,8 +510,8 @@ export default function ProdutoCriarScreen() {
     ) {
       fallbackPayload.blisters_per_box = blistersOut;
     }
-    if (unitsPerBlisterOut != null && unitsPerBlisterOut >= 1 && form.can_sell_by_unit && !liquidForm) {
-      fallbackPayload.units_per_blister = unitsPerBlisterOut;
+    if (form.can_sell_by_unit && !liquidForm) {
+      fallbackPayload.units_per_blister = null;
     }
     if (unitPrice != null && !Number.isNaN(unitPrice) && !liquidForm) {
       fallbackPayload.unit_selling_price = String(unitPrice);
@@ -598,7 +655,8 @@ export default function ProdutoCriarScreen() {
     }
   };
 
-  const liquidFormUi = isLiquidPharmaceuticalForm(String(form.form ?? '').trim());
+  const stockUnitLabel = liquidFormUi ? 'frascos' : sellByUnit ? 'caixas' : 'unidades';
+  const stockUnitLabelCap = liquidFormUi ? 'Frascos' : sellByUnit ? 'Caixas' : 'Unidades';
 
   return (
     <SafeAreaView style={styles.safeArea} edges={['bottom']}>
@@ -613,6 +671,31 @@ export default function ProdutoCriarScreen() {
             Preenche os campos obrigatórios. SKU e código de barras devem ser únicos. Stock inicial
             é registado como movimento auditable.
           </Text>
+
+          {fromAiCapture && aiCaptureHint ? (
+            <View style={styles.aiBanner}>
+              <Text style={styles.aiBannerTitle}>Sugestão AI (captura)</Text>
+              <Text style={styles.aiBannerText}>{aiCaptureHint}</Text>
+              <Text style={styles.aiBannerText}>
+                Preços, stock e venda por lâmina: confirma antes de gravar.
+              </Text>
+            </View>
+          ) : null}
+
+          {(form.image_url?.trim() || form.thumbnail_url?.trim()) ? (
+            <View style={styles.aiImagePreview}>
+              <Image
+                source={{
+                  uri:
+                    resolveApiMediaUrl(form.image_url?.trim() || form.thumbnail_url) ??
+                    form.image_url ??
+                    form.thumbnail_url,
+                }}
+                style={styles.aiImageThumb}
+                resizeMode="contain"
+              />
+            </View>
+          ) : null}
 
           {error && (
             <View style={styles.errorBox}>
@@ -801,6 +884,24 @@ export default function ProdutoCriarScreen() {
             </View>
           </View>
 
+          {fromAiCapture || form.notes?.trim() ? (
+            <View style={styles.section}>
+              <Text style={styles.sectionTitle}>Ficha técnica (sugerida)</Text>
+              <Text style={styles.hint}>
+                Resumo gerado a partir do texto da embalagem. Podes editar ou apagar antes de gravar.
+              </Text>
+              <TextInput
+                style={[styles.input, styles.notesInput]}
+                value={form.notes}
+                onChangeText={(t) => update('notes', t)}
+                placeholder="Indicações, conservação, via de administração…"
+                placeholderTextColor="#6b7280"
+                multiline
+                textAlignVertical="top"
+              />
+            </View>
+          ) : null}
+
           {/* Preços */}
           <View style={styles.section}>
             <Text style={styles.sectionTitle}>Preços</Text>
@@ -828,204 +929,246 @@ export default function ProdutoCriarScreen() {
             </View>
           </View>
 
-          {/* Stock atual (gravado directamente em shelf/warehouse no create) */}
+          {/* Venda por lâmina — activar antes do stock */}
+          {!liquidFormUi ? (
+            <View style={styles.section}>
+              <Text style={styles.sectionTitle}>Venda por lâmina (opcional)</Text>
+              <Text style={styles.hint}>
+                O preço da caixa é o <Text style={{ fontWeight: '700' }}>Preço de venda (Kz)</Text> acima. Stock e
+                vendas avulsas contam em <Text style={{ fontWeight: '700' }}>lâminas</Text> (não comprimidos dentro da
+                lâmina).
+              </Text>
+              <View style={styles.toggleRow}>
+                <Text style={styles.label}>Pode vender por lâmina / unidade</Text>
+                <Switch
+                  value={form.can_sell_by_unit}
+                  onValueChange={(v) => {
+                    update('can_sell_by_unit', v);
+                    if (!v) {
+                      setShelfLoose(0);
+                      setStorageLoose(0);
+                    }
+                  }}
+                />
+              </View>
+
+              {sellByUnit ? (
+                <>
+                  <View style={styles.field}>
+                    <Text style={styles.label}>Nome da unidade (POS)</Text>
+                    <TextInput
+                      style={styles.input}
+                      value={form.unit_name}
+                      onChangeText={(t) => update('unit_name', t)}
+                      placeholder="Lâmina, Ampola, Sachê…"
+                      placeholderTextColor="#6b7280"
+                    />
+                    <Text style={styles.hint}>
+                      Como aparece no POS ao vender uma unidade. A embalagem no sistema fica sempre &quot;Caixa&quot;.
+                    </Text>
+                  </View>
+
+                  <View style={styles.field}>
+                    <Text style={styles.label}>Preço da lâmina (Kz)</Text>
+                    <TextInput
+                      style={styles.input}
+                      keyboardType="decimal-pad"
+                      value={form.unit_selling_price}
+                      onChangeText={(t) => update('unit_selling_price', t)}
+                      placeholder="Vazio = preço da caixa ÷ lâminas por caixa"
+                      placeholderTextColor="#6b7280"
+                    />
+                  </View>
+                </>
+              ) : null}
+            </View>
+          ) : (
+            <View style={styles.section}>
+              <Text style={styles.sectionTitle}>Embalagem</Text>
+              <Text style={styles.hint}>
+                Produto líquido: vende-se por caixa/frasco. Stock em número de frascos abaixo.
+              </Text>
+            </View>
+          )}
+
+          {/* Stock inicial */}
           <View style={styles.section}>
             <Text style={styles.sectionTitle}>Stock</Text>
             <Text style={styles.hint}>
-              Dois saldos: prateleira (à frente) e armazém. Nas vendas retira-se primeiro da prateleira;
-              o total na base de dados é a soma dos dois.
+              Mostruário = prateleira (à frente). Armazém = reserva. Podes misturar caixas fechadas e lâminas
+              soltas; se as soltas chegarem a uma caixa completa, convertem-se automaticamente ao sair do campo.
             </Text>
 
-            {useBlisterStock ? (
-              <>
-                <Text style={styles.hint}>
-                  Modo blister activo: <Text style={{ fontWeight: '700' }}>{blistersPerBox} lâminas por caixa</Text>.
-                  Para alterar, edita Lâminas por caixa em &quot;Venda por lâmina&quot; abaixo.
+            {sellByUnit ? (
+              <View style={styles.field}>
+                <Text style={styles.label}>
+                  Lâminas por caixa <Text style={{ color: '#dc2626' }}>*</Text>
                 </Text>
-                <Text style={[styles.label, { marginTop: 4 }]}>Prateleira</Text>
-                <View style={styles.row}>
-                  <View style={[styles.field, { flex: 1 }]}>
-                    <Text style={styles.label}>Caixas na prateleira</Text>
-                    <TextInput
-                      style={styles.input}
-                      keyboardType="number-pad"
-                      value={String(shelfBoxes)}
-                      onChangeText={(t) => {
-                        const n = Math.max(
-                          0,
-                          Number.parseInt(t.replace(/[^0-9]/g, ''), 10) || 0,
-                        );
-                        setShelfBoxes(n);
-                        update('shelf_stock_quantity', n * blistersPerBox + shelfLoose);
-                      }}
-                    />
-                  </View>
-                  <View style={[styles.field, { flex: 1 }]}>
-                    <Text style={styles.label}>Lâminas soltas na prateleira</Text>
-                    <TextInput
-                      style={styles.input}
-                      keyboardType="number-pad"
-                      value={String(shelfLoose)}
-                      onChangeText={(t) => {
-                        const n = Math.max(
-                          0,
-                          Number.parseInt(t.replace(/[^0-9]/g, ''), 10) || 0,
-                        );
-                        setShelfLoose(n);
-                        update('shelf_stock_quantity', shelfBoxes * blistersPerBox + n);
-                      }}
-                      onEndEditing={() => {
-                        const extra = Math.floor(shelfLoose / blistersPerBox);
-                        if (extra > 0) {
-                          const remainder = shelfLoose % blistersPerBox;
-                          const newBoxes = shelfBoxes + extra;
-                          setShelfBoxes(newBoxes);
-                          setShelfLoose(remainder);
-                          update(
-                            'shelf_stock_quantity',
-                            newBoxes * blistersPerBox + remainder,
-                          );
-                        }
-                      }}
-                    />
-                  </View>
-                </View>
                 <Text style={styles.hint}>
-                  Total prateleira: {formatBoxesLamina(shelfTotal, blistersPerBox)} ({shelfTotal} lâminas)
+                  Obrigatório para venda por lâmina. Todo o stock (caixas e soltas) é convertido em número de lâminas.
                 </Text>
+                <TextInput
+                  style={styles.input}
+                  keyboardType="number-pad"
+                  value={
+                    form.blisters_per_box != null && form.blisters_per_box !== ''
+                      ? String(form.blisters_per_box)
+                      : ''
+                  }
+                  placeholder="Ex.: 10"
+                  placeholderTextColor="#6b7280"
+                  onChangeText={(t) => {
+                    const cleaned = t.replace(/[^0-9]/g, '');
+                    if (cleaned === '') {
+                      update('blisters_per_box', '');
+                      return;
+                    }
+                    const n = Math.max(1, Number.parseInt(cleaned, 10) || 1);
+                    update('blisters_per_box', n);
+                    update('shelf_stock_quantity', shelfBoxes * n + shelfLoose);
+                    update('warehouse_stock_quantity', storageBoxes * n + storageLoose);
+                  }}
+                />
+              </View>
+            ) : null}
 
-                <Text style={[styles.label, { marginTop: 8 }]}>Storage</Text>
-                <View style={styles.row}>
-                  <View style={[styles.field, { flex: 1 }]}>
-                    <Text style={styles.label}>Caixas no storage</Text>
-                    <TextInput
-                      style={styles.input}
-                      keyboardType="number-pad"
-                      value={String(storageBoxes)}
-                      onChangeText={(t) => {
-                        const n = Math.max(
-                          0,
-                          Number.parseInt(t.replace(/[^0-9]/g, ''), 10) || 0,
-                        );
-                        setStorageBoxes(n);
-                        update('warehouse_stock_quantity', n * blistersPerBox + storageLoose);
-                      }}
-                    />
-                  </View>
-                  <View style={[styles.field, { flex: 1 }]}>
-                    <Text style={styles.label}>Lâminas soltas no storage</Text>
-                    <TextInput
-                      style={styles.input}
-                      keyboardType="number-pad"
-                      value={String(storageLoose)}
-                      onChangeText={(t) => {
-                        const n = Math.max(
-                          0,
-                          Number.parseInt(t.replace(/[^0-9]/g, ''), 10) || 0,
-                        );
-                        setStorageLoose(n);
-                        update(
-                          'warehouse_stock_quantity',
-                          storageBoxes * blistersPerBox + n,
-                        );
-                      }}
-                      onEndEditing={() => {
-                        const extra = Math.floor(storageLoose / blistersPerBox);
-                        if (extra > 0) {
-                          const remainder = storageLoose % blistersPerBox;
-                          const newBoxes = storageBoxes + extra;
-                          setStorageBoxes(newBoxes);
-                          setStorageLoose(remainder);
-                          update(
-                            'warehouse_stock_quantity',
-                            newBoxes * blistersPerBox + remainder,
-                          );
-                        }
-                      }}
-                    />
-                  </View>
-                </View>
-                <Text style={styles.hint}>
-                  Total storage: {formatBoxesLamina(warehouseTotal, blistersPerBox)} ({warehouseTotal} lâminas)
+            <Text style={[styles.label, { marginTop: sellByUnit ? 4 : 0 }]}>Mostruário (prateleira)</Text>
+            <View style={styles.row}>
+              <View style={[styles.field, { flex: 1 }]}>
+                <Text style={styles.label}>
+                  {useBlisterStock ? 'Caixas' : stockUnitLabelCap}
                 </Text>
-              </>
-            ) : (
-              <>
-                {form.can_sell_by_unit ? (
-                  <View style={styles.field}>
-                    <Text style={styles.label}>
-                      Lâminas por caixa <Text style={{ color: '#dc2626' }}>*</Text>
-                    </Text>
-                    <TextInput
-                      style={styles.input}
-                      keyboardType="number-pad"
-                      value={
-                        form.blisters_per_box != null && form.blisters_per_box !== ''
-                          ? String(form.blisters_per_box)
-                          : ''
+                <TextInput
+                  style={styles.input}
+                  keyboardType="number-pad"
+                  editable={!sellByUnit || blistersPerBox >= 1}
+                  value={
+                    useBlisterStock
+                      ? String(shelfBoxes)
+                      : String(form.shelf_stock_quantity ?? 0)
+                  }
+                  onChangeText={(t) => {
+                    const n = Math.max(0, Number.parseInt(t.replace(/[^0-9]/g, ''), 10) || 0);
+                    if (useBlisterStock) {
+                      setShelfBoxes(n);
+                      update('shelf_stock_quantity', n * blistersPerBox + shelfLoose);
+                    } else {
+                      update('shelf_stock_quantity', n);
+                    }
+                  }}
+                  placeholder="0"
+                  placeholderTextColor="#6b7280"
+                />
+              </View>
+              {useBlisterStock ? (
+                <View style={[styles.field, { flex: 1 }]}>
+                  <Text style={styles.label}>Lâminas soltas</Text>
+                  <TextInput
+                    style={styles.input}
+                    keyboardType="number-pad"
+                    value={String(shelfLoose)}
+                    onChangeText={(t) => {
+                      const n = Math.max(0, Number.parseInt(t.replace(/[^0-9]/g, ''), 10) || 0);
+                      setShelfLoose(n);
+                      update('shelf_stock_quantity', shelfBoxes * blistersPerBox + n);
+                    }}
+                    onEndEditing={() => {
+                      if (blistersPerBox < 1) return;
+                      const extra = Math.floor(shelfLoose / blistersPerBox);
+                      if (extra > 0) {
+                        const remainder = shelfLoose % blistersPerBox;
+                        const newBoxes = shelfBoxes + extra;
+                        setShelfBoxes(newBoxes);
+                        setShelfLoose(remainder);
+                        update('shelf_stock_quantity', newBoxes * blistersPerBox + remainder);
                       }
-                      placeholder="Ex.: 10"
-                      placeholderTextColor="#6b7280"
-                      onChangeText={(t) => {
-                        const cleaned = t.replace(/[^0-9]/g, '');
-                        if (cleaned === '') {
-                          update('blisters_per_box', '');
-                        } else {
-                          const n = Math.max(1, Number.parseInt(cleaned, 10) || 1);
-                          update('blisters_per_box', n);
-                        }
-                      }}
-                    />
-                    <Text style={styles.hint}>
-                      Define quantas lâminas tem cada caixa para introduzir o stock como{' '}
-                      <Text style={{ fontWeight: '700' }}>caixas + lâminas soltas</Text>. Os campos
-                      abaixo mudam automaticamente quando o valor for maior que 1.
-                    </Text>
-                  </View>
-                ) : (
-                  <Text style={styles.hint}>
-                    Para introduzir stock como{' '}
-                    <Text style={{ fontWeight: '700' }}>caixas + lâminas soltas</Text>, ativa{' '}
-                    <Text style={{ fontStyle: 'italic' }}>Pode vender por lâmina</Text> em{' '}
-                    <Text style={{ fontStyle: 'italic' }}>Venda por lâmina</Text> abaixo e define{' '}
-                    <Text style={{ fontStyle: 'italic' }}>Lâminas por caixa</Text>.
-                  </Text>
-                )}
-                <View style={styles.row}>
-                  <View style={[styles.field, { flex: 1 }]}>
-                    <Text style={styles.label}>Stock prateleira</Text>
-                    <TextInput
-                      style={styles.input}
-                      keyboardType="number-pad"
-                      value={String(form.shelf_stock_quantity ?? 0)}
-                      onChangeText={(t) =>
-                        update(
-                          'shelf_stock_quantity',
-                          Number.parseInt(t.replace(/[^0-9]/g, ''), 10) || 0,
-                        )
-                      }
-                    />
-                  </View>
-                  <View style={[styles.field, { flex: 1 }]}>
-                    <Text style={styles.label}>Stock no storage</Text>
-                    <TextInput
-                      style={styles.input}
-                      keyboardType="number-pad"
-                      value={String(form.warehouse_stock_quantity ?? 0)}
-                      onChangeText={(t) =>
+                    }}
+                    placeholder="0"
+                    placeholderTextColor="#6b7280"
+                  />
+                </View>
+              ) : null}
+            </View>
+            {useBlisterStock ? (
+              <Text style={styles.hint}>
+                Prateleira: {formatBoxesLamina(shelfTotal, blistersPerBox)} ({shelfTotal} lâminas)
+              </Text>
+            ) : null}
+
+            <Text style={[styles.label, { marginTop: 8 }]}>Armazém</Text>
+            <View style={styles.row}>
+              <View style={[styles.field, { flex: 1 }]}>
+                <Text style={styles.label}>
+                  {useBlisterStock ? 'Caixas' : stockUnitLabelCap}
+                </Text>
+                <TextInput
+                  style={styles.input}
+                  keyboardType="number-pad"
+                  editable={!sellByUnit || blistersPerBox >= 1}
+                  value={
+                    useBlisterStock
+                      ? String(storageBoxes)
+                      : String(form.warehouse_stock_quantity ?? 0)
+                  }
+                  onChangeText={(t) => {
+                    const n = Math.max(0, Number.parseInt(t.replace(/[^0-9]/g, ''), 10) || 0);
+                    if (useBlisterStock) {
+                      setStorageBoxes(n);
+                      update('warehouse_stock_quantity', n * blistersPerBox + storageLoose);
+                    } else {
+                      update('warehouse_stock_quantity', n);
+                    }
+                  }}
+                  placeholder="0"
+                  placeholderTextColor="#6b7280"
+                />
+              </View>
+              {useBlisterStock ? (
+                <View style={[styles.field, { flex: 1 }]}>
+                  <Text style={styles.label}>Lâminas soltas</Text>
+                  <TextInput
+                    style={styles.input}
+                    keyboardType="number-pad"
+                    value={String(storageLoose)}
+                    onChangeText={(t) => {
+                      const n = Math.max(0, Number.parseInt(t.replace(/[^0-9]/g, ''), 10) || 0);
+                      setStorageLoose(n);
+                      update('warehouse_stock_quantity', storageBoxes * blistersPerBox + n);
+                    }}
+                    onEndEditing={() => {
+                      if (blistersPerBox < 1) return;
+                      const extra = Math.floor(storageLoose / blistersPerBox);
+                      if (extra > 0) {
+                        const remainder = storageLoose % blistersPerBox;
+                        const newBoxes = storageBoxes + extra;
+                        setStorageBoxes(newBoxes);
+                        setStorageLoose(remainder);
                         update(
                           'warehouse_stock_quantity',
-                          Number.parseInt(t.replace(/[^0-9]/g, ''), 10) || 0,
-                        )
+                          newBoxes * blistersPerBox + remainder,
+                        );
                       }
-                    />
-                  </View>
+                    }}
+                    placeholder="0"
+                    placeholderTextColor="#6b7280"
+                  />
                 </View>
-              </>
-            )}
+              ) : null}
+            </View>
+            {useBlisterStock ? (
+              <Text style={styles.hint}>
+                Armazém: {formatBoxesLamina(warehouseTotal, blistersPerBox)} ({warehouseTotal} lâminas)
+              </Text>
+            ) : null}
+
+            {sellByUnit && blistersPerBox < 1 ? (
+              <Text style={styles.hint}>Indica primeiro quantas lâminas vêm em cada caixa.</Text>
+            ) : null}
 
             <View style={styles.field}>
-              <Text style={styles.label}>Stock mínimo (alertas)</Text>
+              <Text style={styles.label}>
+                Stock mínimo (alertas){useBlisterStock ? ' — em lâminas' : ''}
+              </Text>
               <TextInput
                 style={styles.input}
                 keyboardType="number-pad"
@@ -1035,120 +1178,12 @@ export default function ProdutoCriarScreen() {
                 }
               />
             </View>
+
             <Text style={styles.hint}>
               {useBlisterStock
-                ? `Total geral: ${formatBoxesLamina(shelfTotal + warehouseTotal, blistersPerBox)} (${shelfTotal + warehouseTotal} lâminas)`
-                : `Total: ${shelfTotal + warehouseTotal} unidades`}
+                ? `Total: ${formatBoxesLamina(shelfTotal + warehouseTotal, blistersPerBox)} (${shelfTotal + warehouseTotal} lâminas) — ${shelfBoxes + storageBoxes} ${stockUnitLabel} físicas`
+                : `Total: ${shelfTotal + warehouseTotal} ${stockUnitLabel} (${shelfTotal} mostruário + ${warehouseTotal} armazém)`}
             </Text>
-          </View>
-
-          {/* Venda por unidade (opcional); preço da caixa = Preço de venda acima */}
-          <View style={styles.section}>
-            <Text style={styles.sectionTitle}>Venda por lâmina (opcional)</Text>
-            <Text style={styles.hint}>
-              O preço da caixa é o <Text style={{ fontWeight: '700' }}>Preço de venda (Kz)</Text> acima. A
-              venda por caixa fica sempre activa no POS; aqui só defines se também vendes por lâmina.
-            </Text>
-            {liquidFormUi ? (
-              <Text style={styles.hint}>
-                Forma líquida detectada: venda por unidade não se aplica; ao gravar usamos 1 unidade por caixa e nome
-                de embalagem &quot;Frasco&quot; se deixares o nome da caixa vazio.
-              </Text>
-            ) : null}
-            <View style={styles.toggleRow}>
-              <Text style={styles.label}>Pode vender por lâmina</Text>
-              <Switch
-                value={liquidFormUi ? false : form.can_sell_by_unit}
-                disabled={liquidFormUi}
-                onValueChange={(v) => update('can_sell_by_unit', v)}
-              />
-            </View>
-
-            <View style={styles.row}>
-              <View style={[styles.field, { flex: 1 }]}>
-                <Text style={styles.label}>Nome da caixa</Text>
-                <TextInput
-                  style={styles.input}
-                  value={form.pack_name}
-                  onChangeText={(t) => update('pack_name', t)}
-                  placeholder="Caixa"
-                  placeholderTextColor="#6b7280"
-                />
-              </View>
-              <View style={[styles.field, { flex: 1 }]}>
-                <Text style={styles.label}>Nome da lâmina</Text>
-                <TextInput
-                  style={styles.input}
-                  value={form.unit_name}
-                  onChangeText={(t) => update('unit_name', t)}
-                  placeholder="Lâmina"
-                  placeholderTextColor="#6b7280"
-                />
-              </View>
-            </View>
-
-            <View style={styles.field}>
-              <Text style={styles.label}>Lâminas por caixa</Text>
-              <TextInput
-                style={styles.input}
-                keyboardType="number-pad"
-                value={
-                  form.blisters_per_box !== '' && form.blisters_per_box != null
-                    ? String(form.blisters_per_box)
-                    : ''
-                }
-                onChangeText={setBlistersPerBox}
-                placeholder={form.can_sell_by_unit ? 'Obrigatório se vendes por lâmina (ex.: 5)' : 'ex.: 5'}
-                placeholderTextColor="#6b7280"
-              />
-              <Text style={styles.hint}>
-                Define o modelo de stock por lâmina: stock_quantity passa a contar lâminas e cada caixa
-                vendida desconta este número.
-              </Text>
-            </View>
-
-            <View style={styles.field}>
-              <Text style={styles.label}>Comprimidos por lâmina</Text>
-              <TextInput
-                style={styles.input}
-                keyboardType="number-pad"
-                value={form.units_per_blister !== '' && form.units_per_blister != null ? String(form.units_per_blister) : ''}
-                onChangeText={setUnitsPerBlister}
-                placeholder={form.can_sell_by_unit ? 'Obrigatório se vendes por lâmina' : 'ex.: 10'}
-                placeholderTextColor="#6b7280"
-              />
-            </View>
-
-            <View style={styles.field}>
-              <Text style={styles.label}>Unidades por caixa</Text>
-              <TextInput
-                style={styles.input}
-                keyboardType="number-pad"
-                value={
-                  form.units_per_box !== '' && form.units_per_box != null
-                    ? String(form.units_per_box)
-                    : ''
-                }
-                onChangeText={setUnitsPerBoxSynced}
-                placeholder={form.can_sell_by_unit ? 'Opcional (auto = lâminas x comprimidos)' : 'ex.: 50'}
-                placeholderTextColor="#6b7280"
-              />
-              <Text style={styles.hint}>Exemplo: 5x10 = 5 lâminas por caixa, 10 comprimidos por lâmina, 50 por caixa.</Text>
-            </View>
-
-            {form.can_sell_by_unit ? (
-              <View style={styles.field}>
-                <Text style={styles.label}>Preço da lâmina (Kz)</Text>
-                <TextInput
-                  style={styles.input}
-                  keyboardType="decimal-pad"
-                  value={form.unit_selling_price}
-                  onChangeText={(t) => update('unit_selling_price', t)}
-                  placeholder="Vazio = preço da caixa ÷ número de lâminas"
-                  placeholderTextColor="#6b7280"
-                />
-              </View>
-            ) : null}
           </View>
 
           {/* Validade / localização */}
@@ -1166,7 +1201,7 @@ export default function ProdutoCriarScreen() {
                 />
               </View>
               <View style={[styles.field, { flex: 1 }]}>
-                <Text style={styles.label}>Validade (AAAA-MM-DD)</Text>
+                <Text style={styles.label}>Validade (opcional, AAAA-MM-DD)</Text>
                 <TextInput
                   style={styles.input}
                   value={form.expiry_date}
@@ -1233,6 +1268,37 @@ const styles = StyleSheet.create({
     color: '#9ca3af',
     marginTop: 4,
   },
+  aiBanner: {
+    borderRadius: 12,
+    padding: 12,
+    backgroundColor: '#0f172a',
+    borderWidth: 1,
+    borderColor: '#2563EB',
+    gap: 6,
+  },
+  aiBannerTitle: {
+    fontSize: 14,
+    fontWeight: '700',
+    color: '#93c5fd',
+  },
+  aiBannerText: {
+    fontSize: 13,
+    color: '#cbd5e1',
+    lineHeight: 18,
+  },
+  aiImagePreview: {
+    alignItems: 'center',
+    paddingVertical: 8,
+  },
+  aiImageThumb: {
+    width: '100%',
+    maxWidth: 320,
+    height: 320,
+    borderRadius: 12,
+    backgroundColor: '#fff',
+    borderWidth: 1,
+    borderColor: '#E2E8F0',
+  },
   section: {
     borderRadius: 12,
     padding: 12,
@@ -1266,6 +1332,11 @@ const styles = StyleSheet.create({
     paddingHorizontal: 12,
     backgroundColor: '#020617',
     color: '#f9fafb',
+  },
+  notesInput: {
+    minHeight: 100,
+    height: undefined,
+    paddingVertical: 10,
   },
   suggestButton: {
     height: 44,

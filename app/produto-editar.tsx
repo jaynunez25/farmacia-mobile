@@ -766,7 +766,7 @@ export default function ProdutoEditarScreen() {
                   />
                 </View>
                 <View style={[styles.field, { flex: 1 }]}>
-                  <Text style={styles.label}>Validade (AAAA-MM-DD)</Text>
+                  <Text style={styles.label}>Validade (opcional, AAAA-MM-DD)</Text>
                   <TextInput
                     style={styles.input}
                     value={product.expiry_date ?? ''}

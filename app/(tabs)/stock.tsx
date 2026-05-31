@@ -439,8 +439,16 @@ export default function StockScreen() {
                   pressed && styles.addButtonPressed,
                 ]}
                 android_ripple={{ color: '#166534' }}
+                onPress={() => router.push('/produto-captura')}>
+                <Text style={styles.addButtonText}>Captura AI</Text>
+              </Pressable>
+              <Pressable
+                style={({ pressed }) => [
+                  styles.importJsonButton,
+                  pressed && styles.importJsonButtonPressed,
+                ]}
                 onPress={() => router.push('/produto-criar')}>
-                <Text style={styles.addButtonText}>Adicionar produto</Text>
+                <Text style={styles.importJsonButtonText}>Manual</Text>
               </Pressable>
             </>
           ) : null}

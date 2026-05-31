@@ -28,6 +28,11 @@ function resolveApiBaseUrl(): string {
 const API_BASE_URL: string = resolveApiBaseUrl();
 const IS_PRODUCTION = process.env.NODE_ENV === 'production';
 
+/** Base URL for multipart uploads (ai-capture) and media resolution. */
+export function getApiBaseUrl(): string {
+  return API_BASE_URL;
+}
+
 /** Base URL of the web app (Vercel) where `public/products/**` static files are deployed — not the Railway API. */
 const MEDIA_BASE_URL_RAW = (process.env.EXPO_PUBLIC_MEDIA_BASE_URL ?? '').trim();
 
@@ -139,7 +144,9 @@ async function request<T>(path: string, options?: RequestInit): Promise<T> {
     });
   } catch (error) {
     if (error instanceof Error && error.name === 'AbortError') {
-      throw new Error('Request timed out. Please check your connection and try again.');
+      throw new Error(
+        'O servidor da API não respondeu a tempo. O backend no Railway pode estar em baixo — abre railway.app, serviço farmacia-stock, e faz Redeploy. Se persistir, vê os logs (STARTUP ERROR).',
+      );
     }
     throw error;
   } finally {
@@ -172,8 +179,8 @@ async function request<T>(path: string, options?: RequestInit): Promise<T> {
         res.status === 404
           ? 'Not found.'
           : res.status >= 500
-            ? 'Server error. Please try again later.'
-            : 'Request failed.';
+            ? 'Erro no servidor (API indisponível). Se usas Vercel, o backend no Railway pode estar em baixo — faz Redeploy em railway.app.'
+            : 'Pedido falhou.';
     }
 
     throw new Error(message);
@@ -213,7 +220,9 @@ async function requestBlob(path: string, options?: RequestInit): Promise<Blob> {
     });
   } catch (error) {
     if (error instanceof Error && error.name === 'AbortError') {
-      throw new Error('Request timed out. Please check your connection and try again.');
+      throw new Error(
+        'O servidor da API não respondeu a tempo. O backend no Railway pode estar em baixo — abre railway.app, serviço farmacia-stock, e faz Redeploy. Se persistir, vê os logs (STARTUP ERROR).',
+      );
     }
     throw error;
   } finally {

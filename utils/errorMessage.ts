@@ -9,9 +9,18 @@ export function getErrorMessage(error: unknown): string {
       const msg = error.message?.trim();
       if (msg) {
         if (msg.toLowerCase().includes('failed to fetch') || msg.toLowerCase().includes('network'))
-          return 'Connection failed. Check your network and try again.';
-        if (msg.includes('Bad Gateway') || msg.includes('502') || msg.includes('ECONNREFUSED'))
-          return 'The API server is not running. Start the backend: open a terminal, run .\\start.bat from the project folder, or run .\\run.bat inside the backend folder.';
+          return 'Falha de ligação. Verifica a internet e tenta outra vez.';
+        if (msg.includes('timed out') || msg.includes('timeout'))
+          return 'A API não respondeu. Confirma: backend a correr (run-local.bat), telemóvel na mesma Wi-Fi, e EXPO_PUBLIC_API_URL=http://IP_DO_PC:8000 (ipconfig, adapter Wi-Fi).';
+        if (
+          msg.includes('Bad Gateway') ||
+          msg.includes('502') ||
+          msg.includes('Application failed to respond') ||
+          msg.includes('ECONNREFUSED') ||
+          msg.includes('Failed to fetch') ||
+          msg.includes('Network request failed')
+        )
+          return 'Não foi possível ligar à API. Em testes locais: EXPO_PUBLIC_API_URL=http://192.168.x.x:8000 (IP Wi-Fi do PC, não VMware). Backend: .\\run-local.bat';
         return msg;
       }
       return 'Something went wrong.';

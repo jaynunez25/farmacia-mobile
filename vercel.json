@@ -4,10 +4,6 @@
   "framework": null,
   "routes": [
     {
-      "src": "/api/(.*)",
-      "dest": "https://farmacia-stock-production.up.railway.app/$1"
-    },
-    {
       "handle": "filesystem"
     },
     {
