@@ -21,6 +21,7 @@ import { useAuth } from '@/contexts/AuthContext';
 import { api } from '@/services/api';
 import type { Product } from '@/types';
 import { fetchAllProducts } from '@/utils/fetchAllProducts';
+import { formatProductStockLabel } from '@/utils/formatBlisterStock';
 import { getErrorMessage } from '@/utils/errorMessage';
 import {
   mergeJsonImportRow,
@@ -204,7 +205,9 @@ export default function StockScreen() {
               <Text style={styles.cardTitle} numberOfLines={2}>
                 {item.name}
               </Text>
-              <Text style={styles.cardStock}>{item.stock_quantity}</Text>
+              <Text style={styles.cardStock} numberOfLines={3}>
+                {formatProductStockLabel(item)}
+              </Text>
             </View>
             <View style={styles.cardMetaRow}>
               <Text style={styles.cardMeta}>
