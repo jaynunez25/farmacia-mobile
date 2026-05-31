@@ -10,11 +10,12 @@ type Props = {
 };
 
 /** Thumbnail for stock list — Railway /products/thumbnails/… */
-export function StockProductThumb({ product, size = 56 }: Props) {
+export function StockProductThumb({ product, size = 84 }: Props) {
   const [failed, setFailed] = useState(false);
   const thumb = (product.thumbnail_url ?? '').trim();
   const image = (product.image_url ?? '').trim();
-  const raw = thumb || image;
+  // Prefer full image when available — easier to read on stock rows
+  const raw = image || thumb;
   const uri = raw && !failed ? resolveApiMediaUrl(raw) : null;
 
   useEffect(() => {
@@ -26,8 +27,15 @@ export function StockProductThumb({ product, size = 56 }: Props) {
       {uri ? (
         <Image
           source={{ uri }}
-          style={[styles.image, { width: size, height: size }]}
-          resizeMode="contain"
+          style={[
+            styles.image,
+            {
+              width: size,
+              height: size,
+              transform: [{ scale: 1.28 }],
+            },
+          ]}
+          resizeMode="cover"
           onError={() => setFailed(true)}
         />
       ) : (
