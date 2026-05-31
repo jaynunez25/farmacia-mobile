@@ -71,6 +71,31 @@ export default function LoginScreen() {
 
   const disabled = !username.trim() || !password || loading;
 
+  const handleTestConnection = async () => {
+    const base = getApiBaseUrl();
+    if (!base) {
+      setConnectionHint('API não configurada. Use https://farmacia-mobile-opal.vercel.app');
+      return;
+    }
+    setTestingConnection(true);
+    setConnectionHint(null);
+    try {
+      const ctrl = new AbortController();
+      const t = setTimeout(() => ctrl.abort(), 45000);
+      const res = await fetch(`${base}/health`, { signal: ctrl.signal });
+      clearTimeout(t);
+      if (res.ok) {
+        setConnectionHint('Ligação OK — servidor a responder. Tente iniciar sessão.');
+      } else {
+        setConnectionHint(`Servidor respondeu com erro ${res.status}.`);
+      }
+    } catch {
+      setConnectionHint('Sem ligação ao servidor. Verifique dados móveis/Wi‑Fi.');
+    } finally {
+      setTestingConnection(false);
+    }
+  };
+
   return (
     <SafeAreaView style={styles.safeArea} edges={['top', 'left', 'right']}>
       <StatusBar style="dark" />
