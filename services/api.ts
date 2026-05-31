@@ -12,21 +12,26 @@ import type {
   StockMovement,
 } from '../types';
 
-// API URL: em produção deve apontar para Railway (nunca localhost/127/lan fixa).
+// API URL: produção = Railway. Nunca usar proxy /api no Vercel (não existe → 405 no login).
+const DEFAULT_PRODUCTION_API_URL = 'https://farmacia-stock-production.up.railway.app';
 const API_BASE_URL_RAW = (process.env.EXPO_PUBLIC_API_URL ?? '').trim();
+const IS_PRODUCTION = process.env.NODE_ENV === 'production';
+
 function resolveApiBaseUrl(): string {
   const envBase = API_BASE_URL_RAW.replace(/\/+$/, '');
+  if (envBase) return envBase;
   if (typeof window !== 'undefined') {
     const host = window.location.hostname.toLowerCase();
-    // On Vercel web deployments, use same-origin /api proxy to avoid cross-origin failures.
     if (host.endsWith('.vercel.app')) {
-      return `${window.location.origin}/api`;
+      return DEFAULT_PRODUCTION_API_URL;
     }
   }
-  return envBase;
+  if (IS_PRODUCTION) {
+    return DEFAULT_PRODUCTION_API_URL;
+  }
+  return '';
 }
 const API_BASE_URL: string = resolveApiBaseUrl();
-const IS_PRODUCTION = process.env.NODE_ENV === 'production';
 
 /** Base URL for multipart uploads (ai-capture) and media resolution. */
 export function getApiBaseUrl(): string {
@@ -49,7 +54,7 @@ function isPublicProductStaticPath(path: string): boolean {
  * Absolute URL for product media.
  * - Full `http(s)://…` is returned as-is.
  * - For `/products/thumbnails/...` and `/products/images/...`, prefer the API base first.
- *   This keeps web/mobile aligned with backend static media served by Railway (including via Vercel `/api` proxy).
+ *   Railway serves `public_products/`; web bundle may also serve `public/products/` on Vercel.
  * - `EXPO_PUBLIC_MEDIA_BASE_URL` is used only as fallback when API base is unavailable.
  */
 export function resolveApiMediaUrl(pathOrUrl: string | null | undefined): string | null {
