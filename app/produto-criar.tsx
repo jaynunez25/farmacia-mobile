@@ -423,7 +423,9 @@ export default function ProdutoCriarScreen() {
       unit_name: liquidForm ? null : form.unit_name?.trim() || '',
       ...(batchTrimmed ? { batch_number: batchTrimmed } : {}),
       ...(expiryTrimmed ? { expiry_date: expiryTrimmed } : {}),
-      ...(locationTrimmed ? { location: locationTrimmed } : {}),
+      ...(locationTrimmed
+        ? { location: locationTrimmed, shelf_location: locationTrimmed }
+        : {}),
     };
     if (formTrim) payload.form = formTrim;
     const imageUrl = String(form.image_url ?? '').trim();
@@ -484,7 +486,9 @@ export default function ProdutoCriarScreen() {
       unit_name: liquidForm ? null : form.unit_name?.trim() || '',
       ...(batchTrimmed ? { batch_number: batchTrimmed } : {}),
       ...(expiryTrimmed ? { expiry_date: expiryTrimmed } : {}),
-      ...(locationTrimmed ? { location: locationTrimmed } : {}),
+      ...(locationTrimmed
+        ? { location: locationTrimmed, shelf_location: locationTrimmed }
+        : {}),
     };
     if (formTrim) fallbackPayload.form = formTrim;
     if (imageUrl) fallbackPayload.image_url = imageUrl;

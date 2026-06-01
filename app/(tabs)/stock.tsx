@@ -860,9 +860,13 @@ const styles = StyleSheet.create({
     marginRight: 8,
   },
   cardStock: {
-    fontSize: 16,
+    flexShrink: 0,
+    maxWidth: 118,
+    fontSize: 13,
     fontWeight: '700',
     color: '#e5e7eb',
+    textAlign: 'right',
+    lineHeight: 18,
   },
   cardMetaRow: {
     marginTop: 2,

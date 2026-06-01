@@ -78,11 +78,15 @@ export default function ProdutoEditarScreen() {
   const [storageBoxes, setStorageBoxes] = useState<number>(0);
   const [storageLoose, setStorageLoose] = useState<number>(0);
 
+  const liquidFormUi = isLiquidPharmaceuticalForm(String(product?.form ?? '').trim());
+  const sellByUnit = !!product?.can_sell_by_unit && !liquidFormUi;
+  const blistersPerBoxNum = Number(product?.blisters_per_box ?? 0);
   const blistersPerBox =
-    product?.can_sell_by_unit && Number(product?.blisters_per_box ?? 0) > 1
-      ? Math.floor(Number(product.blisters_per_box))
+    sellByUnit && Number.isFinite(blistersPerBoxNum) && blistersPerBoxNum >= 1
+      ? Math.floor(blistersPerBoxNum)
       : 0;
-  const useBlisterStock = blistersPerBox > 1;
+  /** Alinhado com produto-criar: >= 1 lâminas/caixa mostra caixas + lâminas soltas. */
+  const useBlisterStock = sellByUnit && blistersPerBox >= 1;
   const shelfTotal = Math.max(0, Math.floor(Number(product?.shelf_stock_quantity ?? 0) || 0));
   const warehouseTotal = Math.max(
     0,
@@ -306,6 +310,7 @@ export default function ProdutoEditarScreen() {
         batch_number: toNullableTrimmed(product.batch_number),
         expiry_date: toNullableTrimmed(product.expiry_date),
         location: toNullableTrimmed(product.location),
+        shelf_location: toNullableTrimmed(product.location),
         is_verified: Boolean(product.is_verified),
         can_sell_by_box: true,
         can_sell_by_unit: liquidForm ? false : Boolean(product.can_sell_by_unit),
@@ -600,7 +605,8 @@ export default function ProdutoEditarScreen() {
                       <Text style={styles.stockHint}>
                         Define quantas lâminas tem cada caixa para introduzir o stock como{' '}
                         <Text style={{ fontWeight: '700' }}>caixas + lâminas soltas</Text>. Os
-                        campos abaixo mudam automaticamente quando o valor for maior que 1.
+                        campos de caixas e lâminas soltas aparecem assim que guardares com valor 1 ou
+                        mais.
                       </Text>
                     </View>
                   ) : (
