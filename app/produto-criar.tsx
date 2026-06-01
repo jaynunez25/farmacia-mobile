@@ -24,7 +24,6 @@ import { clearCaptureDraft, loadCaptureDraft } from '@/utils/captureDraft';
 import { getErrorMessage } from '@/utils/errorMessage';
 import { isLiquidPharmaceuticalForm } from '@/utils/liquidPharmaceuticalForm';
 import {
-  blisterPartsFromTotal,
   blisterSplitPayloadForSave,
   blisterTotalFromParts,
   normalizeBlisterParts,
@@ -131,23 +130,6 @@ export default function ProdutoCriarScreen() {
   // Re-seed boxes/loose state when the blister mode flips on or when totals change externally
   // (e.g. user toggled can_sell_by_unit). Avoid disrupting in-flight keystrokes by only re-seeding
   // when local state does not already match the total.
-  useEffect(() => {
-    if (!useBlisterStock) return;
-    const shelfParts = blisterPartsFromTotal(shelfTotal, blistersPerBox);
-    if (shelfBoxes !== shelfParts.boxes || shelfLoose !== shelfParts.loose) {
-      setShelfBoxes(shelfParts.boxes);
-      setShelfLoose(shelfParts.loose);
-    }
-    const whParts = blisterPartsFromTotal(warehouseTotal, blistersPerBox);
-    if (storageBoxes !== whParts.boxes || storageLoose !== whParts.loose) {
-      setStorageBoxes(whParts.boxes);
-      setStorageLoose(whParts.loose);
-    }
-    // Only re-seed when blister mode/parameters or totals change; intentionally exclude local
-    // shelf/storage box/loose state to avoid clobbering user input mid-typing.
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [useBlisterStock, blistersPerBox, shelfTotal, warehouseTotal]);
-
   useFocusEffect(
     useCallback(() => {
       let active = true;
@@ -414,9 +396,16 @@ export default function ProdutoCriarScreen() {
       category,
       selling_price: String(sellingPrice),
       minimum_stock: Number(form.minimum_stock) || 0,
-      stock_quantity: 0,
-      shelf_stock_quantity: Number(form.shelf_stock_quantity) || 0,
-      warehouse_stock_quantity: Number(form.warehouse_stock_quantity) || 0,
+      stock_quantity: useBlisterStock
+        ? blisterTotalFromParts(shelfBoxes, shelfLoose, blistersPerBox) +
+          blisterTotalFromParts(storageBoxes, storageLoose, blistersPerBox)
+        : 0,
+      shelf_stock_quantity: useBlisterStock
+        ? blisterTotalFromParts(shelfBoxes, shelfLoose, blistersPerBox)
+        : Number(form.shelf_stock_quantity) || 0,
+      warehouse_stock_quantity: useBlisterStock
+        ? blisterTotalFromParts(storageBoxes, storageLoose, blistersPerBox)
+        : Number(form.warehouse_stock_quantity) || 0,
       can_sell_by_box: true,
       can_sell_by_unit: liquidForm ? false : !!form.can_sell_by_unit,
       box_selling_price: String(sellingPrice),
@@ -474,41 +463,14 @@ export default function ProdutoCriarScreen() {
     if (useBlisterStock) {
       Object.assign(
         payload,
-        blisterSplitPayloadForSave(
-          blistersPerBox,
-          shelfBoxes,
-          shelfLoose,
-          storageBoxes,
-          storageLoose,
-        ),
+        blisterSplitPayloadForSave(shelfBoxes, shelfLoose, storageBoxes, storageLoose),
       );
     }
     const fallbackPayload: Record<string, unknown> = {
+      ...payload,
       sku,
       name,
       category,
-      selling_price: String(sellingPrice),
-      minimum_stock: Number(form.minimum_stock) || 0,
-      stock_quantity: 0,
-      shelf_stock_quantity: Number(form.shelf_stock_quantity) || 0,
-      warehouse_stock_quantity: Number(form.warehouse_stock_quantity) || 0,
-      can_sell_by_box: true,
-      can_sell_by_unit: liquidForm ? false : !!form.can_sell_by_unit,
-      box_selling_price: String(sellingPrice),
-      sale_price_box: String(sellingPrice),
-      barcode: barcode || '',
-      brand: form.brand?.trim() || '',
-      cost_price:
-        form.cost_price === ''
-          ? '0'
-          : String(Number.parseFloat(String(form.cost_price).replace(',', '.')) || 0),
-      pack_name: packNameOut,
-      unit_name: liquidForm ? null : form.unit_name?.trim() || '',
-      ...(batchTrimmed ? { batch_number: batchTrimmed } : {}),
-      ...(expiryTrimmed ? { expiry_date: expiryTrimmed } : {}),
-      ...(locationTrimmed
-        ? { location: locationTrimmed, shelf_location: locationTrimmed }
-        : {}),
     };
     if (formTrim) fallbackPayload.form = formTrim;
     if (imageUrl) fallbackPayload.image_url = imageUrl;

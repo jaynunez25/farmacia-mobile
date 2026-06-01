@@ -24,8 +24,7 @@ import {
   blisterSplitPayloadForSave,
   blisterTotalFromParts,
   normalizeBlisterParts,
-  shelfPartsFromProduct,
-  warehousePartsFromProduct,
+  seedBlisterUiFromProduct,
 } from '@/utils/blisterStockUi';
 
 type EditableProduct = Product;
@@ -103,20 +102,16 @@ export default function ProdutoEditarScreen() {
   // Re-seed boxes/loose state when the blister mode flips on or when totals change externally
   // (e.g. after load). We only update if the current local state does not already match the
   // total to avoid disrupting in-flight keystrokes.
+  // Só re-seed ao abrir outro produto — NÃO quando shelf_stock_quantity muda (isso apagava 0 caixas + 1 solta).
   useEffect(() => {
     if (!useBlisterStock || !product) return;
-    const shelfParts = shelfPartsFromProduct(shelfTotal, blistersPerBox, product);
-    if (shelfBoxes !== shelfParts.boxes || shelfLoose !== shelfParts.loose) {
-      setShelfBoxes(shelfParts.boxes);
-      setShelfLoose(shelfParts.loose);
-    }
-    const whParts = warehousePartsFromProduct(warehouseTotal, blistersPerBox, product);
-    if (storageBoxes !== whParts.boxes || storageLoose !== whParts.loose) {
-      setStorageBoxes(whParts.boxes);
-      setStorageLoose(whParts.loose);
-    }
+    const seeded = seedBlisterUiFromProduct(product, blistersPerBox);
+    setShelfBoxes(seeded.shelfBoxes);
+    setShelfLoose(seeded.shelfLoose);
+    setStorageBoxes(seeded.storageBoxes);
+    setStorageLoose(seeded.storageLoose);
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [useBlisterStock, blistersPerBox, shelfTotal, warehouseTotal, product?.boxes, product?.blisters, product?.loose_units, product?.other_pack_count]);
+  }, [product?.id, useBlisterStock, blistersPerBox]);
 
   useEffect(() => {
     let mounted = true;
@@ -169,6 +164,17 @@ export default function ProdutoEditarScreen() {
                 : null,
         };
         setProduct(normalized);
+        const bppLoad =
+          data.can_sell_by_unit && Number(data.blisters_per_box ?? 0) >= 1
+            ? Math.floor(Number(data.blisters_per_box))
+            : 0;
+        if (bppLoad >= 1) {
+          const seeded = seedBlisterUiFromProduct(normalized, bppLoad);
+          setShelfBoxes(seeded.shelfBoxes);
+          setShelfLoose(seeded.shelfLoose);
+          setStorageBoxes(seeded.storageBoxes);
+          setStorageLoose(seeded.storageLoose);
+        }
       } catch (err) {
         if (!mounted) return;
         setError(getErrorMessage(err));
@@ -211,21 +217,9 @@ export default function ProdutoEditarScreen() {
       return;
     }
 
-    const shelf = Number.parseInt(String(product.shelf_stock_quantity ?? 0), 10);
-    const warehouse = Number.parseInt(String(product.warehouse_stock_quantity ?? 0), 10);
     const minStock = Number.parseInt(String(product.minimum_stock ?? 0), 10);
-    if (
-      Number.isNaN(shelf) ||
-      shelf < 0 ||
-      Number.isNaN(warehouse) ||
-      warehouse < 0 ||
-      Number.isNaN(minStock) ||
-      minStock < 0
-    ) {
-      Alert.alert(
-        'Valores inválidos',
-        'Stock na prateleira, no storage e stock mínimo devem ser números ≥ 0.',
-      );
+    if (Number.isNaN(minStock) || minStock < 0) {
+      Alert.alert('Valores inválidos', 'Stock mínimo deve ser um número ≥ 0.');
       return;
     }
 
@@ -302,6 +296,27 @@ export default function ProdutoEditarScreen() {
         product.blisters_per_box != null && Number(product.blisters_per_box) >= 1
           ? Number(product.blisters_per_box)
           : blistersPerBox;
+      const blisterMode =
+        !liquidForm && Boolean(product.can_sell_by_unit) && (blistersPerBoxOut ?? 0) >= 1;
+      const bppSave = blisterMode ? Math.floor(Number(blistersPerBoxOut)) : 0;
+      const shelf = blisterMode
+        ? blisterTotalFromParts(shelfBoxes, shelfLoose, bppSave)
+        : Number.parseInt(String(product.shelf_stock_quantity ?? 0), 10);
+      const warehouse = blisterMode
+        ? blisterTotalFromParts(storageBoxes, storageLoose, bppSave)
+        : Number.parseInt(String(product.warehouse_stock_quantity ?? 0), 10);
+      if (
+        Number.isNaN(shelf) ||
+        shelf < 0 ||
+        Number.isNaN(warehouse) ||
+        warehouse < 0
+      ) {
+        Alert.alert(
+          'Valores inválidos',
+          'Stock na prateleira e no storage devem ser números ≥ 0.',
+        );
+        return;
+      }
       const unitsForPayloadResolved = liquidForm
         ? unitsForPayload != null &&
             !Number.isNaN(Number(unitsForPayload)) &&
@@ -336,14 +351,8 @@ export default function ProdutoEditarScreen() {
         shelf_stock_quantity: shelf,
         warehouse_stock_quantity: warehouse,
         minimum_stock: minStock,
-        ...(useBlisterStock
-          ? blisterSplitPayloadForSave(
-              blistersPerBoxOut ?? blistersPerBox,
-              shelfBoxes,
-              shelfLoose,
-              storageBoxes,
-              storageLoose,
-            )
+        ...(blisterMode
+          ? blisterSplitPayloadForSave(shelfBoxes, shelfLoose, storageBoxes, storageLoose)
           : {}),
       };
 
@@ -351,7 +360,20 @@ export default function ProdutoEditarScreen() {
         productId: Number(id),
         payload,
       });
-      await api.products.update(Number(id), payload);
+      const saved = await api.products.update(Number(id), payload);
+      if (blisterMode && bppSave >= 1) {
+        const seeded = seedBlisterUiFromProduct(saved, bppSave);
+        setShelfBoxes(seeded.shelfBoxes);
+        setShelfLoose(seeded.shelfLoose);
+        setStorageBoxes(seeded.storageBoxes);
+        setStorageLoose(seeded.storageLoose);
+        setProduct({
+          ...saved,
+          shelf_stock_quantity: shelf,
+          warehouse_stock_quantity: warehouse,
+          stock_quantity: shelf + warehouse,
+        });
+      }
 
       Alert.alert('Produto actualizado', 'As alterações foram guardadas.', [
         {
