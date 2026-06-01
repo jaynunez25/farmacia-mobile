@@ -13,7 +13,7 @@ import {
   View,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { useRouter } from 'expo-router';
+import { useLocalSearchParams, useRouter } from 'expo-router';
 import { useFocusEffect } from '@react-navigation/native';
 
 import { StockProductThumb } from '@/components/stock/StockProductThumb';
@@ -32,6 +32,7 @@ import { isAdminRole } from '@/utils/roles';
 
 export default function StockScreen() {
   const router = useRouter();
+  const params = useLocalSearchParams<{ saved?: string }>();
   const { user } = useAuth();
   const canManageProducts = isAdminRole(user?.role);
 
@@ -53,6 +54,8 @@ export default function StockScreen() {
   const [importJsonParseError, setImportJsonParseError] = useState<string | null>(null);
   const [importJsonResults, setImportJsonResults] = useState<JsonImportRowResult[]>([]);
   const skipFocusRefreshOnce = useRef(true);
+  const handledSaveToastRef = useRef<string | null>(null);
+  const [successMessage, setSuccessMessage] = useState<string | null>(null);
 
   const loadProducts = useCallback(
     async (opts?: { refresh?: boolean }) => {
@@ -108,12 +111,27 @@ export default function StockScreen() {
 
   useFocusEffect(
     useCallback(() => {
+      const saved = typeof params.saved === 'string' ? params.saved.trim() : '';
+      if (saved) {
+        if (handledSaveToastRef.current !== saved) {
+          handledSaveToastRef.current = saved;
+          if (saved === 'updated') {
+            setSuccessMessage('Alterações guardadas com sucesso.');
+          } else if (saved === 'created') {
+            setSuccessMessage('Produto adicionado com sucesso.');
+          }
+          router.setParams({ saved: '' });
+        }
+        void loadProducts({ refresh: true });
+        return;
+      }
+      handledSaveToastRef.current = null;
       if (skipFocusRefreshOnce.current) {
         skipFocusRefreshOnce.current = false;
         return;
       }
       void loadProducts({ refresh: true });
-    }, [loadProducts]),
+    }, [loadProducts, params.saved, router]),
   );
 
   const renderItem = ({ item }: { item: Product }) => {
@@ -463,6 +481,18 @@ export default function StockScreen() {
           ) : null}
         </View>
       </View>
+
+      {successMessage ? (
+        <View style={styles.successBanner}>
+          <Text style={styles.successBannerText}>{successMessage}</Text>
+          <Pressable
+            onPress={() => setSuccessMessage(null)}
+            hitSlop={8}
+            accessibilityLabel="Fechar mensagem">
+            <Text style={styles.successBannerDismiss}>✕</Text>
+          </Pressable>
+        </View>
+      ) : null}
 
       <View style={styles.searchRow}>
         <TextInput
@@ -922,6 +952,30 @@ const styles = StyleSheet.create({
     fontSize: 12,
     color: '#f9fafb',
     fontWeight: '600',
+  },
+  successBanner: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    marginHorizontal: 16,
+    marginBottom: 10,
+    paddingHorizontal: 14,
+    paddingVertical: 12,
+    borderRadius: 10,
+    backgroundColor: '#14532d',
+    borderWidth: 1,
+    borderColor: '#22c55e',
+  },
+  successBannerText: {
+    flex: 1,
+    color: '#bbf7d0',
+    fontSize: 14,
+    fontWeight: '600',
+  },
+  successBannerDismiss: {
+    color: '#86efac',
+    fontSize: 16,
+    paddingLeft: 12,
   },
   badgeRow: {
     marginTop: 6,

@@ -574,34 +574,10 @@ export default function ProdutoCriarScreen() {
         throw lastCreateErr ?? new Error('Falha ao criar produto.');
       }
 
-      const initialTotal =
-        (Number(form.shelf_stock_quantity) || 0) + (Number(form.warehouse_stock_quantity) || 0);
-      const bppForMsg = blistersPerBox != null && blistersPerBox >= 1 ? blistersPerBox : 0;
-      Alert.alert(
-        'Produto criado',
-        initialTotal > 0
-          ? useBlisterStock
-            ? `Produto criado com ${formatBoxesLamina(initialTotal, bppForMsg)} (${initialTotal} lâminas) em stock.`
-            : `Produto criado com ${initialTotal} unidades em stock.`
-          : 'Produto criado com sucesso.',
-        [
-          {
-            text: 'Ver produto',
-            onPress: () =>
-              router.replace({ pathname: '/produto', params: { id: String(created.id) } }),
-          },
-          {
-            text: 'Continuar a adicionar',
-            onPress: () => {
-              setForm(defaultForm);
-              setShelfBoxes(0);
-              setShelfLoose(0);
-              setStorageBoxes(0);
-              setStorageLoose(0);
-            },
-          },
-        ],
-      );
+      router.replace({
+        pathname: '/(tabs)/stock',
+        params: { saved: 'created' },
+      });
     } catch (e) {
       console.error('[produto-criar] create failed', e, {
         payload,

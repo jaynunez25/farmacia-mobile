@@ -375,20 +375,9 @@ export default function ProdutoEditarScreen() {
         });
       }
 
-      Alert.alert('Produto actualizado', 'As alterações foram guardadas.', [
-        {
-          text: 'OK',
-          onPress: () =>
-            router.replace({
-              pathname: '/produto',
-              params: { id: String(id) },
-            }),
-        },
-      ]);
-
       router.replace({
-        pathname: '/produto',
-        params: { id: String(id) },
+        pathname: '/(tabs)/stock',
+        params: { saved: 'updated' },
       });
     } catch (err) {
       console.error('[produto-editar] PATCH /products failed', {
