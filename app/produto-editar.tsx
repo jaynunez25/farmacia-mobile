@@ -20,6 +20,7 @@ import { api } from '@/services/api';
 import { getErrorMessage } from '@/utils/errorMessage';
 import { isLiquidPharmaceuticalForm } from '@/utils/liquidPharmaceuticalForm';
 import { isAdminRole } from '@/utils/roles';
+import { withBoxPriceFromBlister } from '@/utils/blisterBoxPrice';
 import {
   blisterSplitPayloadForSave,
   blisterTotalFromParts,
@@ -163,7 +164,7 @@ export default function ProdutoEditarScreen() {
                 ? String(data.price_unit)
                 : null,
         };
-        setProduct(normalized);
+        setProduct(withBoxPriceFromBlister(normalized));
         const bppLoad =
           data.can_sell_by_unit && Number(data.blisters_per_box ?? 0) >= 1
             ? Math.floor(Number(data.blisters_per_box))
@@ -204,7 +205,9 @@ export default function ProdutoEditarScreen() {
     }
     const n = Math.max(1, Number.parseInt(trimmed.replace(/[^0-9]/g, ''), 10) || 1);
     setProduct((prev) =>
-      prev ? { ...prev, blisters_per_box: n, units_per_pack: n } : prev,
+      prev
+        ? withBoxPriceFromBlister({ ...prev, blisters_per_box: n, units_per_pack: n })
+        : prev,
     );
   };
 
@@ -781,14 +784,14 @@ export default function ProdutoEditarScreen() {
                               : ''
                         }
                         onChangeText={(t) => {
-                          update(
-                            'sale_price_blister',
-                            (t === '' ? '0' : t) as unknown as Product['sale_price_blister'],
-                          );
-                          update(
-                            'unit_selling_price',
-                            (t === '' ? null : t) as unknown as Product['unit_selling_price'],
-                          );
+                          setProduct((prev) => {
+                            if (!prev) return prev;
+                            return withBoxPriceFromBlister({
+                              ...prev,
+                              sale_price_blister: (t === '' ? '0' : t) as Product['sale_price_blister'],
+                              unit_selling_price: (t === '' ? null : t) as Product['unit_selling_price'],
+                            });
+                          });
                         }}
                       />
                     </View>
