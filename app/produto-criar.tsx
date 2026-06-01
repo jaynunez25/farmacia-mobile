@@ -25,8 +25,8 @@ import { getErrorMessage } from '@/utils/errorMessage';
 import { isLiquidPharmaceuticalForm } from '@/utils/liquidPharmaceuticalForm';
 import {
   blisterPartsFromTotal,
+  blisterSplitPayloadForSave,
   blisterTotalFromParts,
-  isSingleBlisterPerBox,
   normalizeBlisterParts,
 } from '@/utils/blisterStockUi';
 import { isAdminRole } from '@/utils/roles';
@@ -125,7 +125,6 @@ export default function ProdutoCriarScreen() {
     ? Math.floor(blistersPerBoxNum)
     : 0;
   const useBlisterStock = sellByUnit && blistersPerBox >= 1;
-  const singleBlisterPerBox = isSingleBlisterPerBox(blistersPerBox);
   const shelfTotal = Math.max(0, Math.floor(Number(form.shelf_stock_quantity) || 0));
   const warehouseTotal = Math.max(0, Math.floor(Number(form.warehouse_stock_quantity) || 0));
 
@@ -471,6 +470,18 @@ export default function ProdutoCriarScreen() {
     if (unitPrice != null && !Number.isNaN(unitPrice) && !liquidForm) {
       payload.unit_selling_price = String(unitPrice);
       payload.sale_price_blister = String(unitPrice);
+    }
+    if (useBlisterStock) {
+      Object.assign(
+        payload,
+        blisterSplitPayloadForSave(
+          blistersPerBox,
+          shelfBoxes,
+          shelfLoose,
+          storageBoxes,
+          storageLoose,
+        ),
+      );
     }
     const fallbackPayload: Record<string, unknown> = {
       sku,
@@ -1053,47 +1064,38 @@ export default function ProdutoCriarScreen() {
 
             <Text style={[styles.label, { marginTop: sellByUnit ? 4 : 0 }]}>Mostruário (prateleira)</Text>
             <View style={styles.row}>
-              {useBlisterStock && !singleBlisterPerBox ? (
-                <View style={[styles.field, { flex: 1 }]}>
-                  <Text style={styles.label}>Caixas</Text>
-                  <TextInput
-                    style={styles.input}
-                    keyboardType="number-pad"
-                    editable={!sellByUnit || blistersPerBox >= 1}
-                    value={String(shelfBoxes)}
-                    onChangeText={(t) => {
-                      const n = Math.max(0, Number.parseInt(t.replace(/[^0-9]/g, ''), 10) || 0);
+              <View style={[styles.field, { flex: 1 }]}>
+                <Text style={styles.label}>
+                  {useBlisterStock ? 'Caixas' : stockUnitLabelCap}
+                </Text>
+                <TextInput
+                  style={styles.input}
+                  keyboardType="number-pad"
+                  editable={!sellByUnit || blistersPerBox >= 1}
+                  value={
+                    useBlisterStock
+                      ? String(shelfBoxes)
+                      : String(form.shelf_stock_quantity ?? 0)
+                  }
+                  onChangeText={(t) => {
+                    const n = Math.max(0, Number.parseInt(t.replace(/[^0-9]/g, ''), 10) || 0);
+                    if (useBlisterStock) {
                       setShelfBoxes(n);
                       update(
                         'shelf_stock_quantity',
                         blisterTotalFromParts(n, shelfLoose, blistersPerBox),
                       );
-                    }}
-                    placeholder="0"
-                    placeholderTextColor="#6b7280"
-                  />
-                </View>
-              ) : !useBlisterStock ? (
-                <View style={[styles.field, { flex: 1 }]}>
-                  <Text style={styles.label}>{stockUnitLabelCap}</Text>
-                  <TextInput
-                    style={styles.input}
-                    keyboardType="number-pad"
-                    value={String(form.shelf_stock_quantity ?? 0)}
-                    onChangeText={(t) => {
-                      const n = Math.max(0, Number.parseInt(t.replace(/[^0-9]/g, ''), 10) || 0);
+                    } else {
                       update('shelf_stock_quantity', n);
-                    }}
-                    placeholder="0"
-                    placeholderTextColor="#6b7280"
-                  />
-                </View>
-              ) : null}
+                    }
+                  }}
+                  placeholder="0"
+                  placeholderTextColor="#6b7280"
+                />
+              </View>
               {useBlisterStock ? (
                 <View style={[styles.field, { flex: 1 }]}>
-                  <Text style={styles.label}>
-                    {singleBlisterPerBox ? 'Lâminas' : 'Lâminas soltas'}
-                  </Text>
+                  <Text style={styles.label}>Lâminas soltas</Text>
                   <TextInput
                     style={styles.input}
                     keyboardType="number-pad"
@@ -1101,7 +1103,6 @@ export default function ProdutoCriarScreen() {
                     onChangeText={(t) => {
                       const n = Math.max(0, Number.parseInt(t.replace(/[^0-9]/g, ''), 10) || 0);
                       setShelfLoose(n);
-                      if (singleBlisterPerBox) setShelfBoxes(0);
                       update(
                         'shelf_stock_quantity',
                         blisterTotalFromParts(shelfBoxes, n, blistersPerBox),
@@ -1135,47 +1136,38 @@ export default function ProdutoCriarScreen() {
 
             <Text style={[styles.label, { marginTop: 8 }]}>Armazém</Text>
             <View style={styles.row}>
-              {useBlisterStock && !singleBlisterPerBox ? (
-                <View style={[styles.field, { flex: 1 }]}>
-                  <Text style={styles.label}>Caixas</Text>
-                  <TextInput
-                    style={styles.input}
-                    keyboardType="number-pad"
-                    editable={!sellByUnit || blistersPerBox >= 1}
-                    value={String(storageBoxes)}
-                    onChangeText={(t) => {
-                      const n = Math.max(0, Number.parseInt(t.replace(/[^0-9]/g, ''), 10) || 0);
+              <View style={[styles.field, { flex: 1 }]}>
+                <Text style={styles.label}>
+                  {useBlisterStock ? 'Caixas' : stockUnitLabelCap}
+                </Text>
+                <TextInput
+                  style={styles.input}
+                  keyboardType="number-pad"
+                  editable={!sellByUnit || blistersPerBox >= 1}
+                  value={
+                    useBlisterStock
+                      ? String(storageBoxes)
+                      : String(form.warehouse_stock_quantity ?? 0)
+                  }
+                  onChangeText={(t) => {
+                    const n = Math.max(0, Number.parseInt(t.replace(/[^0-9]/g, ''), 10) || 0);
+                    if (useBlisterStock) {
                       setStorageBoxes(n);
                       update(
                         'warehouse_stock_quantity',
                         blisterTotalFromParts(n, storageLoose, blistersPerBox),
                       );
-                    }}
-                    placeholder="0"
-                    placeholderTextColor="#6b7280"
-                  />
-                </View>
-              ) : !useBlisterStock ? (
-                <View style={[styles.field, { flex: 1 }]}>
-                  <Text style={styles.label}>{stockUnitLabelCap}</Text>
-                  <TextInput
-                    style={styles.input}
-                    keyboardType="number-pad"
-                    value={String(form.warehouse_stock_quantity ?? 0)}
-                    onChangeText={(t) => {
-                      const n = Math.max(0, Number.parseInt(t.replace(/[^0-9]/g, ''), 10) || 0);
+                    } else {
                       update('warehouse_stock_quantity', n);
-                    }}
-                    placeholder="0"
-                    placeholderTextColor="#6b7280"
-                  />
-                </View>
-              ) : null}
+                    }
+                  }}
+                  placeholder="0"
+                  placeholderTextColor="#6b7280"
+                />
+              </View>
               {useBlisterStock ? (
                 <View style={[styles.field, { flex: 1 }]}>
-                  <Text style={styles.label}>
-                    {singleBlisterPerBox ? 'Lâminas' : 'Lâminas soltas'}
-                  </Text>
+                  <Text style={styles.label}>Lâminas soltas</Text>
                   <TextInput
                     style={styles.input}
                     keyboardType="number-pad"
@@ -1183,7 +1175,6 @@ export default function ProdutoCriarScreen() {
                     onChangeText={(t) => {
                       const n = Math.max(0, Number.parseInt(t.replace(/[^0-9]/g, ''), 10) || 0);
                       setStorageLoose(n);
-                      if (singleBlisterPerBox) setStorageBoxes(0);
                       update(
                         'warehouse_stock_quantity',
                         blisterTotalFromParts(storageBoxes, n, blistersPerBox),
