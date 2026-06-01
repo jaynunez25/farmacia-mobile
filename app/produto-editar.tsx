@@ -20,6 +20,12 @@ import { api } from '@/services/api';
 import { getErrorMessage } from '@/utils/errorMessage';
 import { isLiquidPharmaceuticalForm } from '@/utils/liquidPharmaceuticalForm';
 import { isAdminRole } from '@/utils/roles';
+import {
+  blisterPartsFromTotal,
+  blisterTotalFromParts,
+  isSingleBlisterPerBox,
+  normalizeBlisterParts,
+} from '@/utils/blisterStockUi';
 
 type EditableProduct = Product;
 
@@ -87,6 +93,7 @@ export default function ProdutoEditarScreen() {
       : 0;
   /** Alinhado com produto-criar: >= 1 lâminas/caixa mostra caixas + lâminas soltas. */
   const useBlisterStock = sellByUnit && blistersPerBox >= 1;
+  const singleBlisterPerBox = isSingleBlisterPerBox(blistersPerBox);
   const shelfTotal = Math.max(0, Math.floor(Number(product?.shelf_stock_quantity ?? 0) || 0));
   const warehouseTotal = Math.max(
     0,
@@ -98,13 +105,15 @@ export default function ProdutoEditarScreen() {
   // total to avoid disrupting in-flight keystrokes.
   useEffect(() => {
     if (!useBlisterStock) return;
-    if (shelfBoxes * blistersPerBox + shelfLoose !== shelfTotal) {
-      setShelfBoxes(Math.floor(shelfTotal / blistersPerBox));
-      setShelfLoose(shelfTotal % blistersPerBox);
+    const shelfParts = blisterPartsFromTotal(shelfTotal, blistersPerBox);
+    if (shelfBoxes !== shelfParts.boxes || shelfLoose !== shelfParts.loose) {
+      setShelfBoxes(shelfParts.boxes);
+      setShelfLoose(shelfParts.loose);
     }
-    if (storageBoxes * blistersPerBox + storageLoose !== warehouseTotal) {
-      setStorageBoxes(Math.floor(warehouseTotal / blistersPerBox));
-      setStorageLoose(warehouseTotal % blistersPerBox);
+    const whParts = blisterPartsFromTotal(warehouseTotal, blistersPerBox);
+    if (storageBoxes !== whParts.boxes || storageLoose !== whParts.loose) {
+      setStorageBoxes(whParts.boxes);
+      setStorageLoose(whParts.loose);
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [useBlisterStock, blistersPerBox, shelfTotal, warehouseTotal]);
@@ -474,28 +483,39 @@ export default function ProdutoEditarScreen() {
                 <>
                   <Text style={styles.stockHint}>
                     Modo blister activo: <Text style={{ fontWeight: '700' }}>{blistersPerBox} lâminas por caixa</Text>.
-                    Para alterar, edita Lâminas por caixa em &quot;Venda por lâmina&quot; abaixo.
+                    {singleBlisterPerBox
+                      ? ' Com 1 por caixa, indica só o número de lâminas (não há caixas fechadas).'
+                      : ' Para alterar, edita Lâminas por caixa em "Venda por lâmina" abaixo.'}
                   </Text>
                   <Text style={[styles.label, { marginTop: 4 }]}>Prateleira</Text>
                   <View style={styles.row}>
+                    {!singleBlisterPerBox ? (
+                      <View style={[styles.field, { flex: 1 }]}>
+                        <Text style={styles.label}>Caixas na prateleira</Text>
+                        <TextInput
+                          style={styles.input}
+                          value={String(shelfBoxes)}
+                          keyboardType="number-pad"
+                          onChangeText={(t) => {
+                            const n = Math.max(
+                              0,
+                              Number.parseInt(t.replace(/[^0-9]/g, ''), 10) || 0,
+                            );
+                            setShelfBoxes(n);
+                            update(
+                              'shelf_stock_quantity',
+                              blisterTotalFromParts(n, shelfLoose, blistersPerBox),
+                            );
+                          }}
+                        />
+                      </View>
+                    ) : null}
                     <View style={[styles.field, { flex: 1 }]}>
-                      <Text style={styles.label}>Caixas na prateleira</Text>
-                      <TextInput
-                        style={styles.input}
-                        value={String(shelfBoxes)}
-                        keyboardType="number-pad"
-                        onChangeText={(t) => {
-                          const n = Math.max(
-                            0,
-                            Number.parseInt(t.replace(/[^0-9]/g, ''), 10) || 0,
-                          );
-                          setShelfBoxes(n);
-                          update('shelf_stock_quantity', n * blistersPerBox + shelfLoose);
-                        }}
-                      />
-                    </View>
-                    <View style={[styles.field, { flex: 1 }]}>
-                      <Text style={styles.label}>Lâminas soltas na prateleira</Text>
+                      <Text style={styles.label}>
+                        {singleBlisterPerBox
+                          ? 'Lâminas na prateleira'
+                          : 'Lâminas soltas na prateleira'}
+                      </Text>
                       <TextInput
                         style={styles.input}
                         value={String(shelfLoose)}
@@ -506,20 +526,25 @@ export default function ProdutoEditarScreen() {
                             Number.parseInt(t.replace(/[^0-9]/g, ''), 10) || 0,
                           );
                           setShelfLoose(n);
-                          update('shelf_stock_quantity', shelfBoxes * blistersPerBox + n);
+                          if (singleBlisterPerBox) setShelfBoxes(0);
+                          update(
+                            'shelf_stock_quantity',
+                            blisterTotalFromParts(shelfBoxes, n, blistersPerBox),
+                          );
                         }}
                         onEndEditing={() => {
-                          const extra = Math.floor(shelfLoose / blistersPerBox);
-                          if (extra > 0) {
-                            const remainder = shelfLoose % blistersPerBox;
-                            const newBoxes = shelfBoxes + extra;
-                            setShelfBoxes(newBoxes);
-                            setShelfLoose(remainder);
-                            update(
-                              'shelf_stock_quantity',
-                              newBoxes * blistersPerBox + remainder,
-                            );
-                          }
+                          const norm = normalizeBlisterParts(
+                            shelfBoxes,
+                            shelfLoose,
+                            blistersPerBox,
+                          );
+                          if (!norm) return;
+                          setShelfBoxes(norm.boxes);
+                          setShelfLoose(norm.loose);
+                          update(
+                            'shelf_stock_quantity',
+                            blisterTotalFromParts(norm.boxes, norm.loose, blistersPerBox),
+                          );
                         }}
                       />
                     </View>
@@ -530,24 +555,33 @@ export default function ProdutoEditarScreen() {
 
                   <Text style={[styles.label, { marginTop: 8 }]}>Storage</Text>
                   <View style={styles.row}>
+                    {!singleBlisterPerBox ? (
+                      <View style={[styles.field, { flex: 1 }]}>
+                        <Text style={styles.label}>Caixas no storage</Text>
+                        <TextInput
+                          style={styles.input}
+                          value={String(storageBoxes)}
+                          keyboardType="number-pad"
+                          onChangeText={(t) => {
+                            const n = Math.max(
+                              0,
+                              Number.parseInt(t.replace(/[^0-9]/g, ''), 10) || 0,
+                            );
+                            setStorageBoxes(n);
+                            update(
+                              'warehouse_stock_quantity',
+                              blisterTotalFromParts(n, storageLoose, blistersPerBox),
+                            );
+                          }}
+                        />
+                      </View>
+                    ) : null}
                     <View style={[styles.field, { flex: 1 }]}>
-                      <Text style={styles.label}>Caixas no storage</Text>
-                      <TextInput
-                        style={styles.input}
-                        value={String(storageBoxes)}
-                        keyboardType="number-pad"
-                        onChangeText={(t) => {
-                          const n = Math.max(
-                            0,
-                            Number.parseInt(t.replace(/[^0-9]/g, ''), 10) || 0,
-                          );
-                          setStorageBoxes(n);
-                          update('warehouse_stock_quantity', n * blistersPerBox + storageLoose);
-                        }}
-                      />
-                    </View>
-                    <View style={[styles.field, { flex: 1 }]}>
-                      <Text style={styles.label}>Lâminas soltas no storage</Text>
+                      <Text style={styles.label}>
+                        {singleBlisterPerBox
+                          ? 'Lâminas no storage'
+                          : 'Lâminas soltas no storage'}
+                      </Text>
                       <TextInput
                         style={styles.input}
                         value={String(storageLoose)}
@@ -558,23 +592,25 @@ export default function ProdutoEditarScreen() {
                             Number.parseInt(t.replace(/[^0-9]/g, ''), 10) || 0,
                           );
                           setStorageLoose(n);
+                          if (singleBlisterPerBox) setStorageBoxes(0);
                           update(
                             'warehouse_stock_quantity',
-                            storageBoxes * blistersPerBox + n,
+                            blisterTotalFromParts(storageBoxes, n, blistersPerBox),
                           );
                         }}
                         onEndEditing={() => {
-                          const extra = Math.floor(storageLoose / blistersPerBox);
-                          if (extra > 0) {
-                            const remainder = storageLoose % blistersPerBox;
-                            const newBoxes = storageBoxes + extra;
-                            setStorageBoxes(newBoxes);
-                            setStorageLoose(remainder);
-                            update(
-                              'warehouse_stock_quantity',
-                              newBoxes * blistersPerBox + remainder,
-                            );
-                          }
+                          const norm = normalizeBlisterParts(
+                            storageBoxes,
+                            storageLoose,
+                            blistersPerBox,
+                          );
+                          if (!norm) return;
+                          setStorageBoxes(norm.boxes);
+                          setStorageLoose(norm.loose);
+                          update(
+                            'warehouse_stock_quantity',
+                            blisterTotalFromParts(norm.boxes, norm.loose, blistersPerBox),
+                          );
                         }}
                       />
                     </View>
