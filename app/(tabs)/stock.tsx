@@ -30,6 +30,30 @@ import {
 } from '@/utils/productJsonImport';
 import { isAdminRole } from '@/utils/roles';
 
+function normalizeSearchText(v: unknown): string {
+  return String(v ?? '')
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '')
+    .toLowerCase()
+    .trim();
+}
+
+function matchesStockSearch(product: Product, rawSearch: string): boolean {
+  const q = normalizeSearchText(rawSearch);
+  if (!q) return true;
+  const haystack = [
+    product.name,
+    product.sku,
+    product.barcode,
+    product.location,
+    product.shelf_location,
+  ]
+    .map(normalizeSearchText)
+    .filter(Boolean)
+    .join(' ');
+  return haystack.includes(q);
+}
+
 export default function StockScreen() {
   const router = useRouter();
   const params = useLocalSearchParams<{ saved?: string }>();
@@ -68,11 +92,10 @@ export default function StockScreen() {
     setInitialSaveError(null);
     try {
       const data = await fetchAllProducts({
-        search: search.trim() || undefined,
         category: selectedCategory === 'Todos' ? undefined : selectedCategory,
         low_stock: false,
       });
-      setProducts(data);
+      setProducts(data.filter((p) => matchesStockSearch(p, search)));
     } catch (err) {
       const msg = getErrorMessage(err);
       setError(
