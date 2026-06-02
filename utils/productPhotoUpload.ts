@@ -49,7 +49,7 @@ export async function uploadProductPhotoDirect(
   const base = getApiBaseUrl();
   if (!base) throw new Error('API não configurada (EXPO_PUBLIC_API_URL).');
 
-  onStatus?.('A guardar fotografia…');
+  onStatus?.('A enviar para o servidor…');
   const token = await getStoredToken();
   const form = new FormData();
   await appendPhotoFile(form, uri, mimeType);

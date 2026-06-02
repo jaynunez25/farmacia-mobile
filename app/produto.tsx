@@ -83,7 +83,7 @@ export default function ProdutoDetailScreen() {
   const handlePhotoFromUri = async (uri: string, mimeType?: string) => {
     if (!product) return;
     setUploadingPhoto(true);
-    setPhotoStatus('A guardar fotografia…');
+    setPhotoStatus('A enviar para o servidor…');
     try {
       const updated = await uploadProductPhotoDirect(
         product.id,
@@ -94,7 +94,10 @@ export default function ProdutoDetailScreen() {
       setProduct(updated);
       setImageFailed(false);
       setPhotoStatus(null);
-      Alert.alert('Fotografia guardada', 'A imagem do produto foi actualizada no stock e no POS.');
+      Alert.alert(
+        'Fotografia guardada',
+        'Imagem guardada no servidor. Não foi usada IA nem Photoroom.',
+      );
     } catch (err) {
       Alert.alert('Não foi possível guardar', getErrorMessage(err));
       setPhotoStatus(null);
@@ -244,8 +247,8 @@ export default function ProdutoDetailScreen() {
                     (pressed || uploadingPhoto) && styles.photoBtnPressed,
                   ]}
                   disabled={uploadingPhoto}
-                  onPress={() => void pickCamera()}>
-                  <Text style={styles.photoBtnText}>Tirar fotografia</Text>
+                  onPress={() => void pickLibrary()}>
+                  <Text style={styles.photoBtnText}>Carregar fotografia</Text>
                 </Pressable>
                 <Pressable
                   style={({ pressed }) => [
@@ -253,26 +256,12 @@ export default function ProdutoDetailScreen() {
                     (pressed || uploadingPhoto) && styles.photoBtnPressed,
                   ]}
                   disabled={uploadingPhoto}
-                  onPress={() => void pickLibrary()}>
-                  <Text style={styles.photoBtnSecondaryText}>Galeria</Text>
-                </Pressable>
-                <Pressable
-                  style={({ pressed }) => [
-                    styles.photoBtnAi,
-                    pressed && styles.photoBtnPressed,
-                  ]}
-                  disabled={uploadingPhoto}
-                  onPress={() =>
-                    router.push({
-                      pathname: '/produto-captura',
-                      params: { productId: String(product.id) },
-                    })
-                  }>
-                  <Text style={styles.photoBtnAiText}>Captura AI</Text>
+                  onPress={() => void pickCamera()}>
+                  <Text style={styles.photoBtnSecondaryText}>Tirar fotografia</Text>
                 </Pressable>
                 <Text style={styles.photoHint}>
-                  Tirar fotografia ou Galeria: guarda a imagem directamente. Captura AI: opcional, lê a
-                  embalagem e sugere dados em Editar.
+                  Upload directo para o servidor (base de dados). Sem Photoroom, sem IA, sem ChatGPT —
+                  usa a imagem que já preparaste.
                 </Text>
               </View>
             ) : imageUri ? (
@@ -414,12 +403,6 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderColor: '#374151',
   },
-  photoBtnAi: {
-    borderRadius: 10,
-    backgroundColor: '#0f766e',
-    paddingVertical: 10,
-    alignItems: 'center',
-  },
   photoBtnPressed: {
     opacity: 0.85,
   },
@@ -430,11 +413,6 @@ const styles = StyleSheet.create({
   },
   photoBtnSecondaryText: {
     color: '#e5e7eb',
-    fontSize: 14,
-    fontWeight: '600',
-  },
-  photoBtnAiText: {
-    color: '#ecfdf5',
     fontSize: 14,
     fontWeight: '600',
   },
