@@ -17,7 +17,7 @@ import { useAuth } from '@/contexts/AuthContext';
 import type { Product } from '@/types';
 import { api, resolveApiMediaUrl } from '@/services/api';
 import { getErrorMessage } from '@/utils/errorMessage';
-import { uploadProductPhotoFromUri } from '@/utils/productPhotoFromCapture';
+import { uploadProductPhotoDirect } from '@/utils/productPhotoUpload';
 import { isAdminRole, isStockAuditorRole } from '@/utils/roles';
 
 export default function ProdutoDetailScreen() {
@@ -75,14 +75,17 @@ export default function ProdutoDetailScreen() {
   const imageRaw = product
     ? (product.image_url ?? '').trim() || (product.thumbnail_url ?? '').trim()
     : '';
-  const imageUri = imageRaw && !imageFailed ? resolveApiMediaUrl(imageRaw) : null;
+  const imageUri =
+    imageRaw && !imageFailed
+      ? `${resolveApiMediaUrl(imageRaw)}?v=${encodeURIComponent(String(product?.updated_at ?? product?.id ?? ''))}`
+      : null;
 
   const handlePhotoFromUri = async (uri: string, mimeType?: string) => {
     if (!product) return;
     setUploadingPhoto(true);
-    setPhotoStatus('A enviar fotografia…');
+    setPhotoStatus('A guardar fotografia…');
     try {
-      const updated = await uploadProductPhotoFromUri(
+      const updated = await uploadProductPhotoDirect(
         product.id,
         uri,
         mimeType ?? 'image/jpeg',
@@ -268,8 +271,8 @@ export default function ProdutoDetailScreen() {
                   <Text style={styles.photoBtnAiText}>Captura AI</Text>
                 </Pressable>
                 <Text style={styles.photoHint}>
-                  A IA lê a embalagem, prepara imagem POS (fundo branco) e pode sugerir nome e notas
-                  em Editar.
+                  Tirar fotografia ou Galeria: guarda a imagem directamente. Captura AI: opcional, lê a
+                  embalagem e sugere dados em Editar.
                 </Text>
               </View>
             ) : imageUri ? (

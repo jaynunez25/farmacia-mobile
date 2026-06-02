@@ -47,7 +47,11 @@ function normalizeMediaPath(s: string): string {
 
 /** Product media paths persisted in DB. */
 function isPublicProductStaticPath(path: string): boolean {
-  return path.startsWith('/products/thumbnails/') || path.startsWith('/products/images/');
+  return (
+    path.startsWith('/products/thumbnails/') ||
+    path.startsWith('/products/images/') ||
+    path.startsWith('/products/media/')
+  );
 }
 
 /**
