@@ -10,6 +10,8 @@ export type ProductCaptureDraft = {
   overallConfidence: number | null;
   ocrPreview: string | null;
   createdAt: string;
+  /** Job AI concluído — para gravar foto na BD após criar produto */
+  captureJobId?: number | null;
 };
 
 export async function saveCaptureDraft(draft: ProductCaptureDraft): Promise<void> {

@@ -1,6 +1,6 @@
 import type { CaptureJob } from '@/services/aiCapture';
 import { createCaptureJobFromUri, getCaptureJob } from '@/services/aiCapture';
-import { api } from '@/services/api';
+import { getApiBaseUrl, getStoredToken } from '@/services/api';
 import type { Product } from '@/types';
 
 export function imagePathsFromCaptureJob(job: CaptureJob): {
@@ -16,13 +16,31 @@ export function imagePathsFromCaptureJob(job: CaptureJob): {
   };
 }
 
+export async function attachCaptureJobPhotoToProduct(
+  jobId: number,
+  productId: number,
+): Promise<Product> {
+  const base = getApiBaseUrl();
+  if (!base) throw new Error('API não configurada (EXPO_PUBLIC_API_URL).');
+  const token = await getStoredToken();
+  const res = await fetch(`${base}/products/${productId}/photo/from-capture-job/${jobId}`, {
+    method: 'POST',
+    headers: token ? { Authorization: `Bearer ${token}` } : {},
+  });
+  if (!res.ok) {
+    const err = await res.json().catch(() => ({ detail: res.statusText }));
+    const detail = (err as { detail?: unknown }).detail;
+    throw new Error(typeof detail === 'string' ? detail : 'Não foi possível guardar a foto da captura.');
+  }
+  return res.json() as Promise<Product>;
+}
+
+/** Grava imagem da Captura AI na BD (bytes), não só URL /products/images/ no disco. */
 export async function applyCaptureJobImagesToProduct(
   job: CaptureJob,
   productId: number,
 ): Promise<Product> {
-  const paths = imagePathsFromCaptureJob(job);
-  if (!paths) throw new Error('A imagem ainda não está pronta. Tenta outra fotografia.');
-  return api.products.update(productId, paths);
+  return attachCaptureJobPhotoToProduct(job.id, productId);
 }
 
 export async function pollCaptureJobUntilDone(

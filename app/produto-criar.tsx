@@ -21,6 +21,7 @@ import type { Product } from '@/types';
 import { api } from '@/services/api';
 import { resolveApiMediaUrl } from '@/services/aiCapture';
 import { clearCaptureDraft, loadCaptureDraft } from '@/utils/captureDraft';
+import { attachCaptureJobPhotoToProduct } from '@/utils/productPhotoFromCapture';
 import { getErrorMessage } from '@/utils/errorMessage';
 import { isLiquidPharmaceuticalForm } from '@/utils/liquidPharmaceuticalForm';
 import {
@@ -101,6 +102,7 @@ export default function ProdutoCriarScreen() {
   const [form, setForm] = useState(defaultForm);
   const [fromAiCapture, setFromAiCapture] = useState(false);
   const [aiCaptureHint, setAiCaptureHint] = useState<string | null>(null);
+  const [captureJobId, setCaptureJobId] = useState<number | null>(null);
   const [saving, setSaving] = useState(false);
   const [checkingDuplicates, setCheckingDuplicates] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -150,6 +152,11 @@ export default function ProdutoCriarScreen() {
           location: prev.location,
         }));
         setFromAiCapture(true);
+        setCaptureJobId(
+          typeof draft.captureJobId === 'number' && draft.captureJobId > 0
+            ? draft.captureJobId
+            : null,
+        );
         const conf =
           draft.overallConfidence != null
             ? ` Confiança: ${Math.round(draft.overallConfidence * 100)}%.`
@@ -580,6 +587,18 @@ export default function ProdutoCriarScreen() {
       }
       if (!created) {
         throw lastCreateErr ?? new Error('Falha ao criar produto.');
+      }
+
+      if (captureJobId) {
+        try {
+          await attachCaptureJobPhotoToProduct(captureJobId, created.id);
+        } catch (photoErr) {
+          console.warn('[produto-criar] capture photo attach failed', photoErr);
+          Alert.alert(
+            'Produto criado',
+            'O produto foi guardado mas a fotografia não ficou na base de dados. Abre o produto e volta a carregar a foto.',
+          );
+        }
       }
 
       router.replace({

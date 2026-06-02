@@ -69,6 +69,7 @@ export default function ProdutoCapturaScreen() {
             overallConfidence: job.overall_confidence,
             ocrPreview: job.ocr_raw_text,
             createdAt: new Date().toISOString(),
+            captureJobId: job.id,
           });
           if (existingProductId != null) {
             try {
