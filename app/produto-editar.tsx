@@ -3,6 +3,7 @@ import { useLocalSearchParams, useRouter } from 'expo-router';
 import {
   ActivityIndicator,
   Alert,
+  Image,
   KeyboardAvoidingView,
   Platform,
   ScrollView,
@@ -16,17 +17,17 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { useAuth } from '@/contexts/AuthContext';
 import type { Product } from '@/types';
-import { api } from '@/services/api';
+import { api, resolveApiMediaUrl } from '@/services/api';
 import { getErrorMessage } from '@/utils/errorMessage';
 import { isLiquidPharmaceuticalForm } from '@/utils/liquidPharmaceuticalForm';
 import { isAdminRole } from '@/utils/roles';
-import { withBoxPriceFromBlister } from '@/utils/blisterBoxPrice';
 import {
   blisterSplitPayloadForSave,
   blisterTotalFromParts,
   normalizeBlisterParts,
   seedBlisterUiFromProduct,
 } from '@/utils/blisterStockUi';
+import { clearCaptureDraft, loadCaptureDraft } from '@/utils/captureDraft';
 
 type EditableProduct = Product;
 
@@ -76,6 +77,7 @@ export default function ProdutoEditarScreen() {
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [aiCaptureHint, setAiCaptureHint] = useState<string | null>(null);
 
   // Local UI state for the boxes + loose-blisters inputs (only used when the product is in
   // blister-stock mode). The form's shelf_stock_quantity / warehouse_stock_quantity remain the
@@ -113,6 +115,42 @@ export default function ProdutoEditarScreen() {
     setStorageLoose(seeded.storageLoose);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [product?.id, useBlisterStock, blistersPerBox]);
+
+  useEffect(() => {
+    if (!product) return;
+    let active = true;
+    (async () => {
+      const draft = await loadCaptureDraft();
+      if (!active || !draft) return;
+      await clearCaptureDraft();
+      const f = draft.form;
+      setProduct((prev) => {
+        if (!prev) return prev;
+        return {
+          ...prev,
+          ...(f.name?.trim() ? { name: f.name.trim() } : {}),
+          ...(f.documentary_name?.trim() ? { documentary_name: f.documentary_name.trim() } : {}),
+          ...(f.brand?.trim() ? { brand: f.brand.trim() } : {}),
+          ...(f.category?.trim() ? { category: f.category.trim() } : {}),
+          ...(f.form?.trim() ? { form: f.form.trim() } : {}),
+          ...(f.notes?.trim() ? { notes: f.notes.trim() } : {}),
+          ...(f.barcode?.trim() ? { barcode: f.barcode.trim() } : {}),
+        };
+      });
+      const conf =
+        draft.overallConfidence != null
+          ? ` Confiança: ${Math.round(draft.overallConfidence * 100)}%.`
+          : '';
+      setAiCaptureHint(
+        (draft.needsReview
+          ? 'Reveja os campos sugeridos pela captura AI antes de gravar.'
+          : 'Sugestões da embalagem (confirme antes de gravar).') + conf,
+      );
+    })();
+    return () => {
+      active = false;
+    };
+  }, [product?.id]);
 
   useEffect(() => {
     let mounted = true;
@@ -164,7 +202,7 @@ export default function ProdutoEditarScreen() {
                 ? String(data.price_unit)
                 : null,
         };
-        setProduct(withBoxPriceFromBlister(normalized));
+        setProduct(normalized);
         const bppLoad =
           data.can_sell_by_unit && Number(data.blisters_per_box ?? 0) >= 1
             ? Math.floor(Number(data.blisters_per_box))
@@ -204,11 +242,19 @@ export default function ProdutoEditarScreen() {
       return;
     }
     const n = Math.max(1, Number.parseInt(trimmed.replace(/[^0-9]/g, ''), 10) || 1);
-    setProduct((prev) =>
-      prev
-        ? withBoxPriceFromBlister({ ...prev, blisters_per_box: n, units_per_pack: n })
-        : prev,
-    );
+    setProduct((prev) => {
+      if (!prev) return prev;
+      const next: EditableProduct = { ...prev, blisters_per_box: n, units_per_pack: n };
+      const unitRaw = next.sale_price_blister ?? next.unit_selling_price;
+      const unit = Number.parseFloat(String(unitRaw ?? '').replace(',', '.'));
+      if (Number.isFinite(unit) && unit >= 0) {
+        const box = (unit * n).toFixed(2);
+        next.sale_price_box = box as unknown as Product['sale_price_box'];
+        next.selling_price = box as unknown as Product['selling_price'];
+        next.box_selling_price = box as unknown as Product['box_selling_price'];
+      }
+      return next;
+    });
   };
 
   const handleSave = async () => {
@@ -409,6 +455,34 @@ export default function ProdutoEditarScreen() {
             contentContainerStyle={styles.container}
             keyboardShouldPersistTaps="handled">
             <Text style={styles.title}>Editar produto</Text>
+
+            {aiCaptureHint ? (
+              <View style={styles.aiBanner}>
+                <Text style={styles.aiBannerTitle}>Sugestão AI (captura)</Text>
+                <Text style={styles.aiBannerText}>{aiCaptureHint}</Text>
+                <Text style={styles.aiBannerText}>
+                  Preços, stock e SKU não foram alterados — confirma antes de gravar.
+                </Text>
+              </View>
+            ) : null}
+
+            {(product.image_url?.trim() || product.thumbnail_url?.trim()) ? (
+              <View style={styles.aiImagePreview}>
+                <Image
+                  source={{
+                    uri:
+                      resolveApiMediaUrl(
+                        product.image_url?.trim() || product.thumbnail_url,
+                      ) ??
+                      product.image_url ??
+                      product.thumbnail_url ??
+                      '',
+                  }}
+                  style={styles.aiImageThumb}
+                  resizeMode="contain"
+                />
+              </View>
+            ) : null}
 
             {error && (
               <View style={styles.errorBox}>
@@ -784,14 +858,21 @@ export default function ProdutoEditarScreen() {
                               : ''
                         }
                         onChangeText={(t) => {
-                          setProduct((prev) => {
-                            if (!prev) return prev;
-                            return withBoxPriceFromBlister({
-                              ...prev,
-                              sale_price_blister: (t === '' ? '0' : t) as Product['sale_price_blister'],
-                              unit_selling_price: (t === '' ? null : t) as Product['unit_selling_price'],
-                            });
-                          });
+                          update(
+                            'sale_price_blister',
+                            (t === '' ? '0' : t) as unknown as Product['sale_price_blister'],
+                          );
+                          update(
+                            'unit_selling_price',
+                            (t === '' ? null : t) as unknown as Product['unit_selling_price'],
+                          );
+                          const unit = Number.parseFloat(String(t).replace(',', '.'));
+                          if (Number.isFinite(unit) && unit >= 0 && blistersPerBox >= 1) {
+                            const box = (unit * blistersPerBox).toFixed(2);
+                            update('sale_price_box', box as unknown as Product['sale_price_box']);
+                            update('selling_price', box as unknown as Product['selling_price']);
+                            update('box_selling_price', box as unknown as Product['box_selling_price']);
+                          }
                         }}
                       />
                     </View>
@@ -939,6 +1020,37 @@ const styles = StyleSheet.create({
   errorText: {
     color: '#fee2e2',
     fontSize: 13,
+  },
+  aiBanner: {
+    borderRadius: 12,
+    padding: 12,
+    backgroundColor: '#0f172a',
+    borderWidth: 1,
+    borderColor: '#2563EB',
+    gap: 6,
+  },
+  aiBannerTitle: {
+    fontSize: 14,
+    fontWeight: '700',
+    color: '#93c5fd',
+  },
+  aiBannerText: {
+    fontSize: 13,
+    color: '#cbd5e1',
+    lineHeight: 18,
+  },
+  aiImagePreview: {
+    alignItems: 'center',
+    paddingVertical: 8,
+  },
+  aiImageThumb: {
+    width: '100%',
+    maxWidth: 320,
+    height: 200,
+    borderRadius: 12,
+    backgroundColor: '#fff',
+    borderWidth: 1,
+    borderColor: '#374151',
   },
   actions: {
     marginTop: 8,

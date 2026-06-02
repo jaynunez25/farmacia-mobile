@@ -23,7 +23,6 @@ import { resolveApiMediaUrl } from '@/services/aiCapture';
 import { clearCaptureDraft, loadCaptureDraft } from '@/utils/captureDraft';
 import { getErrorMessage } from '@/utils/errorMessage';
 import { isLiquidPharmaceuticalForm } from '@/utils/liquidPharmaceuticalForm';
-import { withSellingPriceFromBlisterForm } from '@/utils/blisterBoxPrice';
 import {
   blisterSplitPayloadForSave,
   blisterTotalFromParts,
@@ -200,7 +199,15 @@ export default function ProdutoCriarScreen() {
   const setBlistersPerBox = (t: string) => {
     const v =
       t === '' ? ('' as const) : Number.parseInt(t.replace(/[^0-9]/g, ''), 10) || ('' as const);
-    setForm((prev) => withSellingPriceFromBlisterForm({ ...prev, blisters_per_box: v }));
+    setForm((prev) => {
+      const next = { ...prev, blisters_per_box: v };
+      const bpp = Number(v);
+      const unit = Number.parseFloat(String(prev.unit_selling_price ?? '').replace(',', '.'));
+      if (Number.isFinite(bpp) && bpp >= 1 && Number.isFinite(unit) && unit >= 0) {
+        next.selling_price = (unit * bpp).toFixed(2);
+      }
+      return next;
+    });
     setError(null);
   };
 
@@ -937,11 +944,13 @@ export default function ProdutoCriarScreen() {
                       style={styles.input}
                       keyboardType="decimal-pad"
                       value={form.unit_selling_price}
-                      onChangeText={(t) =>
-                        setForm((prev) =>
-                          withSellingPriceFromBlisterForm({ ...prev, unit_selling_price: t }),
-                        )
-                      }
+                      onChangeText={(t) => {
+                        update('unit_selling_price', t);
+                        const unit = Number.parseFloat(String(t).replace(',', '.'));
+                        if (Number.isFinite(unit) && unit >= 0 && blistersPerBox >= 1) {
+                          update('selling_price', (unit * blistersPerBox).toFixed(2));
+                        }
+                      }}
                       placeholder="Vazio = preço da caixa ÷ lâminas por caixa"
                       placeholderTextColor="#6b7280"
                     />
@@ -991,17 +1000,14 @@ export default function ProdutoCriarScreen() {
                       return;
                     }
                     const n = Math.max(1, Number.parseInt(cleaned, 10) || 1);
-                    setForm((prev) =>
-                      withSellingPriceFromBlisterForm({
-                        ...prev,
-                        blisters_per_box: n,
-                        shelf_stock_quantity: blisterTotalFromParts(shelfBoxes, shelfLoose, n),
-                        warehouse_stock_quantity: blisterTotalFromParts(
-                          storageBoxes,
-                          storageLoose,
-                          n,
-                        ),
-                      }),
+                    update('blisters_per_box', n);
+                    update(
+                      'shelf_stock_quantity',
+                      blisterTotalFromParts(shelfBoxes, shelfLoose, n),
+                    );
+                    update(
+                      'warehouse_stock_quantity',
+                      blisterTotalFromParts(storageBoxes, storageLoose, n),
                     );
                   }}
                 />

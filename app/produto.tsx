@@ -1,12 +1,23 @@
-import { useLocalSearchParams, useRouter } from 'expo-router';
+import { useFocusEffect, useLocalSearchParams, useRouter } from 'expo-router';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { ActivityIndicator, Alert, Pressable, StyleSheet, Text, View } from 'react-native';
-import { useEffect, useState } from 'react';
+import {
+  ActivityIndicator,
+  Alert,
+  Image,
+  Pressable,
+  ScrollView,
+  StyleSheet,
+  Text,
+  View,
+} from 'react-native';
+import { useCallback, useEffect, useState } from 'react';
+import * as ImagePicker from 'expo-image-picker';
 
 import { useAuth } from '@/contexts/AuthContext';
 import type { Product } from '@/types';
-import { api } from '@/services/api';
+import { api, resolveApiMediaUrl } from '@/services/api';
 import { getErrorMessage } from '@/utils/errorMessage';
+import { uploadProductPhotoFromUri } from '@/utils/productPhotoFromCapture';
 import { isAdminRole, isStockAuditorRole } from '@/utils/roles';
 
 export default function ProdutoDetailScreen() {
@@ -20,35 +31,105 @@ export default function ProdutoDetailScreen() {
   const [loading, setLoading] = useState(true);
   const [loadError, setLoadError] = useState<string | null>(null);
   const [deleting, setDeleting] = useState(false);
+  const [uploadingPhoto, setUploadingPhoto] = useState(false);
+  const [photoStatus, setPhotoStatus] = useState<string | null>(null);
+  const [imageFailed, setImageFailed] = useState(false);
+
+  const loadProduct = useCallback(async () => {
+    if (!id) {
+      setLoading(false);
+      return;
+    }
+    setLoading(true);
+    setLoadError(null);
+    try {
+      const data = await api.products.get(Number(id));
+      setProduct(data);
+      setImageFailed(false);
+    } catch (err) {
+      setLoadError(getErrorMessage(err));
+    } finally {
+      setLoading(false);
+    }
+  }, [id]);
 
   useEffect(() => {
-    let isMounted = true;
+    void loadProduct();
+  }, [loadProduct]);
 
-    const load = async () => {
-      if (!id) {
-        setLoading(false);
-        return;
-      }
-      setLoading(true);
-      setLoadError(null);
-      try {
-        const data = await api.products.get(Number(id));
-        if (!isMounted) return;
-        setProduct(data);
-      } catch (err) {
-        if (!isMounted) return;
-        setLoadError(getErrorMessage(err));
-      } finally {
-        if (isMounted) setLoading(false);
-      }
-    };
+  useFocusEffect(
+    useCallback(() => {
+      if (!id || loading) return;
+      void (async () => {
+        try {
+          const data = await api.products.get(Number(id));
+          setProduct(data);
+          setImageFailed(false);
+        } catch {
+          /* mantém estado anterior */
+        }
+      })();
+    }, [id, loading]),
+  );
 
-    load();
+  const imageRaw = product
+    ? (product.image_url ?? '').trim() || (product.thumbnail_url ?? '').trim()
+    : '';
+  const imageUri = imageRaw && !imageFailed ? resolveApiMediaUrl(imageRaw) : null;
 
-    return () => {
-      isMounted = false;
-    };
-  }, [id]);
+  const handlePhotoFromUri = async (uri: string, mimeType?: string) => {
+    if (!product) return;
+    setUploadingPhoto(true);
+    setPhotoStatus('A enviar fotografia…');
+    try {
+      const updated = await uploadProductPhotoFromUri(
+        product.id,
+        uri,
+        mimeType ?? 'image/jpeg',
+        setPhotoStatus,
+      );
+      setProduct(updated);
+      setImageFailed(false);
+      setPhotoStatus(null);
+      Alert.alert('Fotografia guardada', 'A imagem do produto foi actualizada no stock e no POS.');
+    } catch (err) {
+      Alert.alert('Não foi possível guardar', getErrorMessage(err));
+      setPhotoStatus(null);
+    } finally {
+      setUploadingPhoto(false);
+    }
+  };
+
+  const pickCamera = async () => {
+    const perm = await ImagePicker.requestCameraPermissionsAsync();
+    if (!perm.granted) {
+      Alert.alert('Câmara', 'Permissão de câmara necessária para fotografar produtos.');
+      return;
+    }
+    const result = await ImagePicker.launchCameraAsync({
+      mediaTypes: ['images'],
+      quality: 1,
+      allowsEditing: false,
+    });
+    if (result.canceled || !result.assets[0]) return;
+    const asset = result.assets[0];
+    await handlePhotoFromUri(asset.uri, asset.mimeType ?? 'image/jpeg');
+  };
+
+  const pickLibrary = async () => {
+    const perm = await ImagePicker.requestMediaLibraryPermissionsAsync();
+    if (!perm.granted) {
+      Alert.alert('Galeria', 'Permissão da galeria necessária.');
+      return;
+    }
+    const result = await ImagePicker.launchImageLibraryAsync({
+      mediaTypes: ['images'],
+      quality: 1,
+    });
+    if (result.canceled || !result.assets[0]) return;
+    const asset = result.assets[0];
+    await handlePhotoFromUri(asset.uri, asset.mimeType ?? 'image/jpeg');
+  };
 
   const confirmDelete = () => {
     if (!id) return;
@@ -100,29 +181,109 @@ export default function ProdutoDetailScreen() {
       )}
 
       {!loading && !loadError && product && (
-        <>
-          <View style={styles.content}>
-            <Text style={styles.title}>{product.name}</Text>
-            <Text style={styles.meta}>SKU: {product.sku}</Text>
-            {product.barcode && <Text style={styles.meta}>Código: {product.barcode}</Text>}
-            <Text style={styles.meta}>
-              Prateleira: {product.shelf_stock_quantity ?? 0} · Storage:{' '}
-              {product.warehouse_stock_quantity ?? 0} · Total: {product.stock_quantity}
-            </Text>
-            <Text style={styles.meta}>Stock mínimo (alertas): {product.minimum_stock}</Text>
-            {product.documentary_name ? (
-              <Text style={styles.meta}>Nome documental: {product.documentary_name}</Text>
-            ) : null}
-            {product.boxes != null ? <Text style={styles.meta}>Caixas: {product.boxes}</Text> : null}
-            {product.blisters != null ? (
-              <Text style={styles.meta}>Blisters: {product.blisters}</Text>
-            ) : null}
-            {product.loose_units != null ? (
-              <Text style={styles.meta}>Unidades soltas: {product.loose_units}</Text>
-            ) : null}
-            {product.notes ? <Text style={styles.meta}>Notas: {product.notes}</Text> : null}
-            {product.needs_audit_review ? (
-              <Text style={styles.auditBadge}>Precisa revisão de auditoria</Text>
+        <ScrollView
+          style={styles.scroll}
+          contentContainerStyle={styles.scrollContent}
+          keyboardShouldPersistTaps="handled">
+          <View style={styles.mainRow}>
+            <View style={styles.detailsCol}>
+              <Text style={styles.title}>{product.name}</Text>
+              <Text style={styles.meta}>SKU: {product.sku}</Text>
+              {product.barcode && <Text style={styles.meta}>Código: {product.barcode}</Text>}
+              <Text style={styles.meta}>
+                Prateleira: {product.shelf_stock_quantity ?? 0} · Storage:{' '}
+                {product.warehouse_stock_quantity ?? 0} · Total: {product.stock_quantity}
+              </Text>
+              <Text style={styles.meta}>Stock mínimo (alertas): {product.minimum_stock}</Text>
+              {product.documentary_name ? (
+                <Text style={styles.meta}>Nome documental: {product.documentary_name}</Text>
+              ) : null}
+              {product.boxes != null ? <Text style={styles.meta}>Caixas: {product.boxes}</Text> : null}
+              {product.blisters != null ? (
+                <Text style={styles.meta}>Blisters: {product.blisters}</Text>
+              ) : null}
+              {product.loose_units != null ? (
+                <Text style={styles.meta}>Unidades soltas: {product.loose_units}</Text>
+              ) : null}
+              {product.notes ? <Text style={styles.meta}>Notas: {product.notes}</Text> : null}
+              {product.needs_audit_review ? (
+                <Text style={styles.auditBadge}>Precisa revisão de auditoria</Text>
+              ) : null}
+            </View>
+
+            {canEditProduct ? (
+              <View style={styles.photoCol}>
+                <Text style={styles.photoLabel}>Fotografia</Text>
+                <View style={styles.photoFrame}>
+                  {imageUri ? (
+                    <Image
+                      source={{ uri: imageUri }}
+                      style={styles.photoImage}
+                      resizeMode="contain"
+                      onError={() => setImageFailed(true)}
+                    />
+                  ) : (
+                    <Text style={styles.photoPlaceholder}>Sem foto</Text>
+                  )}
+                  {uploadingPhoto ? (
+                    <View style={styles.photoOverlay}>
+                      <ActivityIndicator color="#fff" />
+                      {photoStatus ? (
+                        <Text style={styles.photoOverlayText}>{photoStatus}</Text>
+                      ) : null}
+                    </View>
+                  ) : null}
+                </View>
+
+                <Pressable
+                  style={({ pressed }) => [
+                    styles.photoBtn,
+                    (pressed || uploadingPhoto) && styles.photoBtnPressed,
+                  ]}
+                  disabled={uploadingPhoto}
+                  onPress={() => void pickCamera()}>
+                  <Text style={styles.photoBtnText}>Tirar fotografia</Text>
+                </Pressable>
+                <Pressable
+                  style={({ pressed }) => [
+                    styles.photoBtnSecondary,
+                    (pressed || uploadingPhoto) && styles.photoBtnPressed,
+                  ]}
+                  disabled={uploadingPhoto}
+                  onPress={() => void pickLibrary()}>
+                  <Text style={styles.photoBtnSecondaryText}>Galeria</Text>
+                </Pressable>
+                <Pressable
+                  style={({ pressed }) => [
+                    styles.photoBtnAi,
+                    pressed && styles.photoBtnPressed,
+                  ]}
+                  disabled={uploadingPhoto}
+                  onPress={() =>
+                    router.push({
+                      pathname: '/produto-captura',
+                      params: { productId: String(product.id) },
+                    })
+                  }>
+                  <Text style={styles.photoBtnAiText}>Captura AI</Text>
+                </Pressable>
+                <Text style={styles.photoHint}>
+                  A IA lê a embalagem, prepara imagem POS (fundo branco) e pode sugerir nome e notas
+                  em Editar.
+                </Text>
+              </View>
+            ) : imageUri ? (
+              <View style={styles.photoCol}>
+                <Text style={styles.photoLabel}>Fotografia</Text>
+                <View style={styles.photoFrame}>
+                  <Image
+                    source={{ uri: imageUri }}
+                    style={styles.photoImage}
+                    resizeMode="contain"
+                    onError={() => setImageFailed(true)}
+                  />
+                </View>
+              </View>
             ) : null}
           </View>
 
@@ -156,7 +317,7 @@ export default function ProdutoDetailScreen() {
               ) : null}
             </View>
           ) : null}
-        </>
+        </ScrollView>
       )}
     </SafeAreaView>
   );
@@ -166,13 +327,118 @@ const styles = StyleSheet.create({
   safeArea: {
     flex: 1,
     backgroundColor: '#020617',
+  },
+  scroll: {
+    flex: 1,
+  },
+  scrollContent: {
     paddingHorizontal: 16,
     paddingTop: 16,
+    paddingBottom: 32,
   },
   center: {
     flex: 1,
     alignItems: 'center',
     justifyContent: 'center',
+  },
+  mainRow: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: 20,
+    marginBottom: 24,
+  },
+  detailsCol: {
+    flex: 1,
+    minWidth: 220,
+    gap: 4,
+  },
+  photoCol: {
+    width: 200,
+    minWidth: 180,
+    gap: 10,
+  },
+  photoLabel: {
+    fontSize: 13,
+    fontWeight: '600',
+    color: '#9ca3af',
+    textTransform: 'uppercase',
+    letterSpacing: 0.5,
+  },
+  photoFrame: {
+    width: '100%',
+    aspectRatio: 1,
+    borderRadius: 12,
+    backgroundColor: '#ffffff',
+    borderWidth: 1,
+    borderColor: '#374151',
+    overflow: 'hidden',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  photoImage: {
+    width: '100%',
+    height: '100%',
+  },
+  photoPlaceholder: {
+    color: '#6b7280',
+    fontSize: 14,
+    fontWeight: '600',
+  },
+  photoOverlay: {
+    ...StyleSheet.absoluteFillObject,
+    backgroundColor: 'rgba(2, 6, 23, 0.72)',
+    alignItems: 'center',
+    justifyContent: 'center',
+    padding: 8,
+    gap: 8,
+  },
+  photoOverlayText: {
+    color: '#e5e7eb',
+    fontSize: 12,
+    textAlign: 'center',
+  },
+  photoBtn: {
+    borderRadius: 10,
+    backgroundColor: '#2563eb',
+    paddingVertical: 10,
+    alignItems: 'center',
+  },
+  photoBtnSecondary: {
+    borderRadius: 10,
+    backgroundColor: '#1f2937',
+    paddingVertical: 10,
+    alignItems: 'center',
+    borderWidth: 1,
+    borderColor: '#374151',
+  },
+  photoBtnAi: {
+    borderRadius: 10,
+    backgroundColor: '#0f766e',
+    paddingVertical: 10,
+    alignItems: 'center',
+  },
+  photoBtnPressed: {
+    opacity: 0.85,
+  },
+  photoBtnText: {
+    color: '#fff',
+    fontSize: 14,
+    fontWeight: '600',
+  },
+  photoBtnSecondaryText: {
+    color: '#e5e7eb',
+    fontSize: 14,
+    fontWeight: '600',
+  },
+  photoBtnAiText: {
+    color: '#ecfdf5',
+    fontSize: 14,
+    fontWeight: '600',
+  },
+  photoHint: {
+    fontSize: 11,
+    lineHeight: 16,
+    color: '#6b7280',
   },
   title: {
     fontSize: 20,
@@ -192,6 +458,7 @@ const styles = StyleSheet.create({
     fontWeight: '700',
   },
   errorBox: {
+    margin: 16,
     padding: 12,
     borderRadius: 10,
     backgroundColor: '#7f1d1d',
@@ -204,10 +471,6 @@ const styles = StyleSheet.create({
   errorText: {
     color: '#fee2e2',
     fontSize: 13,
-  },
-  content: {
-    gap: 4,
-    marginBottom: 24,
   },
   actionsRow: {
     flexDirection: 'row',
@@ -246,4 +509,3 @@ const styles = StyleSheet.create({
     fontWeight: '600',
   },
 });
-

@@ -1,4 +1,4 @@
-import { useRouter } from 'expo-router';
+import { useLocalSearchParams, useRouter } from 'expo-router';
 import { useCallback, useEffect, useRef, useState } from 'react';
 import {
   ActivityIndicator,
@@ -19,12 +19,16 @@ import { api } from '@/services/api';
 import { saveCaptureDraft } from '@/utils/captureDraft';
 import { getErrorMessage } from '@/utils/errorMessage';
 import { mapCaptureJobToFormDraft } from '@/utils/mapCaptureJobToForm';
+import { applyCaptureJobImagesToProduct } from '@/utils/productPhotoFromCapture';
 import { isAdminRole } from '@/utils/roles';
 
 type Step = 'pick' | 'processing';
 
 export default function ProdutoCapturaScreen() {
   const router = useRouter();
+  const { productId } = useLocalSearchParams<{ productId?: string }>();
+  const existingProductId =
+    productId && /^\d+$/.test(productId) ? Number(productId) : null;
   const { user } = useAuth();
   const [step, setStep] = useState<Step>('pick');
   const [error, setError] = useState<string | null>(null);
@@ -66,6 +70,20 @@ export default function ProdutoCapturaScreen() {
             ocrPreview: job.ocr_raw_text,
             createdAt: new Date().toISOString(),
           });
+          if (existingProductId != null) {
+            try {
+              await applyCaptureJobImagesToProduct(job, existingProductId);
+            } catch (e) {
+              setError(getErrorMessage(e));
+              setStep('pick');
+              return;
+            }
+            router.replace({
+              pathname: '/produto-editar',
+              params: { id: String(existingProductId) },
+            });
+            return;
+          }
           router.replace('/produto-criar');
           return;
         }
@@ -136,8 +154,9 @@ export default function ProdutoCapturaScreen() {
       <ScrollView contentContainerStyle={styles.container} keyboardShouldPersistTaps="handled">
         <Text style={styles.title}>Captura AI</Text>
         <Text style={styles.subtitle}>
-          Fotografe a embalagem. A IA sugere nome, forma e imagem — preços e stock preenches no
-          formulário habitual (igual a «Novo produto»).
+          {existingProductId != null
+            ? 'Fotografe a embalagem para actualizar a foto POS e sugerir nome, forma e notas no ecrã de edição.'
+            : 'Fotografe a embalagem. A IA sugere nome, forma e imagem — preços e stock preenches no formulário habitual (igual a «Novo produto»).'}
         </Text>
 
         {error ? (
